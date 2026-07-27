@@ -279,6 +279,16 @@ button{font-family:inherit;}
 .askbar input{flex:1;min-width:0;border:0;background:transparent;outline:none;
   padding:8px 4px;color:var(--text);font-family:var(--font-body);font-size:15px;}
 .askbar input::placeholder{color:var(--text-muted);}
+/* Hero 深入分析在對話框「外側左方」：askrow 把 pill 與 askbar 並成一列 */
+.askrow{display:flex;align-items:center;gap:var(--space-2);max-width:600px;}
+.askrow .askbar{flex:1;max-width:none;margin:0;}
+/* Hero 深入分析：挑圖入口（複用大欄轉灰挑圖）。soft iris pill，picking 時實心。 */
+.askdig{flex:none;display:inline-flex;align-items:center;gap:5px;border:0;cursor:pointer;
+  background:var(--accent-soft);color:var(--accent);font-size:var(--text-label);font-weight:var(--fw-medium);
+  padding:var(--space-1) var(--space-3);border-radius:var(--radius-pill);white-space:nowrap;}
+.askdig:hover{background:color-mix(in srgb,var(--accent-soft),var(--accent) 14%);}
+.askdig.on{background:var(--accent);color:var(--text-on-accent);}
+.askdig .digmark{width:13px;height:13px;flex:none;fill:currentColor;}
 .askbar #ts{flex:none;width:36px;height:36px;border-radius:var(--radius-md);border:0;
   background:var(--accent);color:var(--text-on-accent);cursor:pointer;opacity:.35;
   display:inline-flex;align-items:center;justify-content:center;
@@ -425,7 +435,7 @@ main{flex:1;min-height:0;overflow:hidden;
   grid-column:span var(--cs,3);grid-row:span var(--rs,1);}   /* --rs：半列網格下 KPI 卡也要能跨列 */
 .kpi.sent{border-color:var(--color-warning);}
 .kpi .kh{display:flex;align-items:center;gap:5px;}
-.kpi .kh .tag{margin-left:auto;align-self:center;}
+.kpi .kh .tag{align-self:center;}
 .kpi .k{font-size:12.5px;color:var(--text-muted);}
 .kpi .warnicon{color:var(--color-warning);display:inline-flex;}
 .kpi .v{font-family:var(--font-display);font-size:29px;font-weight:var(--fw-semibold);
@@ -501,21 +511,25 @@ main{flex:1;min-height:0;overflow:hidden;
   display:flex;align-items:flex-start;gap:var(--space-3);}
 .phd h3{margin:0;font-size:var(--text-small);color:var(--text);font-weight:var(--fw-semibold);
   font-family:var(--font-body);line-height:1.4;}
+/* 標題與 ⚠ 哨兵同一行 → ⚠ 貼著名稱（左上），不隨副標長度飄到右邊 */
+.ph-t{display:flex;align-items:center;gap:var(--space-2);}
 .phd .sub{font-size:11.5px;color:var(--text-muted);margin:2px 0 0;line-height:1.4;}
 /* 哨兵改成頁首圖示：固定高度下不能讓警示條吃掉垂直空間，
    但哨兵不能消失——點/hover 看全文（DS：哨兵是一等公民）。 */
-.warnbtn{margin-left:auto;flex:none;border:0;background:transparent;cursor:pointer;
+.warnbtn{flex:none;border:0;background:transparent;cursor:pointer;
   color:var(--color-warning);padding:3px;border-radius:var(--radius-sm);display:inline-flex;}
 .warnbtn:hover{background:var(--color-warning-soft);}
 /* plot 無內距 → 量到的 client 尺寸就是繪圖尺寸；圖表內部 PL/PR 自帶留白。 */
-.plot{padding:0;flex:1;min-height:0;}
+.plot{padding:0 0 4px;flex:1;min-height:0;}   /* 底部 4px 呼吸 → x 軸標籤不貼面板圓角邊 */
 .plot svg{display:block;width:100%;height:100%;overflow:visible;}
 .pft{border-top:1px solid var(--border);padding:7px var(--space-4);
-  display:flex;align-items:center;gap:var(--space-3);background:var(--surface-2);}
-.dig{border:0;background:transparent;color:var(--accent);cursor:pointer;font-size:var(--text-label);
-  font-weight:var(--fw-medium);padding:0;display:inline-flex;align-items:center;gap:5px;text-align:left;}
+  display:flex;align-items:center;gap:var(--space-3);}
+/* dig 現在住在頁首（.phd / .kh）右側：靠右、不縮。chooser 的角度用 .chip，不吃這裡。 */
+.dig{border:0;background:var(--accent-soft);color:var(--accent);cursor:pointer;font-size:var(--text-label);
+  font-weight:var(--fw-medium);padding:var(--space-1) var(--space-3);border-radius:var(--radius-pill);
+  display:inline-flex;align-items:center;gap:5px;text-align:left;margin-left:auto;flex:none;}
 .digmark{width:13px;height:13px;flex:none;fill:currentColor;}
-.dig:hover{color:var(--accent-2-ink);}
+.dig:hover{background:color-mix(in srgb,var(--accent-soft),var(--accent) 14%);}
 .dig:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:3px;}
 .legend{margin-left:auto;display:flex;gap:var(--space-3);flex-wrap:wrap;}
 .lg{display:inline-flex;align-items:center;gap:5px;font-size:11px;color:var(--text-muted);}
@@ -698,6 +712,13 @@ main{flex:1;min-height:0;overflow:hidden;
 .chip:hover{border-style:solid;border-color:var(--accent);color:var(--accent);
   background:var(--accent-soft);}
 .chip:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+/* 深入分析「開場選角度」：引用（.ctx）＋ 置中提示 ＋ 一排角度 chips（沿用 .chip）。
+   選一顆角度後整塊換成正式的一輪問答。 */
+.chooser{display:flex;flex-direction:column;align-items:flex-start;text-align:left;gap:var(--space-3);}
+.chooser .ctx{align-self:flex-start;}
+.chooser .dig-prompt{margin:0;font-size:var(--text-small);line-height:var(--lh-body);color:var(--text-body);}
+.chooser .chips{justify-content:flex-start;}
+.chooser .chip{text-align:left;}
 
 .dft{border-top:1px solid var(--border);padding:var(--space-3) var(--space-5) var(--space-5);
   display:flex;flex-direction:column;gap:var(--space-2);position:relative;}
@@ -764,6 +785,18 @@ body.picking .pickhint{opacity:1;transform:translateX(-50%);}
 .pickhint kbd{font-family:var(--font-mono);font-size:var(--text-micro);color:var(--text-muted);
   border:1px solid var(--border-2);border-radius:var(--radius-sm);padding:0 var(--space-1);}
 
+/* 中寬螢幕（1061–1400，如 1366 投影機、未最大化的視窗）：12 欄會把 cs:3 面板擠到
+   太窄（半圓圖例互撞、軸標籤被 ECharts 隱藏）。改收成 2 欄、寬圖(cs≥6)跨滿、允許捲動，
+   面板就一直保持夠寬。≥1400（含 1440 Mac）維持原本 12 欄不捲。 */
+@media (min-width:1061px) and (max-width:1400px){
+  body{height:auto;min-height:100dvh;overflow:auto;}
+  main{flex:auto;overflow:visible;padding:var(--space-4);}
+  .charts{grid-template-columns:repeat(2,minmax(0,1fr));
+    grid-template-rows:none!important;grid-auto-rows:auto;gap:var(--space-3);}
+  .panel{grid-column:auto!important;grid-row:auto!important;min-height:260px;}
+  .panel.wide{grid-column:1 / -1!important;}
+  .kpi{grid-column:auto!important;grid-row:auto!important;min-height:130px;}
+}
 /* 「一屏不捲」是桌機（≥1060 寬）的約束。窄於此 = 平板/手機，
    改回自然流、允許捲動——硬塞一屏在窄螢幕上只會更糟。 */
 @media (max-width:1060px){
@@ -881,9 +914,12 @@ body.picking .pickhint{opacity:1;transform:translateX(-50%);}
       <b id="ttl">歡迎回來</b>
       <span class="greet-sub">從提問到洞察，幾秒內完成</span>
     </div>
-    <div class="askbar">
-      <input id="ti" placeholder="問我任何事——例如「6 月業績為什麼掉這麼多？」" aria-label="發問">
-      <button id="ts" type="button" aria-label="送出"></button>
+    <div class="askrow">
+      <button id="hdig" class="askdig" type="button" aria-label="深入分析：挑一張圖表">深入分析</button>
+      <div class="askbar">
+        <input id="ti" placeholder="問 FLAPS.AI 任何事" aria-label="發問">
+        <button id="ts" type="button" aria-label="送出"></button>
+      </div>
     </div>
     <div class="qchips" id="qchips"></div>
     <div class="heronav">
@@ -1045,7 +1081,7 @@ M["業績"] = { sub:"本月業績狀態盤點",
        換來的 6 格讓熱力圖從 59px 長到 220px。取捨見下方版位說明。
        目標達成率（全店）與下一格的各店櫃達成率（分店）形成下鑽：
        「全店落後 8 個百分點」→「是哪幾家拖的」。 */
-    {type:"target",k:"目標達成率",v:"42.2",u:"%",d:"落後進度 8 百分點",dc:"d",t:["lo","低於預期"],cs:3,rs:2,
+    {type:"target",k:"目標達成率",dig:"為什麼達成率落後進度這麼多？",v:"42.2",u:"%",d:"落後進度 8 百分點",dc:"d",t:["lo","低於預期"],cs:3,rs:2,
      sent:"目標欄位為 0 時不得顯示 0%——需 assertion 擋下"}],
   charts:[
     /* 業績 v2：改半列解析度（rs:2 ＝ 1 標準列）。原本五張圖有四張擠在 59px，
@@ -1073,7 +1109,7 @@ M["業績"] = { sub:"本月業績狀態盤點",
     {cs:3,rs:2,type:"stackbar",h:"商品線業績貢獻",s:"業績有多依賴單一品類 · 本月佔比",unit:"萬",
      d:[["服裝",1200],["配件",560],["鞋類",460],["家居雜貨",380],["其他",287]],
      dig:"哪個商品業績貢獻最大？"},
-    {cs:6,rs:4,type:"line",h:"業績走勢",s:"今年比去年好還是壞 · 近 12 個月，本期 vs 去年同期（萬元）",
+    {cs:6,rs:4,type:"line",legTop:true,h:"業績走勢",s:"今年比去年好還是壞 · 近 12 個月，本期 vs 去年同期（萬元）",
      x:["7月","8月","9月","10月","11月","12月","1月","2月","3月","4月","5月","6月"],
      series:[{n:"本期",c:0,d:[3050,3180,3240,3520,4180,4020,3966,3600,3264,3400,3265,2887]},
              {n:"去年同期",c:1,d:[3210,3050,2980,3620,4720,4398,5428,2934,3763,3700,3600,3960]}],
@@ -1112,8 +1148,8 @@ M["業績"] = { sub:"本月業績狀態盤點",
    死貨佔比從 KPI 卡升格為圖表面板 → KPI 卡剩兩張（與促銷／CRM 一致）。 */
 M["庫存"] = { sub:"庫存壓力與風險盤點",
   kpi:[
-    {type:"target",k:"售罄率",v:"49",u:"%",d:"距季目標 60% 差 11 百分點",dc:"d",t:["lo","低於目標"],cs:3,rs:2},
-    {type:"minibars",k:"週轉天數 DOI",v:"128",u:"天",d:"改善 5 天",dc:"u",t:["ok","符合預期"],cs:3,rs:2,
+    {type:"target",k:"售罄率",dig:"售罄率為什麼離季目標還差這麼多？",v:"49",u:"%",d:"距季目標 60% 差 11 百分點",dc:"d",t:["lo","低於目標"],cs:3,rs:2},
+    {type:"minibars",k:"週轉天數 DOI",dig:"週轉天數最近是變好還是變差？",v:"128",u:"天",d:"改善 5 天",dc:"u",t:["ok","符合預期"],cs:3,rs:2,
      bars:[142,138,135,140,133,128],bx:["1月","2月","3月","4月","5月","6月"]}],
   charts:[
     /* 兩片式佔比甜甜圈：死貨珊瑚、其餘淡底。
@@ -1169,21 +1205,21 @@ M["促銷"] = { sub:"檔期效益與折扣結構", kpiAfter:1,
   kpi:[
     /* 兩張 KPI 合起來是促銷頁的開場白：「有多依賴打折」＋「打折後還賺多少」。
        促銷業績佔比上升＝依賴加深＝壞；它是體檢指標而非行動指標，不升格為主角。 */
-    {type:"halfdonut",k:"促銷業績佔比",cur:51.4,avg:44.8,avgLab:"去年同期",
+    {type:"halfdonut",k:"促銷業績佔比",dig:"促銷業績佔比比去年高，這是好事嗎？",cur:51.4,avg:44.8,avgLab:"去年同期",
      t:["lo","高於預期"],cs:3,rs:2},
     /* 全站彙總水位，刻意不切通路——各通路 ROI 那張已經在回答「哪個通路賠本」，
        這裡再切一次會變成兩張圖搶同一個問題。
        用 minibars 而非第二個半圓：毛利率要問的是「有沒有在持續失血」，
        「比去年低 5.3 百分點」可能只是單月現象，六個月一路往下掉才是結構性問題——
        兩點快照答不出這題。YoY 差距保留在下面那行文字，資訊沒少。 */
-    {type:"minibars",k:"促銷毛利率",v:"36.2",u:"%",d:"5.3 百分點 較去年同期",dc:"d",
+    {type:"minibars",k:"促銷毛利率",dig:"促銷毛利率為什麼比去年同期掉這麼多？",v:"36.2",u:"%",d:"5.3 百分點 較去年同期",dc:"d",
      t:["lo","低於預期"],cs:3,rs:2,
      bars:[41.8,41.0,39.6,38.4,37.5,36.2],bx:["1月","2月","3月","4月","5月","6月"]}],
   charts:[
     /* 主角（cs:6 rs:3 ＝ 1.5 標準列）：促銷到底是「多賣」還是「把原本正價會買的客人賤賣」。
        淨增量佔比＝(檔期業績 − 無促銷基線) / 檔期業績，掉到 0% 以下＝蠶食正價。
        這是整頁唯一直接回答「值不值得」的指標，所以佔左上。 */
-    {cs:6,rs:3,type:"combo",h:"檔期增量 vs 蠶食",s:"促銷是多賣還是賤賣正價 · 近六檔，業績量體與淨增量佔比",
+    {cs:6,rs:3,type:"combo",legTop:true,h:"檔期增量 vs 蠶食",s:"促銷是多賣還是賤賣正價 · 近六檔，業績量體與淨增量佔比",
      x:["EM 0401","EM26SS","SM2 春夏","GP 換季","YCVC 週慶","母親節"],
      bar:{n:"檔期業績",c:0,unit:"萬",d:[240,183,148,125,98,76]},
      line:{n:"淨增量佔比",c:2,unit:"%",ref:0,d:[38,26,12,-4,-11,-18]},
@@ -1224,17 +1260,17 @@ M["CRM"] = { sub:"會員黏著度、結構與流失風險",
     /* 回購率是零售 CRM 最高頻的單一指標，卻是舊版整頁唯一沒有的——流失是結果，
        回購才是還能施力的地方。原本佔這格的「近三月活躍率」拿掉：漏斗最底兩層
        （近三月活躍 13,298／本月購物 3,718）已經把同一件事講完了。 */
-    {type:"halfdonut",k:"會員回購率",cur:28.6,avg:33.5,avgLab:"去年同期",goodWhenUp:true,
+    {type:"halfdonut",k:"會員回購率",dig:"會員回購率為什麼比去年同期低？",cur:28.6,avg:33.5,avgLab:"去年同期",goodWhenUp:true,
      t:["lo","低於預期"],cs:3,rs:2},
     /* 新客 90 天回購率：開一條跟「整體留存」不同的軸——拉進來的新客留不留得住
        （呼應 Hero 的本月新入會 986 人，有沒有白拉）。緊接回購率並列（兩個回購指標
        一組）。22.4%↓（去年 26.1）與整頁「留存在惡化」的基調一致。 */
-    {type:"halfdonut",k:"新客 90 天回購率",cur:22.4,avg:26.1,avgLab:"去年同期",goodWhenUp:true,
+    {type:"halfdonut",k:"新客 90 天回購率",dig:"新客 90 天回購率下滑的原因是什麼？",cur:22.4,avg:26.1,avgLab:"去年同期",goodWhenUp:true,
      t:["lo","低於預期"],cs:3,rs:2},
     /* 流失率走 miniline 而非 minibars：截斷基準的長條會誇大量級（壓過基準後末柱
        是首柱數倍，讀成「翻倍」）。線編碼斜率——月間有起伏但整體往上惡化，那條
        上行的鋸齒線才是訊息本身，也不跟左邊的半圓撞形式。末點 62.4 對齊大數字。 */
-    {type:"miniline",k:"年度流失率",v:"62.4",u:"%",d:"7.3 百分點 較去年同期",dc:"d",
+    {type:"miniline",k:"年度流失率",dig:"年度流失率為什麼比去年同期高？",v:"62.4",u:"%",d:"7.3 百分點 較去年同期",dc:"d",
      t:["lo","高於預期"],cs:3,rs:2,
      bars:[57.6,56.9,59.8,58.9,60.7,62.4],bx:["1月","2月","3月","4月","5月","6月"]}],
   /* Hero 漲跌章：MoM（較上月）。CRM 三格無月度時間序列來源，MoM 為示意值、內部自洽
@@ -1513,6 +1549,12 @@ function buildOption(c, tk, H, W){
     if(half) data.push({ value:total, name:"", silent:true, label:{show:false},
       labelLine:{show:false}, tooltip:{show:false}, itemStyle:{color:"transparent"},
       emphasis:{scale:false} });
+    /* 半圓位置一律用實際寬高像素算（resize 由 _donuts 帶新 W/H 重算）→ 任何螢幕都對齊、
+       弧體隨面板高度長大又留邊。cx/cy＝弧心比例；Rout＝外徑 px；sideX＝弧右緣＋間距（圖例/cmp 落點）。 */
+    /* 「弧＋右側圖例/數字」整塊水平置中：弧心 x＝W/2 − 半塊寬（塊＝弧直徑＋間距＋圖例約 72px）。 */
+    const cy=0.82, Rout=0.75*Math.min(W,H),
+          cxPx=Math.round(W/2 - 44),
+          sideX=Math.round(cxPx+Rout+16), numX=Math.round(cxPx-26);
     return {
       animation:true,
       tooltip:{ trigger:'item', ...tip,
@@ -1525,7 +1567,7 @@ function buildOption(c, tk, H, W){
          兩者並存 → 有 cmp 時圖例讓位。兩片式 donut 的色義在標題與副標已經講完，
          圖例的資訊量本來就低，但差異數字是老闆要看的。 */
       legend: c.cmp ? {show:false} : { data:c.d.map(x=>x[0]), itemWidth:9, itemHeight:9, icon:"roundRect",
-        orient:"vertical", right: half?"14%":2, top:"middle", itemGap:11,
+        orient:"vertical", left: half?sideX:undefined, right: half?undefined:2, top:"middle", itemGap:11,
         textStyle:{color:tk.body,fontSize:11} },
       graphic: (()=>{ const G=[];
         /* c.big ＝ 弧心裡的主數字（比照半圓 KPI 卡）。放得進去的前提是把環變薄——
@@ -1538,19 +1580,19 @@ function buildOption(c, tk, H, W){
            重算到別處（實測 left:30%+center 會畫到右邊），所以直接算左上角：
            left ＝ 弧心% − 半個字寬%。實測 instW≈327、"35.4%"≈52px → 30 − 26/327 ≈ 22%。
            big 目前只有死貨佔比用、內容固定，故可寫定；換內容要重算。 */
-        if(c.big) G.push({type:'text', left:'22%', top:'56%',
+        if(c.big) G.push({type:'text', left:numX, top:Math.round(cy*H-Rout*0.5),
           style:{ text:c.big, fill:tk.text, font:'600 17px sans-serif' }});
         if(c.cmp){ const m=c.cmp,
             good = m.goodWhenUp ? m.up : !m.up,
             col  = m.v===0 ? tk.tick : (good ? tk.good : tk.bad);
-          G.push({type:'text', left:'67%', top:'26%', style:{ text:`${m.up?'↑':'↓'}${m.v} 百分點`,
+          G.push({type:'text', left:sideX, top:Math.round(cy*H-Rout*0.62), style:{ text:`${m.up?'↑':'↓'}${m.v} 百分點`,
             fill:col, font:'600 13px sans-serif' }},
-            {type:'text', left:'67%', top:'56%', style:{ text:m.lab,
+            {type:'text', left:sideX, top:Math.round(cy*H-Rout*0.62+20), style:{ text:m.lab,
             fill:tk.tick, font:'11px sans-serif' }}); }
         return G; })(),
       series:[{ type:"pie",
-        radius: half?[c.big?"125%":"95%","180%"]:["48%","68%"],
-        center: half?["30%","95%"]:["30%","50%"],
+        radius: half?[c.big?"115%":"90%","150%"]:["48%","68%"],
+        center: half?[cxPx, Math.round(cy*H)]:["30%","50%"],
         startAngle: half?180:90,
         avoidLabelOverlap:true, label:{show:false}, labelLine:{show:false},
         itemStyle:{ borderRadius:3, borderWidth:2, borderColor:tk.paper },
@@ -1741,16 +1783,21 @@ function gaugeRing(g){
 
 /* Gauge KPI 卡（大欄網格內，非 hero）：比率對 100% 目標的進度環 + 漲跌，取代數字+sparkline。
    給「離目標還差多少」型指標（達成率）——sparkline 對這種指標沒意義，環才講得清。 */
+/* KPI 卡頁首：名稱＋狀態徽章（低於預期／⚠，靠左）＋深入分析 pill（靠右，margin-left:auto）。
+   dig 文案為佔位（k.dig），與圖表一起待 golden 294 置換；沒 k.dig 時退回用卡名。 */
+function khHTML(k){
+  return `<div class="kh">
+      <span class="k">${k.k}</span>
+      ${k.sent?`<span class="warnicon" title="${k.sent}">${ic("alert","ic sm")}</span>`:""}
+      ${k.t?`<span class="tag ${k.t[0]}">${k.t[1]}</span>`:""}
+    </div>`;
+}
 function kpiGauge(k){
   const S=72, c=S/2, sw=8, r=(S-sw)/2-2, circ=2*Math.PI*r;
   const pct=Math.max(0,Math.min(100,parseFloat(k.v))), dash=circ*pct/100;
   const arrow = k.dc==="u"?ic("up","ic sm"):k.dc==="d"?ic("down","ic sm"):ic("dash","ic sm");
   return `<div class="kpi kpi-g${k.sent?" sent":""}" style="--cs:${k.cs||3};--rs:${k.rs||1}">
-    <div class="kh">
-      <span class="k">${k.k}</span>
-      ${k.sent?`<span class="warnicon" title="${k.sent}">${ic("alert","ic sm")}</span>`:""}
-      <span class="tag ${k.t[0]}">${k.t[1]}</span>
-    </div>
+    ${khHTML(k)}
     <div class="kg-body">
       <svg class="kg-ring" viewBox="0 0 ${S} ${S}" role="img" aria-label="${k.k} ${k.v}%">
         <circle cx="${c}" cy="${c}" r="${r}" fill="none" stroke="var(--accent-soft)" stroke-width="${sw}"/>
@@ -1770,11 +1817,7 @@ function kpiTarget(k){
   const arrow=k.dc==="u"?ic("up","ic sm"):k.dc==="d"?ic("down","ic sm"):ic("dash","ic sm");
   const segs=Array.from({length:N},(_,i)=>`<i class="${i<on?"on":""}"></i>`).join("");
   return `<div class="kpi kpi-t${k.sent?" sent":""}" style="--cs:${k.cs||3};--rs:${k.rs||1}">
-    <div class="kh">
-      <span class="k">${k.k}</span>
-      ${k.sent?`<span class="warnicon" title="${k.sent}">${ic("alert","ic sm")}</span>`:""}
-      <span class="tag ${k.t[0]}">${k.t[1]}</span>
-    </div>
+    ${khHTML(k)}
     <span class="v num">${k.v}<small>${k.u||"%"}</small></span>
     <div class="kt-bar" role="img" aria-label="${k.k} ${k.v}%">${segs}</div>
     <div class="foot">
@@ -1788,11 +1831,7 @@ function kpiMiniBars(k, ki){
   const arrow=k.dc==="u"?ic("up","ic sm"):k.dc==="d"?ic("down","ic sm"):ic("dash","ic sm");
   /* 長條走 ECharts（.plot.kmini），renderCharts 就地 init → 正式懸浮窗顯示每月值 */
   return `<div class="kpi kpi-mb${k.sent?" sent":""}" style="--cs:${k.cs||3};--rs:${k.rs||1}">
-    <div class="kh">
-      <span class="k">${k.k}</span>
-      ${k.sent?`<span class="warnicon" title="${k.sent}">${ic("alert","ic sm")}</span>`:""}
-      <span class="tag ${k.t[0]}">${k.t[1]}</span>
-    </div>
+    ${khHTML(k)}
     <span class="v num">${k.v}<small>${k.u||""}</small></span>
     <div class="kt-mini"><div class="plot kmini" data-ki="${ki}"></div></div>
     <div class="foot">
@@ -1846,11 +1885,7 @@ function kpiHalfDonut(k){
 
   const avgLab=k.avgLab||"其他月均";
   return `<div class="kpi kpi-hd${k.sent?" sent":""}" style="--cs:${k.cs||3};--rs:${k.rs||1}">
-    <div class="kh">
-      <span class="k">${k.k}</span>
-      ${k.sent?`<span class="warnicon" title="${k.sent}">${ic("alert","ic sm")}</span>`:""}
-      <span class="tag ${k.t[0]}">${k.t[1]}</span>
-    </div>
+    ${khHTML(k)}
     <div class="hd-body">
       ${ring(cur, k.curLab||"當月", false, avg)}
       <div class="hd-mid">
@@ -2005,9 +2040,9 @@ const stripTags = s => String(s).replace(/<[^>]+>/g, "");
 
 /* 每張圖 = 一個 ECharts 實例，就地填進版位格（.plot flex:1，尺寸由格子決定）。
    重繪／切分頁前先 dispose 舊實例（否則實例累積吃記憶體）；尺寸變動只 resize，不重建。 */
-let _charts = [], _funnels = [];
+let _charts = [], _funnels = [], _donuts = [];
 function renderCharts(D){
-  _charts.forEach(ch => ch.dispose()); _charts = []; _funnels = [];
+  _charts.forEach(ch => ch.dispose()); _charts = []; _funnels = []; _donuts = [];
   const tk = dvTokens();
   chEl.querySelectorAll(".plot[data-i]").forEach(el => {
     const c = D.charts[+el.dataset.i];
@@ -2016,6 +2051,7 @@ function renderCharts(D){
     chart.setOption(buildOption(c, tk, el.clientHeight, el.clientWidth));   /* 傳實際寬高：漏斗流失欄靠它貼齊各步階右緣 */
     _charts.push(chart);
     if(c.type==='funnel') _funnels.push({chart, el, c});   /* 漏斗流失欄是像素定位 → resize 要帶新高度重對齊 */
+    if(c.type==='donut')  _donuts.push({chart, el, c});    /* 半圓的圖例/數字也是像素定位 → resize 要用新寬高重算 */
   });
   /* KPI 卡內的 mini 長條（連帶率 UPT 等）也走 ECharts → 有正式懸浮窗 */
   chEl.querySelectorAll(".plot.kmini[data-ki]").forEach(el => {
@@ -2037,9 +2073,10 @@ chEl.addEventListener("mousemove", e => {
 });
 chEl.addEventListener("mouseleave", hideTip);
 chEl.addEventListener("click", e => {
-  /* 〔深入分析〕＝開新的一串，並把「哪個模組的哪張圖」當成第一則的引用 */
+  /* 〔深入分析〕＝開「選角度」開場：先讓使用者挑這張圖要看哪個角度，選了才成為第一則問句。
+     第一個角度沿用 c.dig（＝能命中凍結答案的那句），其餘由 DIG_MORE 補上。 */
   const b = e.target.closest(".dig");
-  if(b) open_(b.dataset.q, {m:page, h:b.dataset.c});
+  if(b) openDig(page, b.dataset.c, [b.dataset.q, ...(DIG_MORE[b.dataset.c] || [])]);
 });
 
 /* 視窗/格子尺寸變動 → 只叫 ECharts resize（rAF 去抖，避免縮放時狂重算）。
@@ -2049,8 +2086,10 @@ new ResizeObserver(() => {
   cancelAnimationFrame(_raf);
   _raf = requestAnimationFrame(() => {
     _charts.forEach(ch => ch.resize());
-    if(_funnels.length){ const tk = dvTokens();
-      _funnels.forEach(f => f.chart.setOption({ graphic: funnelDrops(f.c, tk, f.el.clientHeight, f.el.clientWidth) })); }
+    if(_funnels.length || _donuts.length){ const tk = dvTokens();
+      _funnels.forEach(f => f.chart.setOption({ graphic: funnelDrops(f.c, tk, f.el.clientHeight, f.el.clientWidth) }));
+      /* 半圓：用新寬高整段重算（圖例位置＋中央數字＋弧半徑都依 W/H） */
+      _donuts.forEach(f => f.chart.setOption(buildOption(f.c, tk, f.el.clientHeight, f.el.clientWidth), true)); }
   });
 }).observe(chEl);
 
@@ -2128,22 +2167,19 @@ function draw(){
     const leg  = c.type === "line"  ? lgOf(c.series)
                : c.type === "combo" ? lgOf([{n:c.bar.n, c:c.bar.c ?? 0}, {n:c.line.n, c:c.line.c ?? 2}])
                : "";
-    return `<section class="panel${c.warn ? " sent" : ""}"
+    return `<section class="panel${c.warn ? " sent" : ""}${(c.cs || 4) >= 6 ? " wide" : ""}" data-type="${c.type}"
         style="--cs:${c.cs || 4};--rs:${c.rs || 1}">
       <div class="phd">
-        <div><h3>${c.h}</h3><p class="sub">${c.s}</p></div>
+        <div>
+          <div class="ph-t"><h3>${c.h}</h3>${c.warn ? `<button class="warnbtn" type="button" aria-label="資料哨兵"
+            title="${attr(stripTags(c.warn))}">${ic("alert","ic sm")}</button>` : ""}</div>
+          <p class="sub">${c.s}</p>
+        </div>
         ${c.legTop ? leg : ""}
-        ${c.warn ? `<button class="warnbtn" type="button" aria-label="資料哨兵"
-            title="${attr(stripTags(c.warn))}">${ic("alert","ic sm")}</button>` : ""}
         ${c.blocked ? `<span class="blocked">上線前阻斷</span>` : ""}
       </div>
       ${inner}
-      <div class="pft">
-        <button class="dig" type="button" data-q="${c.dig}" data-c="${c.h}">
-          ${planeMark()}深入分析 · ${c.dig}
-        </button>
-        ${c.legTop ? "" : leg}
-      </div>
+      ${!c.legTop && leg ? `<div class="pft">${leg}</div>` : ""}
     </section>`;
   });                                       /* 陣列（不 join）→ 下面才能把 KPI 卡插進中間 */
 
@@ -2389,8 +2425,66 @@ function showDrawer(){
   drawer.setAttribute("aria-hidden","false");
   ci.focus();
 }
-/* 對外：圖表〔深入分析〕與 Hero 的入口都走這裡＝一律開新的一串 */
+/* 對外：Hero（askbar／快捷 chips）的入口＝一律直接開新的一串。
+   圖表〔深入分析〕改走 openDig（先選角度），不再經過這裡。 */
 function open_(q, ctx){ startThread(q, ctx); }
+
+/* ---- 深入分析：開「選角度」開場 -------------------------------------
+   點圖表的〔深入分析〕不直接問一句，而是先在抽屜鋪一個開場：
+   引用（這張圖）＋ 提示 ＋ 一排「角度」chips。選一顆角度，那句才成為
+   第 1 輪問句、開始思考→答（之後同一串照舊追問）。
+   選角度前 TH 維持 null → 沒選就關掉不會留下空串（archive 以 turns.length 為準）。
+   ⚠️ 角度文案為佔位：每張圖第一句＝c.dig（能命中凍結答案），其餘兩句是 DIG_MORE
+   的示意稿，待 golden 294 路線規劃完成後整批置換／改由後端檢索。 */
+const DIG_MORE = {
+  /* 業績 */
+  "各店櫃達成率":["前三名跟後三名的差距在拉大嗎？","拖後腿的是不是同幾家一直沒起色？"],
+  "通路業績佔比":["哪個通路最近成長最快？","有沒有過度集中在單一通路的風險？"],
+  "商品線業績貢獻":["有沒有哪個品類正在衰退？","業績是不是太靠單一品類在撐？"],
+  "業績走勢":["今年整體比去年成長多少？","最近三個月是往上還是往下？"],
+  "星期 × 時段 業績熱力":["整週的業績低谷落在哪一天？","週末跟平日的差距有多大？"],
+  "交易筆數 vs 客單價":["業績成長是靠來客數還是客單價？","交易筆數最近有異常波動嗎？"],
+  /* 庫存 */
+  "死貨佔比":["死貨金額比上個月增加還是減少？","呆料主要卡在哪個品類？"],
+  "庫齡分佈":["錢主要壓在新貨還是舊貨？","哪個庫齡區間的金額成長最快？"],
+  "斷貨風險 Top 6":["哪幾款最急、這週一定要補？","哪些款是常態性缺貨？"],
+  "各倉／通路 × 庫齡":["哪個倉囤的老貨最多？","要不要把某個倉的貨調去別的通路消化？"],
+  "週轉最差品類":["週轉最慢的前幾個品類是哪些？","這些慢品類佔了多少庫存金額？"],
+  /* 促銷 */
+  "檔期增量 vs 蠶食":["哪一檔的淨增量最高？","有沒有哪一檔其實是賠本賺吆喝？"],
+  "全年檔期業績排行":["全年哪幾檔最好、明年該續押？","哪些檔期投報率其實很差？"],
+  "促銷新客留存漏斗":["促銷拉來的新客，三個月後還留著幾成？","首購後最容易流失在哪一步？"],
+  "各通路促銷 ROI":["哪個通路的促銷其實在賠本？","下一季促銷預算該往哪個通路加碼？"],
+  /* CRM */
+  "業績來自誰":["營收有多依賴既有會員？","新客佔比最近是升還是降？"],
+  "會員生命週期漏斗":["會員主要斷在哪一層？","從首購到回購的轉換率高不高？"],
+  "VIP 卡別升降級流動":["高卡別的人數在成長還是在萎縮？","今年有多少人從高卡別掉下來？"],
+  "高價值休眠 · 喚回清單":["這批休眠會員大概沉睡多久了？","喚回他們大概能帶回多少業績？"],
+  /* KPI 卡 */
+  "目標達成率":["哪幾家門市拖累整體達成率最多？","照目前速度，這個月補得回落後的進度嗎？"],
+  "售罄率":["哪些品類售罄最慢、拖累整體？","要衝到季目標，還差多少量？"],
+  "週轉天數 DOI":["哪個品類的週轉天數最長？","改善的天數主要靠哪些品項拉回來？"],
+  "促銷業績佔比":["是不是太依賴促銷才有業績？","正價期的業績佔比有沒有被壓縮？"],
+  "促銷毛利率":["哪一檔的毛利被折扣吃掉最多？","是折太深還是成本上升造成的？"],
+  "會員回購率":["哪個卡別的回購率掉最多？","主要是新客不回來還是舊客流失？"],
+  "新客 90 天回購率":["哪個通路帶進來的新客最不回購？","首購後多久最容易流失？"],
+  "年度流失率":["哪個卡別的流失最嚴重？","流失的會員通常斷在第幾次購買？"]
+};
+function openDig(m, h, angles){
+  archive();                          /* 收掉上一串（空串不會存）；已開著的抽屜不復位 */
+  TH = null;                          /* 還沒開始一串——選了角度才算 */
+  dt.textContent = "深入分析";
+  stopAllThink(); db.innerHTML = "";
+  db.insertAdjacentHTML("beforeend",
+    `<div class="chooser">
+       ${ctxHTML({m, h})}
+       <p class="dig-prompt">這張圖你想從哪個角度看？</p>
+       <div class="chips">${angles.map(a => `<button class="chip" type="button">${a}</button>`).join("")}</div>
+     </div>`);
+  db.querySelectorAll(".chooser .chip").forEach(b =>
+    b.addEventListener("click", () => startThread(b.textContent.trim(), {m, h})));
+  showDrawer();
+}
 
 function close_(){
   stopAllThink(); archive(); clearAtt(); closePick();
@@ -2429,34 +2523,58 @@ function setAtt(m, h){
   syncPlus();
 }
 const cplus = document.getElementById("cplus");
-function startPick(){
+/* 挑圖現在有兩個入口，差別只在「挑完做什麼」（_onPick）：
+   · 抽屜 ＋        → 把該圖設成引用（setAtt），接著在輸入框繼續打字
+   · Hero 深入分析 → 直接用該圖開「選角度」開場（openDig）
+   共用同一條 startPick／大欄轉灰／capture 挑選。 */
+let _onPick = null;
+function startPick(onPick, hint){
+  _onPick = onPick;
   document.body.classList.add("picking");
-  drawer.classList.add("away");
-  cplus.setAttribute("aria-expanded","true");
+  if(drawer.classList.contains("on")) drawer.classList.add("away");  /* 抽屜開著才需讓開 */
   document.getElementById("pickhint").innerHTML =
-    `${ic("chart","ic sm")}點一張圖表來引用<kbd>Esc</kbd>取消`;
+    `${ic("chart","ic sm")}${hint}<kbd>Esc</kbd>取消`;
   hideTip();
 }
 function closePick(){
   document.body.classList.remove("picking");
   drawer.classList.remove("away");
   cplus.setAttribute("aria-expanded","false");
+  hdig.classList.remove("on");
+  _onPick = null;
 }
 const picking = () => document.body.classList.contains("picking");
+/* 該圖的角度＝主問句（c.dig／k.dig）＋ DIG_MORE 補充；查當前模組的資料。 */
+function anglesFor(name){
+  const D = M[page], item = (D.charts||[]).concat(D.kpi||[]).find(x => (x.h||x.k) === name);
+  const primary = item && item.dig;
+  return primary ? [primary, ...(DIG_MORE[name]||[])] : (DIG_MORE[name]||[name]);
+}
+const citePick = () => startPick((m,h)=>{ setAtt(m,h); ci.focus(); }, "點一張圖表來引用");
 cplus.addEventListener("click", e => {
   e.stopPropagation();
   if(ATT){ clearAtt(); return; }        /* － ＝ 拿掉目前的引用 */
-  picking() ? closePick() : startPick();
+  picking() ? closePick() : citePick();
 });
-/* capture 階段攔截：挑圖模式下，面板裡的〔深入分析〕與哨兵按鈕都不該被觸發 */
+/* Hero 深入分析：挑一張圖 → 開「選角度」開場（取代原本每張圖的 pill） */
+const hdig = document.getElementById("hdig");
+hdig.insertAdjacentHTML("afterbegin", planeMark());
+hdig.addEventListener("click", e => {
+  e.stopPropagation();
+  if(picking()){ closePick(); return; }
+  hdig.classList.add("on");
+  startPick((m,h)=>openDig(m, h, anglesFor(h)), "點一張圖表深入分析");
+});
+/* capture 階段攔截：挑圖模式下，面板／KPI 內的按鈕與哨兵都不該被觸發 */
 chEl.addEventListener("click", e => {
   if(!picking()) return;
   e.preventDefault(); e.stopPropagation();
-  /* 圖表面板的名稱在 h3，KPI 卡在 .k —— 兩種都可引用 */
+  /* 圖表面板名稱在 h3，KPI 卡在 .k */
   const p = e.target.closest(".panel,.kpi"); if(!p) return;
-  const h = p.querySelector("h3,.k"); if(!h) return;
-  setAtt(page, h.textContent.trim());
-  closePick(); ci.focus();
+  const el = p.querySelector("h3,.k"); if(!el) return;
+  const name = el.textContent.trim(), cb = _onPick;
+  closePick();
+  if(cb) cb(page, name);
 }, true);
 
 /* ---- 抽屜可拖曳、可縮放 -------------------------------------------------
