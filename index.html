@@ -1,0 +1,2693 @@
+<!DOCTYPE html>
+<html lang="zh-TW" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FLAPS Conversation BI — Dashboard</title>
+<link rel="icon" href="favicon/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="favicon/favicon-32x32.png" type="image/png" sizes="32x32">
+<link rel="apple-touch-icon" href="favicon/apple-touch-icon.png" sizes="180x180">
+<style>
+/* ============================================================
+   FLAPS Design System v2.2 — system fonts everywhere; the FLAPS
+   wordmark (Outfit) is the only self-hosted webface (no CDN).
+   ============================================================ */
+@font-face { font-family:'Outfit'; font-weight:600; font-style:normal; font-display:swap; src:url('fonts/outfit-600.woff2') format('woff2'); }
+@font-face { font-family:'Outfit'; font-weight:700; font-style:normal; font-display:swap; src:url('fonts/outfit-700.woff2') format('woff2'); }
+
+/* ============================================================
+   Tokens — FLAPS DS v2「Iris on Paper」
+   ============================================================ */
+:root{
+  /* surfaces / borders / text */
+  --canvas:#FBFBFD; --paper:#FFFFFF; --surface-2:#F5F6FB;
+  --border:#E9EAF2; --border-2:#DCDEEC;
+  --text:#141A33; --text-body:#474D67; --text-muted:#676D86;
+  --text-on-accent:#FFFFFF;
+
+  /* brand */
+  --accent:#4F46E5; --accent-2:#F5683D;
+  --accent-soft:#EEEEFC; --accent-2-soft:#FFF1EB;
+  --accent-2-ink:color-mix(in srgb, var(--accent-2), var(--text) 33%);
+
+  /* semantic */
+  --color-success:#157F54; --color-warning:#946700; --color-danger:#CC3B3B;
+  --color-success-soft:#E6F5EE; --color-warning-soft:#FBF1DF; --color-danger-soft:#FBE9E9;
+
+  /* ---- data-viz scope only (DS 規則 4 的正當例外：圖表是一個完整物件) ----
+     這組色票已通過 dataviz validator 六項檢查，不得更動、不得挪用到紙面。 */
+  --dv-1:#4F46E5; --dv-2:#0E9AB8; --dv-3:#E2552A; --dv-4:#D8548A; --dv-5:#3C5FCE;
+  --dv-1-soft:#E7E5FB;
+  --dv-grid:#EFF0F6;
+
+  /* type (v2.2: system faces + one wordmark) */
+  --sys:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial;
+  --cjk:'PingFang TC','PingFang SC','Microsoft JhengHei','Noto Sans CJK TC','Noto Sans TC';
+  --font-display:var(--sys),var(--cjk),sans-serif;
+  --font-body:var(--sys),var(--cjk),sans-serif;
+  --font-mono:ui-monospace,'SF Mono',Menlo,Consolas,var(--cjk),monospace;
+  --font-wordmark:'Outfit',system-ui,-apple-system,'Segoe UI',Arial,sans-serif;
+  --fw-regular:400; --fw-medium:500; --fw-semibold:600; --fw-bold:700;
+  /* app/dense UI 用固定 px scale（DS 規則 9） */
+  --text-h1:40px; --text-h2:30px; --text-h3:22px;
+  --text-body-size:16px; --text-small:14px; --text-label:12px;
+  /* app-layer 擴充：mono 軸標/註記需要小於 --text-label 的一階 */
+  --text-micro:10px;
+  --lh-body:1.6; --lh-tight:1.12; --ls-eyebrow:.2em;
+
+  /* spacing / radius / shadow */
+  --space-1:4px; --space-2:8px; --space-3:12px; --space-4:16px;
+  --space-5:24px; --space-6:32px; --space-7:48px;
+  --radius-sm:6px; --radius-md:12px; --radius-lg:20px; --radius-pill:999px;
+  --shadow-xs:0 1px 1px rgba(16,19,48,.03);
+  --shadow-sm:0 1px 2px rgba(16,19,48,.04),0 1px 3px rgba(16,19,48,.05);
+  --shadow-md:0 4px 12px rgba(16,19,48,.05),0 12px 30px rgba(16,19,48,.07);
+  --shadow-lg:0 10px 26px rgba(16,19,48,.07),0 28px 64px rgba(16,19,48,.10);
+  /* app-layer 擴充（比照 --text-micro 那一階）：--shadow-lg 用在側欄／下拉選單夠用，
+     但 420px 的對話抽屜浮在整片圖表上時分離感差一階。這一階專供浮卡式抽屜。
+     加在 token 層而不是就地手刻 rgba —— DS 規則 1。 */
+  --shadow-xl:0 12px 32px rgba(16,19,48,.10),0 40px 80px rgba(16,19,48,.14);
+
+  /* motion */
+  --ease-out:cubic-bezier(.16,1,.3,1);
+}
+[data-theme="dark"]{
+  --canvas:#0B0F24; --paper:#141A33; --surface-2:#1B2244;
+  --border:#283155; --border-2:#323C66;
+  --text:#EEF0F8; --text-body:#B6BCD4; --text-muted:#7E85A3;
+  --accent-soft:#1F2350; --accent-2-soft:#3A2318; --accent-2-ink:#FF9A7A;
+  --color-success:#3FC38C; --color-warning:#E0B44E; --color-danger:#F07070;
+  --color-success-soft:#123A2C; --color-warning-soft:#3A2E12; --color-danger-soft:#3B1E1E;
+  /* 暗色圖表色票是獨立步階，不是把淺色反轉 */
+  --dv-1:#7A6FF0; --dv-2:#0E9CB6; --dv-3:#E45F33; --dv-4:#D65C92; --dv-5:#5A7FDB;
+  --dv-1-soft:#252A5C;
+  --dv-grid:#232C4E;
+  --shadow-sm:0 1px 3px rgba(0,0,0,.3);
+  --shadow-md:0 8px 24px rgba(0,0,0,.32);
+  --shadow-lg:0 16px 44px rgba(0,0,0,.42);
+  --shadow-xl:0 20px 56px rgba(0,0,0,.52);
+}
+
+/* ============================================================
+   Base
+   ============================================================ */
+*{box-sizing:border-box;}
+html,body{height:100%;}
+/* 固定高度外殼：整頁 = 一屏，overflow:hidden 是「不捲」的硬約束本身。
+   flex column → 頂欄(flex:none) 之下，main 吃掉剩餘高度。 */
+body{margin:0;height:100dvh;overflow:hidden;background:var(--canvas);color:var(--text-body);
+  font-family:var(--font-body);font-size:var(--text-small);-webkit-font-smoothing:antialiased;
+  padding-left:var(--rail);display:flex;flex-direction:column;}
+button{font-family:inherit;}
+.num{font-variant-numeric:tabular-nums;}
+.ic{width:15px;height:15px;flex:none;stroke:currentColor;fill:none;
+  stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round;}
+.ic.sm{width:12px;height:12px;stroke-width:2.25;}
+:root{--rail:56px;--side:260px;}
+
+/* ============================================================
+   側欄 = 對話這條線（新對話／搜尋／釘選／專案／歷史）。
+   Dashboard 分頁不在這裡——它們在頂欄。左右兩軸分開，
+   使用者不必理解「路由」也不會走錯車道。
+   預設收起成 56px icon rail；展開是 overlay，不推擠主區——
+   因為「總覽一屏不捲」是硬約束，一推就破功。
+   ============================================================ */
+/* 收起時 rail 就是畫布的一部分（同底色、無邊界）；展開才變成一張紙浮起來 */
+.side{position:fixed;left:0;top:0;bottom:0;width:var(--rail);z-index:66;
+  background:var(--canvas);
+  display:flex;flex-direction:column;overflow:hidden;
+  transition:width .22s var(--ease-out);}
+.side.open{width:var(--side);background:var(--paper);
+  border-right:1px solid var(--border);box-shadow:var(--shadow-lg);}
+/* 側欄壓暗：保留但只留極輕一層。抽屜完全不壓暗（要對照著圖追問），側欄是切換情境的
+   導覽、不需要對照，所以留一層來分前後——兩者是同一條光譜上的兩點，不是兩套規則。
+   從 --text 推導而非手刻 rgba（DS 規則 1：紙面不出現臨時 hex）。 */
+.sscrim{position:fixed;inset:0;background:color-mix(in srgb,var(--text),transparent 84%);
+  z-index:65;opacity:0;pointer-events:none;transition:opacity .2s;}
+.sscrim.on{opacity:1;pointer-events:auto;}
+
+.shd{display:flex;align-items:center;gap:var(--space-2);height:56px;padding:0 var(--space-3);flex:none;}
+.side:not(.open) .shd{justify-content:center;padding:0;}
+/* FLAPS wordmark — 字標，永遠不是圖檔（LOGO.md） */
+.wm{font-family:var(--font-wordmark);font-weight:var(--fw-semibold);font-size:19px;
+  letter-spacing:.005em;line-height:1;color:var(--text);}
+/* wordmark sheen —— 全站唯一允許發光的地方（DS 規則 7） */
+.sheen{background:linear-gradient(100deg,var(--text) 0%,var(--text) 38%,
+    var(--accent) 50%,var(--accent-2) 60%,var(--accent) 70%,var(--text) 82%,var(--text) 100%);
+  background-size:280% auto;background-position:0% center;
+  -webkit-background-clip:text;background-clip:text;
+  -webkit-text-fill-color:transparent;color:transparent;
+  animation:sheen 6.5s ease-in-out infinite;}
+@keyframes sheen{0%,18%{background-position:0% center;}50%{background-position:100% center;}
+  82%,100%{background-position:0% center;}}
+.logo{display:flex;align-items:baseline;gap:var(--space-1);flex:1;min-width:0;}
+.logo b{font-family:var(--font-mono);font-size:var(--text-micro);font-weight:var(--fw-medium);
+  letter-spacing:.12em;text-transform:uppercase;color:var(--text-muted);}
+.side.open .plane{display:none;}
+/* 收起時：紙飛機本身就是展開鈕（沿用 v1 的手勢） */
+.plane{width:32px;height:32px;border:0;background:transparent;cursor:pointer;padding:0;
+  display:flex;align-items:center;justify-content:center;flex:none;}
+.plane i{display:block;width:26px;height:26px;
+  background:linear-gradient(135deg,var(--accent),var(--accent-2));
+  -webkit-mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath d='M57 13L7 26L21 32Z'/%3E%3Cpath d='M57 13L43 52L32 42L26 48L27 35Z'/%3E%3C/svg%3E");
+          mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath d='M57 13L7 26L21 32Z'/%3E%3Cpath d='M57 13L43 52L32 42L26 48L27 35Z'/%3E%3C/svg%3E");
+  -webkit-mask-size:contain;mask-size:contain;-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;}
+.plane svg{display:none;color:var(--accent);}
+.plane:hover i{display:none;} .plane:hover svg{display:block;}
+.side:not(.open) .logo,.side:not(.open) .tog{display:none;}
+.tog{flex:none;border:0;background:transparent;cursor:pointer;color:var(--text-muted);
+  padding:var(--space-1);border-radius:var(--radius-sm);display:inline-flex;}
+.tog:hover{background:var(--surface-2);color:var(--text);}
+
+.srail{display:flex;flex-direction:column;gap:var(--space-1);padding:var(--space-2) var(--space-3);flex:none;}
+.side:not(.open) .srail{padding:var(--space-2) 0;align-items:center;}
+.sbtn{border:0;background:transparent;cursor:pointer;color:var(--text-body);
+  display:flex;align-items:center;gap:var(--space-2);width:100%;
+  padding:var(--space-2);border-radius:var(--radius-sm);
+  font-size:var(--text-small);white-space:nowrap;}
+.side:not(.open) .sbtn{width:36px;justify-content:center;padding:var(--space-2) 0;}
+.side:not(.open) .sbtn span{display:none;}
+.sbtn:hover{background:var(--surface-2);color:var(--text);}
+.sbtn .ic{color:var(--text-muted);}
+.sbtn:hover .ic{color:var(--text);}
+.sdiv{height:1px;background:var(--border);margin:var(--space-2) var(--space-3);flex:none;}
+.sbody{flex:1;min-height:0;overflow-y:auto;padding:0 var(--space-3) var(--space-3);}
+.side:not(.open) .sbody{visibility:hidden;}
+.slbl{font-family:var(--font-mono);font-size:var(--text-micro);letter-spacing:var(--ls-eyebrow);
+  text-transform:uppercase;color:var(--text-muted);padding:var(--space-3) var(--space-2) var(--space-2);
+  display:block;white-space:nowrap;}
+.hist{border:0;background:transparent;cursor:pointer;text-align:left;width:100%;
+  padding:var(--space-2);border-radius:var(--radius-sm);font-size:var(--text-small);color:var(--text-body);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.hist:hover{background:var(--surface-2);color:var(--text);}
+.sempty{font-size:var(--text-label);color:var(--text-muted);padding:var(--space-2);
+  line-height:var(--lh-body);margin:0;}
+/* 側欄底部＝帳號入口（原本是啞標籤，現在掛上下拉選單，取代 Hero 右上角那個） */
+.sft{flex:none;border-top:1px solid var(--border);padding:var(--space-2);position:relative;}
+.sftbtn{display:flex;align-items:center;gap:var(--space-2);width:100%;border:0;background:transparent;
+  cursor:pointer;padding:var(--space-2);border-radius:var(--radius-sm);text-align:left;}
+.sftbtn:hover{background:var(--surface-2);}
+.sftbtn:focus-visible{outline:2px solid var(--accent);outline-offset:1px;}
+.pinfo{display:flex;flex-direction:column;line-height:var(--lh-tight);min-width:0;flex:1;}
+.pinfo b{font-size:var(--text-label);color:var(--text);font-weight:var(--fw-semibold);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.pinfo em{font-size:var(--text-micro);color:var(--text-muted);font-style:normal;}
+.sftbtn .chev{display:inline-flex;color:var(--text-muted);transition:transform .18s var(--ease-out);}
+.profile.open .sftbtn .chev{transform:rotate(180deg);}
+/* 收合軌：只剩頭像置中，隱藏名稱與箭頭 */
+.side:not(.open) .sft{padding:var(--space-2) 0;}
+.side:not(.open) .sftbtn{justify-content:center;padding:var(--space-2) 0;}
+.side:not(.open) .sftbtn .pinfo,.side:not(.open) .sftbtn .chev{display:none;}
+.ava{width:28px;height:28px;border-radius:var(--radius-pill);flex:none;
+  background:var(--accent);color:var(--text-on-accent);
+  display:flex;align-items:center;justify-content:center;
+  font-family:var(--font-mono);font-size:var(--text-label);font-weight:var(--fw-semibold);}
+
+/* ============================================================
+   Hero = Dashboard 這條線。紙面（不是深色帶），靠「呼吸燈」ambience
+   跟下方圖表區分開——參考 index.html console：DS 規則 6，≤2 層、淡、慢：
+   iris（左上）+ coral（右下）兩球緩慢呼吸；hero overflow:hidden 把球裁進帶內，
+   所以只有這一帶「會呼吸」，白色卡片區維持靜止。
+   左欄由上而下：歡迎語 → 發問框 → 分頁（旁附資料截取時間）；
+   右欄由上而下：帳號膠囊（dropdown）→ 三個達成率圓（橫排）。
+   ============================================================ */
+.hero{flex:none;height:33dvh;min-height:248px;max-height:340px;overflow:hidden;
+  position:relative;isolation:isolate;
+  display:grid;grid-template-columns:minmax(0,1fr) auto;gap:var(--space-6);
+  padding:var(--space-6) var(--space-6) var(--space-4);
+  background:var(--canvas);
+  /* 呼吸燈用色（紙面：iris + coral，極淡） */
+  --au1:color-mix(in srgb,var(--accent),transparent 89%);
+  --au2:color-mix(in srgb,var(--accent-2),transparent 92%);}
+/* ambience 層 1：iris，左上 */
+.hero::before{content:"";position:absolute;z-index:-1;width:200%;height:220%;top:-70%;left:-55%;
+  background:radial-gradient(ellipse 52% 46% at 26% 22%,var(--au1) 0%,transparent 62%);
+  -webkit-mask-image:linear-gradient(to bottom,black 35%,transparent 92%);
+  mask-image:linear-gradient(to bottom,black 35%,transparent 92%);
+  animation:auroraFlow 17s ease-in-out infinite;pointer-events:none;}
+/* ambience 層 2：coral，右下（本視圖那一處亮點——ambience 例外，不佔膠囊那處 coral） */
+.hero::after{content:"";position:absolute;z-index:-1;width:200%;height:220%;top:-70%;left:-55%;
+  background:radial-gradient(ellipse 42% 36% at 74% 42%,var(--au2) 0%,transparent 58%);
+  -webkit-mask-image:linear-gradient(to bottom,black 35%,transparent 92%);
+  mask-image:linear-gradient(to bottom,black 35%,transparent 92%);
+  animation:auroraFlow2 24s ease-in-out infinite;pointer-events:none;}
+@keyframes auroraFlow{
+  0%,100%{transform:translate(0,0) scale(1);}
+  20%{transform:translate(6%,8%) scale(1.07);}
+  40%{transform:translate(-6%,5%) scale(.95);}
+  60%{transform:translate(8%,-6%) scale(1.06);}
+  80%{transform:translate(-4%,7%) scale(.97);}}
+@keyframes auroraFlow2{
+  0%,100%{transform:translate(0,0) scale(1);}
+  25%{transform:translate(-7%,6%) scale(1.05);}
+  50%{transform:translate(5%,-7%) scale(.94);}
+  75%{transform:translate(7%,5%) scale(1.05);}}
+
+/* ---- 左欄：歡迎語（上）→ 發問框 → 快捷發問 → 分頁（下） ----
+   歡迎語**不再**做成「AI 的一則訊息」。泡泡＋頭像會假扮成對話訊息，但它永遠不變、
+   不屬於任何對話（真的泡泡在抽屜裡，同一畫面同時有真假兩種泡泡）；而且它是左欄唯一
+   的硬邊界盒子，壓在呼吸燈的柔和漸層上很突兀，還跟右欄的 metric 卡搶「盒子」的層級。
+   → 改成無框純文字，左緣自然落在左欄 x=0，與 .askbar 外緣切齊。 */
+.heroleft{min-width:0;display:flex;flex-direction:column;justify-content:space-between;
+  gap:var(--space-3);}
+.hero-greet{display:flex;flex-direction:column;align-items:flex-start;gap:var(--space-1);
+  min-width:0;}
+/* 標題走品牌雙色漸變（iris→coral），與側欄紙飛機 .plane i 同一條。
+   「歡迎回來」只有四個字，跑道太短——ink→iris→coral 三段會讀成「最後一個字是橘的」，
+   所以改用雙色，四個字整條掃完才像刻意的品牌字。
+   ⚠️ coral 收尾必須壓深：--accent-2 原色對 --canvas 只有 2.93:1，連 AA 大字門檻 3.0
+      都不到（DS 規則 8）；壓深 12% 後是 3.58:1。小字仍該用 --accent-2-ink。
+   ⚠️ 靜態漸變，不加 shimmer —— 會動的漸變是 wordmark 專屬（DS 規則 7）。 */
+.hero-greet #ttl{font-family:var(--font-display);font-size:var(--text-h2);
+  font-weight:var(--fw-semibold);letter-spacing:-.02em;line-height:var(--lh-tight);
+  background:linear-gradient(96deg,var(--accent) 0%,
+    color-mix(in srgb,var(--accent-2),var(--text) 12%) 100%);
+  -webkit-background-clip:text;background-clip:text;
+  -webkit-text-fill-color:transparent;color:transparent;
+  padding-bottom:2px;}   /* background-clip:text 會裁掉下伸部 */
+.hero-greet .greet-sub{font-family:var(--font-body);font-size:var(--text-small);
+  color:var(--text-muted);line-height:var(--lh-body);}
+
+/* 發問列：比照 index.html 首頁發問框——靜止時低調（無邊、幾乎無影、鈕變淡），
+   點擊聚焦後才浮出框框＋iris 光暈、送出鈕轉為實心。iris 由 color-mix 推導，非臨時 hex。 */
+.askbar{margin:0;flex:none;display:flex;align-items:center;gap:var(--space-2);max-width:560px;
+  padding:6px 6px 6px var(--space-5);border-radius:var(--radius-lg);
+  border:1px solid transparent;background:var(--paper);box-shadow:var(--shadow-xs);
+  transition:border-color .3s ease,box-shadow .3s ease,background .3s ease;}
+.askbar:focus-within{border-color:color-mix(in srgb,var(--accent),transparent 65%);
+  box-shadow:0 4px 28px color-mix(in srgb,var(--accent),transparent 82%),var(--shadow-xs);}
+.askbar input{flex:1;min-width:0;border:0;background:transparent;outline:none;
+  padding:8px 4px;color:var(--text);font-family:var(--font-body);font-size:15px;}
+.askbar input::placeholder{color:var(--text-muted);}
+.askbar #ts{flex:none;width:36px;height:36px;border-radius:var(--radius-md);border:0;
+  background:var(--accent);color:var(--text-on-accent);cursor:pointer;opacity:.35;
+  display:inline-flex;align-items:center;justify-content:center;
+  transition:opacity .2s ease,filter .15s ease;}
+.askbar:focus-within #ts{opacity:1;}
+.askbar #ts:hover{filter:brightness(1.08);}
+.askbar #ts:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+@media (prefers-reduced-motion:reduce){
+  .askbar,.askbar #ts{transition:none;}}
+
+/* 快捷發問：**不是新元件**，就是抽屜那顆 .chip——同一個語意（「這是一句可以問的話」）
+   就該是同一個元件，各寫一份只會讓字級／padding／hover 各自漂移。這裡只多一個橫排容器。
+   題目隨分頁換（見 QC）：Dashboard 已經知道你在看哪個模組，固定幾句是浪費這個資訊。 */
+/* golden 文案較長、三顆一行放不下 → 可水平捲動。左右柔邊淡出，只在「那一側還有
+   內容」時出現（起點不淡左、到底不淡右），用 mask 漸層做，不佔空間、不加捲軸。 */
+.qchips{display:flex;gap:var(--space-2);flex-wrap:nowrap;min-width:0;
+  overflow-x:auto;scrollbar-width:none;
+  -webkit-mask-image:linear-gradient(to right,transparent 0,#000 var(--fadeL,0),
+    #000 calc(100% - var(--fadeR,0)),transparent 100%);
+          mask-image:linear-gradient(to right,transparent 0,#000 var(--fadeL,0),
+    #000 calc(100% - var(--fadeR,0)),transparent 100%);}
+.qchips::-webkit-scrollbar{display:none;}
+.qchips .chip{flex:none;white-space:nowrap;}
+
+/* 分頁列：surface 軌 + 白底 active pill；旁附資料時間 */
+.heronav{display:flex;align-items:center;gap:var(--space-3);flex-wrap:wrap;}
+.tabs{display:flex;gap:2px;padding:4px;background:var(--surface-2);border-radius:var(--radius-pill);}
+.tab{border:0;background:transparent;cursor:pointer;color:var(--text-muted);
+  padding:8px var(--space-4);border-radius:var(--radius-pill);font-size:13.5px;
+  display:inline-flex;align-items:center;gap:7px;white-space:nowrap;}
+.tab:hover{color:var(--text-body);}
+.tab[aria-current="page"]{color:var(--accent);font-weight:var(--fw-semibold);
+  background:var(--paper);box-shadow:var(--shadow-sm);}
+.tab:focus-visible{outline:2px solid var(--accent);outline-offset:1px;}
+/* icon 不設色 → 跟隨 tab 文字色（currentColor），文字與 icon 永遠同色 */
+.tab .ic{width:16px;height:16px;}
+/* 資料截取時間：分頁旁的 mono 小膠囊 */
+.datchip{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 var(--space-3);
+  border-radius:var(--radius-pill);background:var(--paper);border:1px solid var(--border);
+  font-family:var(--font-mono);font-size:11.5px;color:var(--text-body);white-space:nowrap;}
+.datchip .di{display:inline-flex;color:var(--text-muted);}
+
+/* ---- 右欄：資料截取膠囊（上，靠右）→ metric 條（下，橫排）。帳號已移到左側欄底部 ---- */
+.heroright{display:flex;flex-direction:column;justify-content:space-between;align-items:flex-end;
+  gap:var(--space-4);}
+
+/* profile 下拉選單。⚠️ .profile / .pmenu / .pmi 的樣式雖然寫在 hero 這一段，
+   但元件本身在左側欄底部（第四次 session 從 hero 右上角搬過去的）。
+   搬家時留下的 .profile-btn／裸 .pinfo 兩組舊膠囊樣式已於第六次 session 刪除。 */
+.profile{position:relative;flex:none;}
+.profile.open .chev{transform:rotate(180deg);}
+
+/* 帳號選單掛側欄底部：往上開、靠左（原本在右上角時是往下、靠右） */
+.pmenu{position:absolute;bottom:calc(100% + var(--space-2));left:var(--space-2);right:var(--space-2);
+  background:var(--paper);border:1px solid var(--border);border-radius:var(--radius-md);
+  box-shadow:var(--shadow-lg);padding:var(--space-1);z-index:70;
+  opacity:0;transform:translateY(6px) scale(.98);transform-origin:bottom left;pointer-events:none;
+  transition:opacity .16s var(--ease-out),transform .16s var(--ease-out);}
+.profile.open .pmenu{opacity:1;transform:none;pointer-events:auto;}
+/* 收合軌（側欄只剩頭像）：選單往右飛出。側欄有 overflow:hidden 會裁掉，
+   故改 position:fixed 用視窗座標脫離裁切，定在軌（--rail）右側、貼底。 */
+.side:not(.open) .pmenu{position:fixed;left:calc(var(--rail) + var(--space-2));bottom:var(--space-2);
+  right:auto;top:auto;min-width:216px;transform-origin:bottom left;}
+.pmi{display:flex;align-items:center;gap:var(--space-2);width:100%;border:0;background:transparent;cursor:pointer;
+  padding:var(--space-2);border-radius:var(--radius-sm);font-size:var(--text-small);color:var(--text-body);
+  font-family:var(--font-body);text-align:left;}
+.pmi:hover{background:var(--surface-2);color:var(--text);}
+.pmi .ic{color:var(--text-muted);}
+.pmi:hover .ic{color:var(--text);}
+.pmi.danger{color:var(--color-danger);}
+.pmi.danger .ic{color:var(--color-danger);}
+.pmi.danger:hover{background:var(--color-danger-soft);color:var(--color-danger);}
+.pmdiv{border:0;border-top:1px solid var(--border);margin:var(--space-2) var(--space-1);}
+
+/* 頂端 vital-sign 列：圓環（比率）在左、數字（絕對量）在右，混排在「單一不換行列」。
+   固定單排 → 每個模組高度恆定，切換分頁不會撐爆 hero、不會裁掉左側分頁。
+   圓環軌 accent-soft + iris 進度弧，數字格同 Resq.io 樣式。 */
+.hero-gauges{display:flex;flex-wrap:nowrap;align-items:center;
+  /* iris tint 再淡一階（往 paper 混）＋ iris hairline 收邊＋最淡紙陰影＝白底優先的層次做法 */
+  background:color-mix(in srgb,var(--accent-soft),var(--paper) 35%);
+  border:1px solid color-mix(in srgb,var(--accent),transparent 88%);
+  border-radius:var(--radius-md);box-shadow:var(--shadow-xs);
+  padding:var(--space-4) var(--space-2);}
+.gauge{display:flex;flex-direction:column;align-items:center;gap:8px;width:86px;}
+.gring{width:76px;height:76px;display:block;}
+.g-num{font-family:var(--font-display);font-weight:var(--fw-semibold);font-size:19px;
+  fill:var(--text);font-variant-numeric:tabular-nums;}
+.g-unit{font-size:.52em;fill:var(--text-muted);font-weight:var(--fw-regular);}
+.g-cap{font-family:var(--font-mono);font-size:10px;color:var(--text-muted);letter-spacing:.02em;
+  text-align:center;line-height:1.3;}
+
+/* Hero 數字格（Resq.io 樣式）：漲跌章（圓角膠囊，箭頭＋%）在大數字左側、標籤在下。 */
+.hstat{display:flex;flex:none;flex-direction:column;gap:6px;min-width:82px;padding:0 var(--space-5);}
+/* 各數值間的分隔線：iris 淡線（color-mix 推導，符合「紙面不新增品牌 hex」） */
+.hstat + .hstat{border-left:1px solid color-mix(in srgb,var(--accent),transparent 82%);}
+/* 膠囊移到大數字右側（參照 Resq.io／通用 metric card：▲%／▼% 貼在數字後）。
+   align-items:flex-end → 膠囊底邊與大數字底邊貼齊，而非置中浮著。 */
+.hstat .hrow{display:flex;align-items:flex-end;gap:8px;}
+.hbadge{display:inline-flex;align-items:center;gap:3px;font-family:var(--font-mono);
+  font-size:11px;font-weight:var(--fw-semibold);font-variant-numeric:tabular-nums;white-space:nowrap;
+  padding:3px 8px;border-radius:var(--radius-pill);}
+.hbadge .ic{width:12px;height:12px;stroke-width:2.4;}
+/* 實心三角（漲跌方向）：fill 而非 stroke，尺寸小、貼齊 % 前 */
+.hbadge .tri{width:9px;height:9px;fill:currentColor;flex:none;}
+.hbadge.bad{background:var(--color-danger-soft);color:var(--color-danger);}
+.hbadge.good{background:var(--color-success-soft);color:var(--color-success);}
+.hbadge.flat{background:transparent;border:1px solid var(--border);color:var(--text-muted);}
+.hstat .hv{font-family:var(--font-display);font-weight:var(--fw-semibold);font-size:30px;
+  color:var(--text);line-height:1;font-variant-numeric:tabular-nums;}
+.hstat .hv small{font-size:.42em;font-weight:var(--fw-regular);color:var(--text-muted);margin-left:2px;}
+.hstat .hl{font-family:var(--font-mono);font-size:10px;color:var(--text-muted);letter-spacing:.02em;line-height:1.3;}
+/* 口徑註記：計算範圍／時間基準，比標籤再淡一階（往 canvas 混）。
+   統計期間出現在兩處：名稱後（.hper，本月期間）與 vs. 行末（上月期間）。 */
+.hstat .hscope{font-family:var(--font-mono);font-size:9.5px;letter-spacing:.02em;line-height:1.2;
+  color:color-mix(in srgb,var(--text-muted),var(--canvas) 30%);}
+/* 名稱後的本月統計期間：接在標籤（.hl）之後，用最淡一階、字重回正常，與名稱區隔 */
+.hstat .hper{margin-left:4px;font-weight:var(--fw-regular);
+  color:color-mix(in srgb,var(--text-muted),var(--canvas) 30%);}
+/* 「進行中」標記（慣例 A）：流量型 metric 在當月未關帳時顯示，提醒老闆這是月累計、非完整月，
+   別把半個月誤讀成暴跌。amber = 語意警示色（暫定資料），關帳後 data 端拿掉 partial 旗標即消失。 */
+.hstat .hpart{margin-left:5px;padding:1px 6px;border-radius:var(--radius-pill);
+  font-family:var(--font-mono);font-size:9px;font-weight:var(--fw-medium);letter-spacing:.02em;
+  vertical-align:1px;background:var(--color-warning-soft);color:var(--color-warning);}
+.hstat .hv-dual{display:flex;align-items:center;gap:12px;font-family:var(--font-display);
+  font-weight:var(--fw-semibold);font-size:24px;font-variant-numeric:tabular-nums;line-height:1;}
+.hstat .hv-dual .up{color:var(--color-success);display:inline-flex;align-items:center;gap:2px;}
+.hstat .hv-dual .down{color:var(--color-danger);display:inline-flex;align-items:center;gap:2px;}
+.hstat .hv-dual .ic{width:14px;height:14px;stroke-width:2.4;}
+
+/* ---- main ---- */
+/* 下方單一大區塊：KPI 卡與圖表共用同一張 12 欄網格（見 .charts）。
+   舊「右側 32% KPI 欄」已拆除——KPI 卡改當網格內的板塊（cs:3，四張一列）。 */
+main{flex:1;min-height:0;overflow:hidden;
+  padding:var(--space-2) var(--space-6) var(--space-5);
+  display:grid;grid-template-columns:minmax(0,1fr);min-width:0;}
+.primary{min-width:0;min-height:0;display:flex;flex-direction:column;}
+/* 標題／副標／條件已移入 Hero（.heroleft）——main 只剩下方大區塊 */
+
+/* ---- KPI 卡 ---- */
+/* 併入下方 12 欄網格的板塊：預設 cs:3（一列四張）。列高由 draw() 給 auto → 卡片緊湊。 */
+.kpi{background:var(--paper);border:1px solid var(--border);border-radius:var(--radius-md);
+  padding:var(--space-3) var(--space-4);box-shadow:var(--shadow-xs);
+  display:flex;flex-direction:column;gap:var(--space-1);min-height:0;overflow:hidden;
+  grid-column:span var(--cs,3);grid-row:span var(--rs,1);}   /* --rs：半列網格下 KPI 卡也要能跨列 */
+.kpi.sent{border-color:var(--color-warning);}
+.kpi .kh{display:flex;align-items:center;gap:5px;}
+.kpi .kh .tag{margin-left:auto;align-self:center;}
+.kpi .k{font-size:12.5px;color:var(--text-muted);}
+.kpi .warnicon{color:var(--color-warning);display:inline-flex;}
+.kpi .v{font-family:var(--font-display);font-size:29px;font-weight:var(--fw-semibold);
+  color:var(--text);line-height:var(--lh-tight);font-variant-numeric:tabular-nums;
+  margin-top:auto;}  /* 卡片被撐高時（與圖表同列）大數字置中；緊湊列則 auto=0 無影響 */
+.kpi .v small{font-size:.48em;font-weight:var(--fw-regular);color:var(--text-muted);margin-left:2px;}
+.kpi .foot{display:flex;align-items:center;gap:var(--space-2);margin-top:auto;}
+.kpi .sp{flex:1;min-width:0;}
+.kpi .sp svg{display:block;width:100%;height:26px;overflow:visible;}
+.tag{font-size:10.5px;font-family:var(--font-mono);letter-spacing:.03em;padding:2px 7px;
+  border-radius:var(--radius-pill);white-space:nowrap;font-weight:var(--fw-medium);
+  flex:none;align-self:flex-start;}
+.tag.ok{background:var(--color-success-soft);color:var(--color-success);}
+.tag.lo{background:var(--color-danger-soft);color:var(--color-danger);}
+.tag.hi{background:var(--color-success-soft);color:var(--color-success);}
+.tag.wr{background:var(--color-warning-soft);color:var(--color-warning);}
+.delta{font-family:var(--font-mono);font-size:11px;font-variant-numeric:tabular-nums;
+  flex:none;display:inline-flex;align-items:center;gap:3px;}
+.delta.u{color:var(--color-success);} .delta.d{color:var(--color-danger);}
+.delta.m{color:var(--text-muted);}
+/* Gauge KPI 卡：達成率這類「離目標還差多少」的比率——進度環比 sparkline 有意義。
+   環置中、漲跌收在環下方 → 卡內容置中填滿，不留左偏空白。 */
+.kpi-g .kg-body{flex:1;min-height:0;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:6px;}
+.kg-ring{width:82px;height:82px;flex:none;display:block;}
+.kg-num{font-family:var(--font-display);font-weight:var(--fw-semibold);font-size:20px;
+  fill:var(--text);}
+.kg-unit{font-size:.52em;fill:var(--text-muted);font-weight:var(--fw-regular);}
+.kpi-g .kg-body .delta{flex:none;}
+/* 進度條卡（目標達成率 to-target）：大數字即達成率，分段條顯示離 100% 目標多遠。 */
+.kpi-t .kt-bar{display:flex;gap:2px;align-items:stretch;height:20px;margin-top:6px;}
+.kpi-t .kt-bar i{flex:1;border-radius:2px;background:var(--accent-soft);}
+.kpi-t .kt-bar i.on{background:var(--accent);}
+.kpi-t .foot{justify-content:space-between;}
+.kt-tgt{font-family:var(--font-mono);font-size:10.5px;color:var(--text-muted);}
+/* mini 長條卡（連帶率 UPT 等）：大數字＋近 N 月小柱看短期趨勢，末柱高亮。 */
+.kt-mini{margin-top:8px;flex:1;min-height:48px;display:flex;flex-direction:column;}
+.kt-mini .plot{flex:1;min-height:48px;}        /* mini 長條走 ECharts → 有正式懸浮窗 */
+/* 卡片與 rs:2 大圖同列被撐高時（促銷／CRM 的右上角），把多出來的高度給長條而不是留白：
+   大數字緊貼標題（取消 .kpi .v 的 margin-top:auto），剩餘空間全歸 .kt-mini。 */
+.kpi-mb .v{margin-top:0;}
+/* 半圓甜甜圈組合卡：左半圓（當月，弧上刻對照期虛線）｜中 delta｜右半圓（對照期，淡）。 */
+/* justify-content:center + hd-mid flex:none —— 用 space-between/flex:1 會把卡片剩餘寬度
+   全灌進元素之間，三塊被推到各自貼邊，讀起來像三張無關的小卡。收成一組才看得出是在對比。 */
+.kpi-hd .hd-body{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;
+  gap:2px;margin-top:auto;}
+.hd-ring{display:flex;flex-direction:column;align-items:center;gap:1px;flex:none;}
+.hd-ring svg{width:100px;height:68px;display:block;}   /* 68 含上方的基準線延伸桿與標籤 */
+.hd-ref{font-size:9px;font-weight:var(--fw-semibold);fill:var(--text);}
+.hd-cur{font-family:var(--font-display);font-weight:var(--fw-semibold);font-size:16px;fill:var(--text);}
+.hd-cur.dim{fill:var(--text-muted);}          /* 對照期的數字退一階，當月仍是視線落點 */
+.hd-u{font-size:.5em;fill:var(--text-muted);font-weight:var(--fw-regular);}
+.hd-mid{display:flex;flex-direction:column;align-items:center;gap:2px;
+  text-align:center;flex:none;min-width:0;padding:0 2px;}
+.hd-mid .delta{font-size:13px;white-space:nowrap;}
+.hd-cap{font-size:10px;color:var(--text-muted);white-space:nowrap;}
+
+/* ---- 版位格：12 欄網格，列數由內容決定（draw() 動態設 grid-template-rows）。
+   KPI 卡與圖表都是這裡的板塊，各靠 --cs（跨幾欄）/--rs（跨幾列）宣告版位；
+   12 能被 2、3、4、6 整除 → 支援 ½(6)、⅓(4)、¼(3)、⅙(2) 及不等寬混搭
+   （如 6+4+2、8+4、4+4+4），只要每列 cs 加總 = 12。
+   grid 本身 flex:1 吃滿下方大區塊 → 換模組、換張數都不捲。 ---- */
+.charts{flex:1;min-height:0;display:grid;
+  grid-template-columns:repeat(12,minmax(0,1fr));
+  grid-auto-rows:minmax(0,1fr);gap:var(--space-3);}
+/* 列高由 draw() 依內容動態設定：KPI 卡列 = auto（緊湊）、圖表列 = 1fr（均分剩餘高度）。 */
+.panel{background:var(--paper);border:1px solid var(--border);border-radius:var(--radius-md);
+  box-shadow:var(--shadow-xs);display:flex;flex-direction:column;overflow:hidden;
+  min-width:0;min-height:0;
+  grid-column:span var(--cs,4);grid-row:span var(--rs,1);}
+.panel.sent{border-color:var(--color-warning);}
+.phd{padding:var(--space-3) var(--space-4) 6px;   /* 收窄頁首下緣 → 標題與圖之間不留大空隙 */
+  display:flex;align-items:flex-start;gap:var(--space-3);}
+.phd h3{margin:0;font-size:var(--text-small);color:var(--text);font-weight:var(--fw-semibold);
+  font-family:var(--font-body);line-height:1.4;}
+.phd .sub{font-size:11.5px;color:var(--text-muted);margin:2px 0 0;line-height:1.4;}
+/* 哨兵改成頁首圖示：固定高度下不能讓警示條吃掉垂直空間，
+   但哨兵不能消失——點/hover 看全文（DS：哨兵是一等公民）。 */
+.warnbtn{margin-left:auto;flex:none;border:0;background:transparent;cursor:pointer;
+  color:var(--color-warning);padding:3px;border-radius:var(--radius-sm);display:inline-flex;}
+.warnbtn:hover{background:var(--color-warning-soft);}
+/* plot 無內距 → 量到的 client 尺寸就是繪圖尺寸；圖表內部 PL/PR 自帶留白。 */
+.plot{padding:0;flex:1;min-height:0;}
+.plot svg{display:block;width:100%;height:100%;overflow:visible;}
+.pft{border-top:1px solid var(--border);padding:7px var(--space-4);
+  display:flex;align-items:center;gap:var(--space-3);background:var(--surface-2);}
+.dig{border:0;background:transparent;color:var(--accent);cursor:pointer;font-size:var(--text-label);
+  font-weight:var(--fw-medium);padding:0;display:inline-flex;align-items:center;gap:5px;text-align:left;}
+.digmark{width:13px;height:13px;flex:none;fill:currentColor;}
+.dig:hover{color:var(--accent-2-ink);}
+.dig:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:3px;}
+.legend{margin-left:auto;display:flex;gap:var(--space-3);flex-wrap:wrap;}
+.lg{display:inline-flex;align-items:center;gap:5px;font-size:11px;color:var(--text-muted);}
+.lg i{width:9px;height:9px;border-radius:2px;flex:none;}
+
+/* ---- 資料哨兵 ---- */
+.warnbox{margin:0 var(--space-4) var(--space-3);padding:9px var(--space-3);
+  border-radius:var(--radius-sm);background:var(--color-warning-soft);
+  border-left:3px solid var(--color-warning);display:flex;gap:var(--space-2);
+  font-size:11.5px;line-height:1.5;color:var(--text-body);}
+.warnbox .ic{color:var(--color-warning);margin-top:1px;}
+.warnbox b{color:var(--color-warning);}
+.warnbox code{font-family:var(--font-mono);font-size:.92em;}
+.blocked{margin-left:auto;flex:none;font-family:var(--font-mono);font-size:9px;
+  letter-spacing:.08em;text-transform:uppercase;color:var(--color-warning);
+  border:1px solid currentColor;border-radius:var(--radius-pill);padding:1px 6px;height:fit-content;}
+
+/* ---- axes / marks ---- */
+.ax{font-family:var(--font-mono);font-size:9.5px;fill:var(--text-muted);}
+.gl{stroke:var(--dv-grid);stroke-width:1;}
+.zl{stroke:var(--border-2);stroke-width:1;}
+.dl{font-family:var(--font-mono);font-size:var(--text-micro);fill:var(--text);font-weight:var(--fw-semibold);}
+
+/* ---- list panel ---- */
+/* 清單：資料不能因為格子矮就被裁掉。優先均分撐滿；真的塞不下時，
+   讓「這一張卡」內部捲（頁面仍一屏不捲）——但這通常是該給它 rs:2 更高版位的訊號。 */
+.rows{padding:var(--space-1) var(--space-4) var(--space-2);flex:1;min-height:0;overflow-y:auto;
+  display:flex;flex-direction:column;justify-content:space-between;}
+.rows .r{padding:7px 0;}
+.r{display:flex;align-items:center;gap:var(--space-3);padding:9px 0;
+  border-bottom:1px solid var(--border);}
+.r:last-child{border-bottom:0;}
+.r .nm{flex:1;min-width:0;font-size:13px;color:var(--text);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.r .nm em{font-style:normal;display:block;font-size:11px;color:var(--text-muted);}
+.r .val{font-family:var(--font-display);font-size:15px;font-weight:var(--fw-semibold);
+  color:var(--text);font-variant-numeric:tabular-nums;flex:none;}
+
+/* ---- tooltip ---- */
+.tip{position:fixed;z-index:50;pointer-events:none;background:var(--text);color:var(--canvas);
+  border-radius:var(--radius-sm);padding:7px 10px;font-size:11.5px;line-height:1.5;
+  box-shadow:var(--shadow-md);opacity:0;transition:opacity .1s;white-space:nowrap;
+  font-variant-numeric:tabular-nums;}
+.tip.on{opacity:1;}
+.tip b{display:block;font-size:var(--text-micro);opacity:.65;font-family:var(--font-mono);
+  letter-spacing:.05em;margin-bottom:2px;}
+
+/* ---- drawer：對話的答案落在這裡，Dashboard 上的圖完全不動 ----
+   **浮卡式、不壓暗**：會話式 BI 的價值就是「對照著圖追問」，把圖壓暗跟這個定位牴觸。
+   層次交給幾何——離開螢幕邊緣的縫隙 ＋ 圓角 ＋ 陰影。
+   ⚠️ 試過「不壓暗但仍貼邊」，結果更糟：抽屜是 --paper、底下面板也是 --paper，
+      接縫兩側同色沒有層次，被切一半的圖會從「背景，可忽略」讀成「版面壞掉」。
+      **做主要工作的是那道縫隙，不是陰影。**
+   ⚠️ 透明 scrim 已於第六次 session 移除。它原本負責「點空白處關閉」，
+      但它是 inset:0 的全螢幕層，等於在抽屜開著時把整個 Dashboard 鎖住——
+      連切分頁、點另一張圖的〔深入分析〕都吃不到。那跟「對照著圖追問」的
+      定位直接牴觸（抽屜還可以拖曳、縮放，更不該是 modal）。
+      關閉手勢改由 ✕ 與 Esc 承擔。 */
+.drawer{position:fixed;top:var(--space-4);right:var(--space-4);bottom:var(--space-4);
+  width:min(420px,92vw);background:var(--paper);
+  border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;
+  box-shadow:var(--shadow-xl);z-index:61;
+  /* 位移要連 inset 一起算，否則滑出後右側會殘留一條縫 */
+  transform:translateX(calc(100% + var(--space-4)));transition:transform .24s var(--ease-out);
+  display:grid;grid-template-rows:auto minmax(0,1fr) auto;}
+.drawer.on{transform:none;}
+/* 使用者一旦拖過／拉過，就改吃 JS 寫的 left/top/width/height（見 dockDrawer）。
+   拖曳中關掉 transition，否則會追著游標補間、手感黏滯。 */
+/* ⚠️ 自由擺放後不能再用「往右滑出」當開關動畫——抽屜若被拖到左半邊，
+   關閉時會橫飛過整個畫面。改成原地淡出縮放。 */
+.drawer.free{right:auto;bottom:auto;
+  transform:scale(.98);opacity:0;
+  transition:transform .18s var(--ease-out),opacity .18s var(--ease-out);}
+.drawer.free.on{transform:none;opacity:1;}
+.drawer.free.away{opacity:0;pointer-events:none;transform:scale(.98);}
+.drawer.dragging,.drawer.resizing{transition:none;user-select:none;}
+/* 標頭是拖曳把手；按鈕區照常可點（JS 會排除 button） */
+.drawer .dhd{cursor:grab;}
+.drawer.dragging .dhd{cursor:grabbing;}
+/* 八個縮放把手：四邊 ＋ 四角。用絕對定位的透明條，不佔版位、不動 grid。
+   ⚠️ 刻意「零視覺」——只靠游標形狀（ns/ew/nwse/nesw-resize）當 affordance。
+   試過 hover 浮出 iris 提示線，使用者判定不直覺且不夠貼合，已移除：
+   那個做法有個死循環——提示只在游標已經壓到那 6px 上時才出現，
+   也就是只有「已經找到把手的人」看得到，真正需要提示的人永遠看不到。
+   若日後要重做，正解是把記號放在 hover 整個抽屜時就浮出的四角斜紋 grip
+   （原生視窗的慣例），而不是邊緣線。 */
+.rz{position:absolute;z-index:2;}
+.rz-n{top:0;left:10px;right:10px;height:6px;cursor:ns-resize;}
+.rz-s{bottom:0;left:10px;right:10px;height:6px;cursor:ns-resize;}
+.rz-w{left:0;top:10px;bottom:10px;width:6px;cursor:ew-resize;}
+.rz-e{right:0;top:10px;bottom:10px;width:6px;cursor:ew-resize;}
+.rz-nw{top:0;left:0;width:12px;height:12px;cursor:nwse-resize;}
+.rz-ne{top:0;right:0;width:12px;height:12px;cursor:nesw-resize;}
+.rz-sw{bottom:0;left:0;width:12px;height:12px;cursor:nesw-resize;}
+.rz-se{bottom:0;right:0;width:12px;height:12px;cursor:nwse-resize;}
+/* 標頭＝這一串 thread 的身分：標題（＝第一句問題，與側欄歷史顯示的是同一個字串）
+   ＋ ⤢ 放大進 ③ ＋ 關閉。⚠️「來自圖表」不在這裡——它是某一則訊息的引用，
+   不是整串的屬性（對話中期可以用 ＋ 再引用別張圖）。 */
+.dhd{padding:var(--space-4) var(--space-5);border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:var(--space-2);}
+.dhd .th{flex:1;min-width:0;font-size:var(--text-label);color:var(--text-muted);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.dhd .x,.dhd .ex{flex:none;border:0;background:transparent;cursor:pointer;color:var(--text-muted);
+  line-height:1;padding:var(--space-1);border-radius:var(--radius-sm);display:inline-flex;}
+.dhd .x:hover,.dhd .ex:hover{background:var(--surface-2);color:var(--text);}
+.dhd .x:focus-visible,.dhd .ex:focus-visible{outline:2px solid var(--accent);outline-offset:1px;}
+.dbd{overflow-y:auto;padding:var(--space-5);display:flex;flex-direction:column;gap:var(--space-4);}
+/* 一輪＝引用（可有可無）＋ 問 ＋ 答。追問是往下追加，不是覆寫——
+   ⤢ 要「長大」的那段對話得先存在。 */
+.turn{display:flex;flex-direction:column;gap:var(--space-3);}
+/* 引用某張圖：訊息層級的附件，可能出現在對話的任何一輪（＋ 按鈕）。
+   置中＋放大——回顧長對話時，這是「這一段在講哪張圖」的分隔標記，
+   靠邊縮小會讓它讀成裝飾，看不出它在切分段落。 */
+.ctx{align-self:center;max-width:100%;display:inline-flex;align-items:center;gap:var(--space-2);
+  font-size:var(--text-label);font-family:var(--font-body);color:var(--text-body);
+  background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-pill);
+  padding:var(--space-2) var(--space-4);line-height:var(--lh-tight);margin:0;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.ctx b{color:var(--text);font-weight:var(--fw-semibold);}
+.ctx .ic{color:var(--text-muted);flex:none;}
+.q{background:var(--accent);color:var(--text-on-accent);border-radius:var(--radius-md);
+  border-bottom-right-radius:var(--radius-sm);padding:var(--space-3) var(--space-4);
+  font-size:var(--text-small);line-height:var(--lh-body);align-self:flex-end;max-width:88%;margin:0;}
+/* 思考動畫：Claude 式的推理軌跡——步驟一條條往下長，做完的打勾留著，
+   當前那條是動態（FLAPS 紙飛機在轉＋標籤掃光）。logo 是 index 那組 8 幀 morph，
+   與側欄 .plane i 同源。完成後整串收成一行「已思考 N 秒 · N 步 ▾」，點一下可展開回顧。
+   pend＝答案落點的佔位，min-height 讓思考→答案的替換不跳動。 */
+.pend{min-height:22px;}
+.trace{display:flex;flex-direction:column;gap:var(--space-2);}
+.tstep{display:flex;align-items:flex-start;gap:var(--space-2);animation:thinkIn .22s ease both;}
+.tdot{width:18px;height:18px;flex:none;display:inline-flex;align-items:center;justify-content:center;
+  margin-top:1px;color:var(--accent);}
+.tstep.active .tdot{animation:thinkPulse 4s ease-in-out infinite;}
+.tlbl{display:flex;flex-direction:column;gap:1px;min-width:0;}
+.tt{font-size:var(--text-small);color:var(--text);line-height:var(--lh-tight);}
+.td{font-size:var(--text-label);color:var(--text-muted);line-height:var(--lh-tight);}
+/* 做完的步驟整條轉灰、退場；當前那條標題掃光 */
+.tstep.done .tt{color:var(--text-muted);}
+.tstep.active .tt{
+  background:linear-gradient(90deg,var(--text-muted) 0%,var(--accent) 42%,var(--text-muted) 84%);
+  background-size:260% 100%;-webkit-background-clip:text;background-clip:text;
+  -webkit-text-fill-color:transparent;color:transparent;
+  animation:thinkShimmer 4s linear infinite;}
+/* 完成後收合：一行摘要 ＋ 可展開的完整軌跡 */
+.trace-wrap{display:flex;flex-direction:column;gap:var(--space-2);}
+.trace-sum{align-self:flex-start;display:inline-flex;align-items:center;gap:var(--space-1);
+  border:0;background:transparent;cursor:pointer;color:var(--text-muted);
+  font-size:var(--text-label);font-family:var(--font-body);padding:var(--space-1) 0;}
+.trace-sum:hover{color:var(--text);}
+.trace-sum .ic{transform:rotate(-90deg);transition:transform .16s var(--ease-out);}
+.trace-wrap:not(.collapsed) .trace-sum .ic{transform:rotate(0);}
+.trace-wrap.collapsed .trace{display:none;}
+@keyframes thinkPulse{0%,100%{opacity:1;}50%{opacity:.45;}}
+@keyframes thinkIn{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:translateY(0);}}
+@keyframes thinkShimmer{0%{background-position:260% center;}100%{background-position:-260% center;}}
+@media (prefers-reduced-motion:reduce){
+  /* 動效退場：JS 也會走「直接出答案」分支，這裡是保險（DS 規則 8） */
+  .tstep,.tdot,.tstep.active .tt{animation:none!important;}
+  .tstep.active .tt{-webkit-text-fill-color:var(--text);color:var(--text);}}
+
+.a{display:flex;flex-direction:column;gap:var(--space-3);}
+.a .av{font-family:var(--font-display);font-size:var(--text-body-size);line-height:var(--lh-tight);
+  color:var(--text);font-weight:var(--fw-semibold);margin:0;}
+.a .av em{font-style:normal;color:var(--accent);}
+.a .ab{font-size:var(--text-small);line-height:var(--lh-body);color:var(--text-body);margin:0;}
+.a .ab b{color:var(--text);}
+.chips{display:flex;gap:var(--space-2);flex-wrap:wrap;}
+/* 追問 chip＝下一步該問什麼。v2 起每句都是完整、可獨立送檢索的 golden 原句
+   （不再有「只看信義店」那種需前端組句的參數式片段）。 */
+/* 虛線邊＝「這是一句可以問的話」，hover 才實心。
+   ⚠️ 第六次 session 由 coral 改為 iris：抽屜裡其他互動元素（送出鈕、問句泡泡）
+   都是 iris，chips 留在 coral 會讀成另一個系統的東西。
+   連帶的 DS 規則 4 帳目：本視圖那一處 coral 原本記在 .chip:hover 上，
+   改完之後抽屜是零 coral、Hero 那一處 coral 是問候標題的漸變收尾。
+   ⚠️ 這條同時吃到 Hero 的快捷發問 chips（.qchips .chip）——兩者刻意共用同一個元件。 */
+.chip{border:1px dashed color-mix(in srgb,var(--accent),transparent 55%);
+  background:var(--paper);color:var(--accent);
+  border-radius:var(--radius-pill);padding:var(--space-1) var(--space-3);font-size:var(--text-label);
+  cursor:pointer;line-height:var(--lh-body);}
+.chip:hover{border-style:solid;border-color:var(--accent);color:var(--accent);
+  background:var(--accent-soft);}
+.chip:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+
+.dft{border-top:1px solid var(--border);padding:var(--space-3) var(--space-5) var(--space-5);
+  display:flex;flex-direction:column;gap:var(--space-2);position:relative;}
+.fld{display:flex;align-items:center;gap:var(--space-2);height:42px;padding:0 var(--space-2);
+  border-radius:var(--radius-pill);border:1px solid var(--border-2);background:var(--surface-2);}
+.fld:focus-within{border-color:var(--accent);}
+.fld input{flex:1;min-width:0;border:0;background:transparent;outline:none;color:var(--text);
+  font-family:var(--font-body);font-size:var(--text-small);}
+.fld input::placeholder{color:var(--text-muted);}
+/* 送出鈕改 iris：抽屜是紙面視圖，coral 留給「這是一句可以問的話」（.chip:hover）。
+   送出這個動作用不著全場最重的視覺重量——Enter 也送得出去。 */
+.fld .snd{flex:none;width:30px;height:30px;border-radius:var(--radius-pill);border:0;
+  background:var(--accent);color:var(--text-on-accent);cursor:pointer;
+  display:inline-flex;align-items:center;justify-content:center;
+  transition:background .16s var(--ease-out);}
+.fld .snd:hover{background:color-mix(in srgb,var(--accent),var(--text) 22%);}
+.fld .snd:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+/* ＋ ＝ 對話中期引用圖表。放在輸入框左端，跟送出鈕分踞兩側。 */
+.fld .plus{flex:none;width:28px;height:28px;border-radius:var(--radius-pill);border:0;
+  background:transparent;color:var(--text-muted);cursor:pointer;
+  display:inline-flex;align-items:center;justify-content:center;}
+.fld .plus:hover{background:var(--border);color:var(--text);}
+.fld .plus:focus-visible{outline:2px solid var(--accent);outline-offset:1px;}
+.dft.picking .plus{background:var(--accent-soft);color:var(--accent);}
+
+/* 已選的引用：送出前掛在輸入框上方，可移除。
+   inline-flex ＋ 容器 align-items:flex-start → 寬度貼齊文字，不被拉滿。 */
+#attwrap{display:flex;align-items:flex-start;}
+.att{display:inline-flex;align-items:center;gap:var(--space-2);max-width:100%;
+  font-size:var(--text-label);font-family:var(--font-body);color:var(--text-body);
+  background:var(--accent-soft);border:1px solid color-mix(in srgb,var(--accent),transparent 80%);
+  border-radius:var(--radius-pill);padding:var(--space-1) var(--space-2) var(--space-1) var(--space-3);
+  line-height:var(--lh-tight);min-width:0;}
+.att .nm{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.att b{font-weight:var(--fw-semibold);color:var(--text);}
+/* ✕ 跟圖表名稱之間留一格，避免誤點 */
+.att button{border:0;background:transparent;cursor:pointer;color:var(--text-muted);
+  display:inline-flex;padding:0;margin-left:var(--space-2);flex:none;border-radius:var(--radius-pill);}
+.att button:hover{color:var(--text);}
+
+/* ---- 從大欄挑圖（＋ 按鈕）--------------------------------------------
+   不用清單選單——要引用的那張圖就在畫面上，選單等於要使用者把「看到的圖」
+   翻譯成「清單裡的一行字」。改成：抽屜讓開 → 大欄轉灰 → hover 直接挑。
+   Hero 不轉灰：它不是可引用的對象，一起轉灰只會讓畫面像壞掉。 */
+.drawer.away{transform:translateX(calc(100% + var(--space-4)));}
+/* ⚠️ filter 必須逐張套在 .panel／.kpi 上，不能套在 .charts 容器——
+   父層的 filter 會作用到整個子樹，子元素設 grayscale(0) 反轉不回來
+   （第一版就是這樣寫的，截圖才看出 hover 沒有回復彩色）。 */
+body.picking .panel,body.picking .kpi{filter:grayscale(1);cursor:pointer;
+  transition:filter .16s var(--ease-out),box-shadow .16s var(--ease-out),
+             border-color .16s var(--ease-out);}
+/* hover 的那張回復彩色並浮起——「這張就是你要引用的」 */
+body.picking .panel:hover,body.picking .kpi:hover{filter:none;border-color:var(--accent);
+  box-shadow:var(--shadow-lg);}
+/* 提示條：告訴使用者現在要做什麼，Esc 取消 */
+.pickhint{position:fixed;left:50%;bottom:var(--space-6);transform:translateX(-50%) translateY(8px);
+  z-index:64;display:flex;align-items:center;gap:var(--space-2);
+  background:var(--paper);border:1px solid var(--border);border-radius:var(--radius-pill);
+  box-shadow:var(--shadow-lg);padding:var(--space-2) var(--space-4);
+  font-size:var(--text-label);color:var(--text-body);
+  opacity:0;pointer-events:none;transition:opacity .16s var(--ease-out),transform .16s var(--ease-out);}
+body.picking .pickhint{opacity:1;transform:translateX(-50%);}
+.pickhint .ic{color:var(--accent);}
+.pickhint kbd{font-family:var(--font-mono);font-size:var(--text-micro);color:var(--text-muted);
+  border:1px solid var(--border-2);border-radius:var(--radius-sm);padding:0 var(--space-1);}
+
+/* 「一屏不捲」是桌機（≥1060 寬）的約束。窄於此 = 平板/手機，
+   改回自然流、允許捲動——硬塞一屏在窄螢幕上只會更糟。 */
+@media (max-width:1060px){
+  body{height:auto;min-height:100dvh;overflow:auto;}
+  main{flex:auto;overflow:visible;padding:var(--space-4);
+    display:flex;flex-direction:column;gap:var(--space-4);}
+  .hero{height:auto;max-height:none;padding:var(--space-4);
+    grid-template-columns:1fr;gap:var(--space-4);}
+  .heroright{align-items:stretch;}
+  .hero-gauges{flex-wrap:wrap;justify-content:flex-start;gap:var(--space-4) var(--space-5);}
+  .charts{grid-template-columns:1fr;grid-template-rows:none!important;grid-auto-rows:auto;}
+  .kpi{grid-column:auto;grid-row:auto;min-height:120px;}
+  .panel{grid-column:auto;grid-row:auto;min-height:250px;}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;}
+  .hero::before,.hero::after{animation:none;}}
+
+/* ─── 開場 loading 動畫（自 index.html 移植）：wordmark 掃光 reveal → AI → tagline 打字 → 淡出 ─── */
+#intro-overlay{position:fixed;inset:0;z-index:10000;background:var(--paper);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:28px;
+  user-select:none;-webkit-user-select:none;}
+#intro-overlay.intro-out{animation:introFadeOut .6s cubic-bezier(.4,0,.6,1) forwards;pointer-events:none;}
+@keyframes introFadeOut{to{opacity:0;}}
+#intro-logo-area{position:relative;display:flex;align-items:baseline;justify-content:center;gap:14px;}
+/* clip-path 只控制 wordmark 何時左→右現身；光本身是 .sheen 自己的循環（DS 規則 7） */
+/* 只用 clip-path 做左→右 wipe；不加 overflow:hidden（會多裁掉粗體 S 的右緣）。
+   revealed 右側留 -6%（負 inset＝往外擴）確保 S 完整不被切。 */
+.intro-wordmark-wrap{position:relative;display:inline-block;clip-path:inset(0 100% 0 0);}
+.intro-wordmark-wrap.revealed{clip-path:inset(0 -6% 0 0);transition:clip-path 1.6s var(--ease-out);}
+#intro-wordmark{font-size:84px;}
+.intro-ai-tag{font-family:var(--font-mono);font-size:16px;font-weight:var(--fw-medium);
+  letter-spacing:.14em;text-transform:uppercase;color:var(--text-muted);margin-bottom:12px;
+  opacity:0;transition:opacity .4s var(--ease-out);}
+.intro-ai-tag.visible{opacity:1;}
+/* tagline：ink→iris→coral shimmer（小字用 --accent-2-ink 保 AA 對比） */
+#intro-tagline{font-family:var(--font-body);font-size:15px;font-weight:var(--fw-medium);
+  letter-spacing:.8px;text-align:center;min-height:26px;
+  background:linear-gradient(90deg,var(--text) 0%,var(--accent) 28%,var(--accent-2-ink) 50%,
+    var(--accent) 72%,var(--text) 100%);
+  background-size:300% auto;-webkit-background-clip:text;background-clip:text;
+  -webkit-text-fill-color:transparent;opacity:0;transition:opacity .4s var(--ease-out);}
+#intro-tagline.shimmer{animation:introShimmer 2s ease .1s both;}
+@keyframes introShimmer{from{background-position:200% center;}to{background-position:-100% center;}}
+#intro-skip-hint{position:absolute;bottom:24px;font-family:var(--font-mono);font-size:10px;
+  color:color-mix(in srgb,var(--text),transparent 82%);letter-spacing:.5px;pointer-events:none;}
+@media (prefers-reduced-motion:reduce){
+  .intro-wordmark-wrap{clip-path:inset(0 0 0 0)!important;}
+  .intro-ai-tag,#intro-tagline{transition:none;}
+  #intro-tagline.shimmer{animation:none;}}
+</style>
+</head>
+<body>
+
+<!-- ── 開場 loading 動畫 ── -->
+<div id="intro-overlay">
+  <div id="intro-logo-area">
+    <div class="intro-wordmark-wrap" id="intro-wordmark-wrap">
+      <span class="wm sheen" id="intro-wordmark">FLAPS</span>
+    </div>
+    <span class="intro-ai-tag" id="intro-ai-tag">AI</span>
+  </div>
+  <div id="intro-tagline"></div>
+  <div id="intro-skip-hint">點擊任意處跳過</div>
+</div>
+
+<div class="sscrim" id="sscrim"></div>
+<aside class="side" id="side" aria-label="對話紀錄與帳號">
+  <div class="shd">
+    <button class="plane" id="plane" type="button" aria-label="開啟選單">
+      <i></i>
+      <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="m10 8 4 4-4 4"/></svg>
+    </button>
+    <span class="logo"><span class="wm sheen">FLAPS</span><b>AI</b></span>
+    <button class="tog" id="tog" type="button" aria-label="收起選單">
+      <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
+    </button>
+  </div>
+
+  <div class="srail">
+    <button class="sbtn" id="newchat" type="button"></button>
+    <button class="sbtn" id="search" type="button"></button>
+  </div>
+  <div class="sdiv"></div>
+
+  <!-- 對話資產：抽屜裡的每一串關閉後都落在這裡，點回去可以原封不動繼續問。
+       清單由 JS 的 HIST 生成（renderHist），不寫死。
+       ⚠️「釘選」區已於第六次 session 移除——大欄維持不捲、不做客製化，
+       抽屜那顆〔把這個加進 Dashboard〕不接，留著只會承諾一個不存在的功能。 -->
+  <div class="sbody" id="sbody">
+    <span class="slbl">近期對話</span>
+    <div id="histlist"></div>
+  </div>
+
+  <div class="sft profile" id="profile">
+    <button class="sftbtn" id="profile-btn" type="button" aria-haspopup="menu" aria-expanded="false">
+      <span class="ava">王</span>
+      <span class="pinfo"><b id="pname">王老闆</b><em>全店權限</em></span>
+      <span class="chev"></span>
+    </button>
+    <div class="pmenu" id="pmenu" role="menu" aria-label="帳號選單">
+      <button class="pmi" type="button" role="menuitem" data-act="settings">設定</button>
+      <hr class="pmdiv">
+      <button class="pmi" type="button" role="menuitem" data-act="terms">服務條款</button>
+      <button class="pmi" type="button" role="menuitem" data-act="privacy">隱私權政策</button>
+      <button class="pmi" type="button" role="menuitem" data-act="report">問題回報</button>
+      <hr class="pmdiv">
+      <button class="pmi danger" type="button" role="menuitem" data-act="logout">登出</button>
+    </div>
+  </div>
+</aside>
+
+<header class="hero">
+  <div class="heroleft">
+    <div class="hero-greet">
+      <b id="ttl">歡迎回來</b>
+      <span class="greet-sub">從提問到洞察，幾秒內完成</span>
+    </div>
+    <div class="askbar">
+      <input id="ti" placeholder="問我任何事——例如「6 月業績為什麼掉這麼多？」" aria-label="發問">
+      <button id="ts" type="button" aria-label="送出"></button>
+    </div>
+    <div class="qchips" id="qchips"></div>
+    <div class="heronav">
+      <div class="tabs" role="tablist">
+        <button class="tab" data-p="業績">業績</button>
+        <button class="tab" data-p="庫存">庫存</button>
+        <button class="tab" data-p="促銷">促銷</button>
+        <button class="tab" data-p="CRM">CRM</button>
+      </div>
+    </div>
+  </div>
+  <div class="heroright">
+    <span class="datchip"><span class="di" id="data-ic"></span>資料截至 2026-07-07</span>
+    <div class="hero-gauges" id="hero-gauges"></div>
+  </div>
+</header>
+
+<main>
+  <section class="primary"><div class="charts" id="charts"></div></section>
+</main>
+
+<div class="tip" id="tip" role="status" aria-live="polite"></div>
+<div class="pickhint" id="pickhint" role="status"></div>
+<aside class="drawer" id="drawer" aria-hidden="true" aria-label="追問對話">
+  <span class="rz rz-n"  data-rz="n"></span><span class="rz rz-s"  data-rz="s"></span>
+  <span class="rz rz-w"  data-rz="w"></span><span class="rz rz-e"  data-rz="e"></span>
+  <span class="rz rz-nw" data-rz="nw"></span><span class="rz rz-ne" data-rz="ne"></span>
+  <span class="rz rz-sw" data-rz="sw"></span><span class="rz rz-se" data-rz="se"></span>
+  <div class="dhd">
+    <span class="th" id="dt">深入分析</span>
+    <button class="ex" id="dex" type="button" aria-label="放大成全屏對話"></button>
+    <button class="x" id="dx" type="button" aria-label="關閉"></button>
+  </div>
+  <div class="dbd" id="db" role="log" aria-live="polite" aria-atomic="false"></div>
+  <div class="dft" id="dft">
+    <div id="attwrap"></div>
+    <div class="fld">
+      <button class="plus" id="cplus" type="button" aria-label="引用圖表" aria-haspopup="menu" aria-expanded="false"></button>
+      <input id="ci" placeholder="什麼都可以問……" aria-label="發問">
+      <button class="snd" id="cs" type="button" aria-label="送出"></button>
+    </div>
+  </div>
+</aside>
+
+<script src="vendor/echarts.min.js"></script>
+<script>
+/* ============================================================
+   Conversation BI — Dashboard 骨架
+   ------------------------------------------------------------
+   資料目前是規格表（模組Dashboard元件規格_v3.xlsx）的示意值，寫死在下方 M。
+   接後端時，每個 key 換成一個「凍結查詢」的結果，連同它的哨兵一起。
+   Dashboard 不呼叫 LLM——重整只是重讀排程（每日 06:00）產出的結果。
+   ============================================================ */
+
+const F = n => n.toLocaleString("en-US");
+const DV = ["var(--dv-1)","var(--dv-2)","var(--dv-3)","var(--dv-4)","var(--dv-5)"];
+/* tooltip 內容是 HTML，要塞進 data-tip 屬性 —— 不跳脫引號會把屬性提早關掉 */
+const attr = s => String(s).replace(/"/g,"&quot;");
+
+/* ---- Lucide line icons（DS 規則 8：不用 emoji 當功能 icon） ---- */
+const P = {
+  x:'<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
+  alert:'<path d="m21.7 18-8-14a2 2 0 0 0-3.4 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.7-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>',
+  up:'<path d="m5 12 7-7 7 7"/><path d="M12 19V5"/>',
+  down:'<path d="M12 5v14"/><path d="m19 12-7 7-7-7"/>',
+  dash:'<path d="M5 12h14"/>',
+  /* 實心三角（漲跌章專用，非 Lucide 線條圖）——走 fill，見 .tri */
+  triUp:'<path d="M12 8 18 16 6 16Z"/>',
+  triDown:'<path d="M12 16 18 8 6 8Z"/>',
+  send:'<path d="m5 12 7-7 7 7"/><path d="M12 19V5"/>',
+  arrowr:'<path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>',
+  msg:'<path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/><path d="M12 8v4"/><path d="M10 10h4"/>',
+  find:'<circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>',
+  plus:'<path d="M5 12h14"/><path d="M12 5v14"/>',
+  minus:'<path d="M5 12h14"/>',
+  expand:'<path d="M15 3h6v6"/><path d="M9 21H3v-6"/><path d="M21 3l-7 7"/><path d="M3 21l7-7"/>',
+  shrink:'<path d="M8 3v3a2 2 0 0 1-2 2H3"/><path d="M21 8h-3a2 2 0 0 1-2-2V3"/><path d="M3 16h3a2 2 0 0 1 2 2v3"/><path d="M16 21v-3a2 2 0 0 1 2-2h3"/>',
+  chart:'<line x1="6" x2="6" y1="20" y2="16"/><line x1="12" x2="12" y1="20" y2="10"/><line x1="18" x2="18" y1="20" y2="4"/>',
+  check:'<path d="M20 6 9 17l-5-5"/>',
+  moon:'<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9"/>',
+  mic:'<path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><path d="M12 19v3"/>',
+  /* 分頁 icon（lucide line）：業績 trending-up · 庫存 package · 促銷 percent · CRM users */
+  trendingUp:'<path d="M16 7h6v6"/><path d="m22 7-8.5 8.5-5-5L2 17"/>',
+  package:'<path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="M3.3 7 12 12l8.7-5"/><path d="M12 22V12"/>',
+  percent:'<line x1="19" x2="5" y1="5" y2="19"/><circle cx="6.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/>',
+  users:'<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
+  /* profile 選單用（lucide line）：設定/服務條款/隱私權/回報/登出 + chevron */
+  settings:'<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>',
+  fileText:'<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/>',
+  shield:'<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/>',
+  msgSq:'<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M12 7v4"/><path d="M12 15h.01"/>',
+  logout:'<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/>',
+  chev:'<path d="m6 9 6 6 6-6"/>',
+  db:'<ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14a9 3 0 0 0 18 0V5"/><path d="M3 12a9 3 0 0 0 18 0"/>'
+};
+const ic = (n, cls="ic") =>
+  `<svg class="${cls}" viewBox="0 0 24 24" aria-hidden="true">${P[n]}</svg>`;
+/* FLAPS 筆飛機字標——實心、繼承 currentColor（不是側欄那種常駐 iris→coral 漸變：
+   20 個圖腳各掛一抹常駐 coral 會違反規則 4 的精神）。與側欄 .plane i、思考動畫 logo 同源。 */
+const planeMark = (cls="digmark") =>
+  `<svg class="${cls}" viewBox="0 0 64 64" aria-hidden="true"><path d="M57 13L7 26L21 32Z"/><path d="M57 13L43 52L32 42L26 48L27 35Z"/></svg>`;
+
+document.getElementById("dx").innerHTML = ic("x");
+document.getElementById("dex").innerHTML = ic("expand","ic sm");
+document.getElementById("cplus").innerHTML = ic("plus","ic sm");
+document.getElementById("cs").innerHTML = ic("send","ic sm");
+document.getElementById("ts").innerHTML = ic("arrowr","ic sm");
+/* 使用者名稱參數。Hero 歡迎語已不帶姓名（第四次 session 把帳號併進側欄底部就是為了
+   消除重複，Hero 不該再出現第三次），所以這裡只餵側欄底部的帳號。 */
+const USER = "王老闆";
+document.getElementById("pname").textContent = USER;
+
+document.getElementById("data-ic").innerHTML = ic("db","ic sm");
+
+/* 分頁 icon 放在文字左側（不用顏色點點） */
+const TAB_IC = {業績:"trendingUp", 庫存:"package", 促銷:"percent", CRM:"users"};
+document.querySelectorAll(".tab").forEach(t =>
+  t.insertAdjacentHTML("afterbegin", ic(TAB_IC[t.dataset.p])));
+
+/* ---- profile 下拉選單（項目參考 index.html 的帳號選單） ---- */
+const PMI_IC  = {settings:"settings", terms:"fileText", privacy:"shield", report:"msgSq", logout:"logout"};
+const PMI_ACT = {
+  settings:()=>{},   /* 設定 modal 尚未接（index 的 openSettingsModal）——先留掛勾 */
+  terms:  ()=>window.open("https://www.flaps.com.tw/privacy-policy/","_blank"),
+  privacy:()=>window.open("https://www.flaps.com.tw/privacy-policy/","_blank"),
+  report: ()=>{},    /* 問題回報 尚未接 */
+  logout: ()=>{}     /* 登出 尚未接後端 */
+};
+document.querySelectorAll(".pmi").forEach(b => {
+  b.insertAdjacentHTML("afterbegin", ic(PMI_IC[b.dataset.act]));
+  b.addEventListener("click", () => { (PMI_ACT[b.dataset.act]||(()=>{}))(); closeProfile(); });
+});
+document.querySelector("#profile-btn .chev").innerHTML = ic("chev","ic sm");
+
+const profile = document.getElementById("profile"),
+      profileBtn = document.getElementById("profile-btn");
+const closeProfile = () => { profile.classList.remove("open"); profileBtn.setAttribute("aria-expanded","false"); };
+profileBtn.addEventListener("click", e => {
+  e.stopPropagation();
+  const open = profile.classList.toggle("open");
+  profileBtn.setAttribute("aria-expanded", open ? "true" : "false");
+});
+document.addEventListener("click", e => { if(!profile.contains(e.target)) closeProfile(); });
+document.getElementById("newchat").innerHTML = ic("msg") + "<span>新對話</span>";
+document.getElementById("search").innerHTML = ic("find") + "<span>搜尋對話</span>";
+
+/* ============================================================
+   資料（示意值 — 來源：模組Dashboard元件規格_v3.xlsx）
+   kpi.sent / chart.warn = 資料哨兵。凍結 SQL 時必須連同 assertion 一起凍結：
+   沒有哨兵，資料出問題時 Dashboard 會安靜地給一個看起來很正常的錯數字。
+   ============================================================ */
+const M = {};
+
+M["業績"] = { sub:"本月業績狀態盤點",
+  /* count metric（業績/筆數/客單價）在 Hero 已有 → KPI 列只放需要天天盯的「比率型」。
+     達成率＝離目標多遠 → Gauge；其餘＝軌跡本身是訊息 → 數字＋sparkline。 */
+  kpi:[
+    /* 只剩一張 KPI 卡（其他三頁都是兩張）——原本的「連帶率 UPT」被移除，
+       換來的 6 格讓熱力圖從 59px 長到 220px。取捨見下方版位說明。
+       目標達成率（全店）與下一格的各店櫃達成率（分店）形成下鑽：
+       「全店落後 8 個百分點」→「是哪幾家拖的」。 */
+    {type:"target",k:"目標達成率",v:"42.2",u:"%",d:"落後進度 8 百分點",dc:"d",t:["lo","低於預期"],cs:3,rs:2,
+     sent:"目標欄位為 0 時不得顯示 0%——需 assertion 擋下"}],
+  charts:[
+    /* 業績 v2：改半列解析度（rs:2 ＝ 1 標準列）。原本五張圖有四張擠在 59px，
+       最糟的是熱力圖——5×7 格塞進 59px，每格約 11px，深淺根本讀不出來。
+
+         半列1-2  [KPI 目標達成率][各店櫃達成率][通路佔比][商品線]   ← 四塊 cs:3
+         半列3-6  [   業績走勢 220px   ][ 星期×時段熱力 220px ]
+
+       為什麼必須砍一塊：面板固定開銷 88px（標題 56 ＋ 頁腳 32），rs:1 的格子只有 74px
+       連框都裝不下 → 每塊最少 rs:2 → 七塊的最小佔用是 60 格，餘裕只有 12 格，
+       而 12 格剛好等於「一個 cs:6 面板從 rs:2 升到 rs:4」。也就是七塊只能有一張高圖。
+       想讓熱力圖與走勢圖同時長高，就得砍掉一塊。
+
+       商品線留在 59px 是刻意的——100% 堆疊橫條本來就不需要高度，給它 140px 只會多出空白。 */
+    {cs:3,rs:2,type:"hbar",h:"各店櫃達成率",s:"哪幾家店拖累達成率 · 前後各 2 名",unit:"%",
+     d:[["EM 左營新光",114.4,0],["SM2 左營新光",109.9,0],
+        ["中友百貨",31.2,2],["南西新光",13.8,9]],
+     ref:100, dig:"最近有沒有哪家門市業績異常？",
+     warn:"<b>南西新光 13.8% 不是真的差</b>——整層櫃位（EM／SM2／Techichi）同時零交易，是系統斷層。不要據此檢討這家店。"},
+    {cs:3,rs:2,type:"donut",half:true,h:"通路業績佔比",s:"生意有多集中在單一通路 · 本月",unit:"萬",
+     d:[["線下",2408],["官網 EC",245],["電商",167],["其他",66]],
+     dig:"線上跟線下業績比例有沒有在變化？"},
+    /* 商品線移到 KPI 那列（原本在中列 cs:6）——版位需要四塊 cs:3 填滿半列 1-2，
+       而 stackbar 是唯一縮到 cs:3 還撐得住的圖型（標籤門檻會依寬度自動換算）。 */
+    {cs:3,rs:2,type:"stackbar",h:"商品線業績貢獻",s:"業績有多依賴單一品類 · 本月佔比",unit:"萬",
+     d:[["服裝",1200],["配件",560],["鞋類",460],["家居雜貨",380],["其他",287]],
+     dig:"哪個商品業績貢獻最大？"},
+    {cs:6,rs:4,type:"line",h:"業績走勢",s:"今年比去年好還是壞 · 近 12 個月，本期 vs 去年同期（萬元）",
+     x:["7月","8月","9月","10月","11月","12月","1月","2月","3月","4月","5月","6月"],
+     series:[{n:"本期",c:0,d:[3050,3180,3240,3520,4180,4020,3966,3600,3264,3400,3265,2887]},
+             {n:"去年同期",c:1,d:[3210,3050,2980,3620,4720,4398,5428,2934,3763,3700,3600,3960]}],
+     dig:"業績最差的那個月是哪個月？為什麼？"},
+    {cs:3,rs:4,type:"heatmap",h:"星期 × 時段 業績熱力",s:"人力該加在哪個時段 · 近 3 個月日均（萬元）",unit:"萬",
+     x:["一","二","三","四","五","六","日"], xp:"週", vm:"bottom",      /* 軸標籤前綴 → 週一…週日 */
+     y:["19–22","17–19","14–17","12–14","10–12"],          /* 由上到下：晚→早 */
+     grid:[[22,18,26,30,44,60,52],                          /* 19–22 晚間 */
+           [18,15,22,26,37,53,46],                          /* 17–19 */
+           [14,12,18,22,30,45,39],                          /* 14–17 午後 */
+           [10, 8,13,16,22,31,27],                          /* 12–14 午間 */
+           [ 6, 5, 8,10,14,21,18]],                         /* 10–12 早間 */
+     dig:"哪個時段業績最好？早上還是下午？"},
+    /* 把「業績」拆成它的兩個驅動力：來客量（筆數）× 每人花多少（客單價）。
+       這頁的頭號問句「6 月為什麼掉這麼多」，答案就在這張圖上——筆數崩、客單價反升，
+       代表掉的是人流不是定價。原本這句話只存在於抽屜的文字answer裡，沒有圖支持。
+       用 combo（雙軸）而非雙線：筆（萬位）與元（千位）尺度差一個量級，共用一軸會把客單價壓平。
+       取近 6 個月而非 12 個月——cs:3 只有 329px，扣掉左右兩條軸後 12 個點會擠成一團。
+       ⚠️ 筆數是用「業績走勢的業績 ÷ 客單價」回推的，與隔壁那張圖同源，數字必須對得起來。 */
+    {cs:3,rs:4,type:"combo",h:"交易筆數 vs 客單價",/* legTop 的面板頁首被圖例佔掉右半，副標可用寬度只剩約 17 個中文字，寫長會硬斷行 */
+     s:"人流還是消費力 · 近 6 個月",
+     x:["1月","2月","3月","4月","5月","6月"],
+     bar:{n:"交易筆數",c:0,unit:"筆",d:[17319,16071,14972,15455,14929,11190]},
+     line:{n:"客單價",c:2,unit:"元",d:[2290,2240,2180,2200,2187,2580]},
+     note:"6 月筆數 −25%、客單價 +18%",
+     /* 圖例改掛頁首：cs:3 的頁腳放不下「深入分析 + 兩個圖例」，會把問句擠成兩行 */
+     legTop:true,
+     dig:"客單價最近有沒有下降？為什麼？"}]};
+
+/* 庫存：網格改「半列」解析度（rs:2 ＝ 1 標準列），讓庫齡分佈／週轉最差各佔 1.5 列。
+   版位（12 欄 × 6 半列 = 72 格，剛好填滿、3 標準列不捲動）：
+     左半 cs:6 ── 半列1-2：售罄率 3 ＋ DOI 3；半列3-6：斷貨風險 Top6（cs:6 rs:4，主角）
+     右半 cs:6 ── 再切兩個 cs:3 直欄：
+        左欄：死貨佔比甜甜圈 rs:2 ／ 各倉×庫齡 熱力圖 rs:4
+        右欄：庫齡分佈 rs:3 ／ 週轉最差品類 rs:3
+   死貨佔比從 KPI 卡升格為圖表面板 → KPI 卡剩兩張（與促銷／CRM 一致）。 */
+M["庫存"] = { sub:"庫存壓力與風險盤點",
+  kpi:[
+    {type:"target",k:"售罄率",v:"49",u:"%",d:"距季目標 60% 差 11 百分點",dc:"d",t:["lo","低於目標"],cs:3,rs:2},
+    {type:"minibars",k:"週轉天數 DOI",v:"128",u:"天",d:"改善 5 天",dc:"u",t:["ok","符合預期"],cs:3,rs:2,
+     bars:[142,138,135,140,133,128],bx:["1月","2月","3月","4月","5月","6月"]}],
+  charts:[
+    /* 兩片式佔比甜甜圈：死貨珊瑚、其餘淡底。
+       用 half（半圓）而非整圓——這格圖區只有約 80px 高，整圓的中空洞塞不下「35.4%」，
+       數字會蓋出圓外；半圓把弧體攤在寬度上，大數字改放副標。 */
+    {cs:3,rs:2,type:"donut",half:true,h:"死貨佔比",
+     /* 副標不重複數字（數字已經在弧心與 cmp 裡），改成講「這張圖幫你看出什麼」 */
+     s:"賣不掉的舊貨壓住多少錢 · 180 天以上",unit:"萬",
+     big:"35.4%",
+     d:[["死貨 180 天+",561],["其餘庫存",1024]], ci:[2,-1],
+     /* 變化量升格進圖區（原本埋在副標的小灰字裡）。死貨佔比上升＝壞 → goodWhenUp:false */
+     cmp:{v:4, up:true, goodWhenUp:false, lab:"較其他月均"},
+     dig:"全部庫存裡面有多少比例是呆料？"},
+    /* 庫齡分佈改直條（rs:3 加高後柱體夠長，不再需要橫條借寬度）。180+ 死貨珊瑚。 */
+    {cs:3,rs:3,type:"bar",h:"庫齡分佈",s:"錢卡在新貨還是舊貨 · 各庫齡金額（萬元）",unit:"萬",
+     d:[["0–30 天",1420],["31–90 天",3097],["91–180 天",1913],["180 天+",561]],
+     hl:3, labelAll:true,
+     dig:"庫齡超過180天的商品有哪些？"},
+    /* 主角（cs:6 rs:4 ＝ 2 標準列）：斷貨風險——熱賣款預估可售天數，低於 7 天要補貨。 */
+    {cs:6,rs:4,type:"hbar",h:"斷貨風險 Top 6",s:"哪幾款快賣完要補貨 · 熱賣款預估可售天數，低於 7 天需補",unit:" 天",
+     d:[["純棉圓領 T（白）",3.2,1],["法式泡泡袖上衣",5.1,1],["高腰直筒牛仔褲",8.4,0],
+        ["針織開襟外套",12.6,0],["亞麻寬版襯衫",19.5,0],["醋酸緞面洋裝",27.0,0]],
+     ref:7, dig:"現在最好賣的十款庫存還有幾天可以賣？"},
+    /* 各倉 × 庫齡 熱力圖（取代原 stackbar）：不只看誰壓得多，還看壓的貨新舊。
+       右下角越深＝那個倉囤的是老貨＝最該出清。色標橫放在下（cs:3 容不下直立色標）。 */
+    {cs:3,rs:4,type:"heatmap",h:"各倉／通路 × 庫齡",s:"哪個倉囤的是老貨 · 庫存金額（萬元）",unit:"萬",
+     x:["<30","30–90","90–180","180+"], vm:"bottom",
+     y:["百貨專櫃","直營門市","官網倉","特賣倉"],
+     grid:[[820,1580,1120, 280],                            /* 百貨專櫃 */
+           [ 340, 760, 430, 120],                           /* 直營門市 */
+           [ 180, 520, 240,  81],                           /* 官網倉：老貨偏多 */
+           [  80, 237, 123,  80]],                          /* 特賣倉 */
+     dig:"現在壓在倉庫的呆料大概要怎麼處理掉？"},
+    /* 週轉最差品類：天數越高越該出清，ref=目標 90 天。 */
+    {cs:3,rs:3,type:"hbar",h:"週轉最差品類",s:"哪些品類該出清 · 平均週轉天數，超過 90 天",unit:" 天",
+     d:[["厚外套",210,1],["樂福鞋",185,1],["針織毛衣",168,0],["靴款",152,0],["洋裝",96,0]],
+     ref:90, dig:"哪些品項連續三個月都賣不動，要考慮清倉了？"}]};
+
+/* 促銷 v2：整頁只回答一個決策——「這檔促銷值不值得再做」。
+   網格改半列解析度（rs:2 ＝ 1 標準列），把原本擠在同一列的三張圖拉高：
+
+     左半 cs:6 ── 半列1-3：檔期增量 vs 蠶食（主角）／半列4-6：各通路促銷 ROI
+     右半 cs:6 ── 半列1-2：KPI 兩張；半列3-6 再切兩個 cs:3 直欄：檔期排行 ／ 新客留存漏斗
+
+   相對 v1 的三個決定：
+   ① 主角從「折扣深度 vs 業績」換成「增量 vs 蠶食」——前者的因果是反的（會下到 5 折的
+      多半是出清品，不是深折扣造就業績），拿它當主角會導向錯誤決策，直接移除。
+   ② 檔期排行由直條改橫條：cs:3 直欄放 5 個中文檔期名，x 軸標籤必然重疊。
+   ③ KPI 的「平均折扣深度」換成「促銷毛利率」——原本整頁的單位都是業績，沒有一張講利潤，
+      會漏掉「淨增量為正、但讓利讓到虧本」這種情境。折扣深度是輸入（折扣政策是老闆自己訂的），
+      毛利率是結果，大欄那格該給結果。 */
+M["促銷"] = { sub:"檔期效益與折扣結構", kpiAfter:1,
+  kpi:[
+    /* 兩張 KPI 合起來是促銷頁的開場白：「有多依賴打折」＋「打折後還賺多少」。
+       促銷業績佔比上升＝依賴加深＝壞；它是體檢指標而非行動指標，不升格為主角。 */
+    {type:"halfdonut",k:"促銷業績佔比",cur:51.4,avg:44.8,avgLab:"去年同期",
+     t:["lo","高於預期"],cs:3,rs:2},
+    /* 全站彙總水位，刻意不切通路——各通路 ROI 那張已經在回答「哪個通路賠本」，
+       這裡再切一次會變成兩張圖搶同一個問題。
+       用 minibars 而非第二個半圓：毛利率要問的是「有沒有在持續失血」，
+       「比去年低 5.3 百分點」可能只是單月現象，六個月一路往下掉才是結構性問題——
+       兩點快照答不出這題。YoY 差距保留在下面那行文字，資訊沒少。 */
+    {type:"minibars",k:"促銷毛利率",v:"36.2",u:"%",d:"5.3 百分點 較去年同期",dc:"d",
+     t:["lo","低於預期"],cs:3,rs:2,
+     bars:[41.8,41.0,39.6,38.4,37.5,36.2],bx:["1月","2月","3月","4月","5月","6月"]}],
+  charts:[
+    /* 主角（cs:6 rs:3 ＝ 1.5 標準列）：促銷到底是「多賣」還是「把原本正價會買的客人賤賣」。
+       淨增量佔比＝(檔期業績 − 無促銷基線) / 檔期業績，掉到 0% 以下＝蠶食正價。
+       這是整頁唯一直接回答「值不值得」的指標，所以佔左上。 */
+    {cs:6,rs:3,type:"combo",h:"檔期增量 vs 蠶食",s:"促銷是多賣還是賤賣正價 · 近六檔，業績量體與淨增量佔比",
+     x:["EM 0401","EM26SS","SM2 春夏","GP 換季","YCVC 週慶","母親節"],
+     bar:{n:"檔期業績",c:0,unit:"萬",d:[240,183,148,125,98,76]},
+     line:{n:"淨增量佔比",c:2,unit:"%",ref:0,d:[38,26,12,-4,-11,-18]},
+     note:"後三檔淨增量為負",
+     dig:"促銷商品有沒有蠶食到旁邊正價商品的業績？"},
+    /* 行動層 ①（cs:3 rs:4）：明年檔期怎麼排。橫條——長檔期名放左側軸不會擠。 */
+    {cs:3,rs:4,type:"hbar",h:"全年檔期業績排行",s:"明年檔期該押哪幾檔 · 2025 全年（萬元）",unit:"萬",
+     /* 不用 ci 高亮第一名：同頁的 ROI 已把 ci:1 用在「賠本警示」，同色兩義會讀錯。
+        名次順序本身就表達了第一名。 */
+     d:[["11月 週年慶",4820,0],["1月 新春",4180,0],["12月 耶誕",3660,0],
+        ["7月 夏出清",2940,0],["4月 春季",2510,0]],
+     note:"前三檔佔全年促銷 62%",
+     dig:"哪個檔期的促銷費用佔業績比例最高？"},
+    /* 行動層 ②（cs:3 rs:4）：衝進來的新客留不住 → 要不要繼續用折扣拉新。
+       漏斗在窄高格裡最好看：層與層的收斂靠高度表現，v1 的 cs:4 單列把它壓成色塊。 */
+    {cs:3,rs:4,type:"funnel",h:"促銷新客留存漏斗",s:"折扣拉來的新客留得住嗎 · 促銷期首購後續",
+     d:[["促銷期新客",12480],["30 天內回訪",4120],["二次購買",1860],["半年後仍活躍",1150]],
+     dig:"哪個活動帶進來的新客，後來回購率最高？"},
+    /* 行動層 ③（cs:6 rs:3）：錢該投哪個通路。ref=1.0 是損益分界，線左邊＝賠本做生意。 */
+    {cs:6,rs:3,type:"hbar",h:"各通路促銷 ROI",s:"促銷預算該投哪個通路 · 近三個月，低於 1.0 即賠本",unit:"",
+     d:[["百貨專櫃",1.05,0],["官網 EC",0.92,0],["蝦皮商城",0.68,1],["直營門市",0.37,1]],
+     ref:1, dig:"哪個店櫃促銷ROI最高？別跟我說感覺，要有數字。",
+     warn:"<b>直營門市 0.37 不宜與百貨專櫃直接比</b>——兩者的成本結構與抽成本質不同，這條線只能同通路跨期比較。"}]};
+
+/* CRM v2（半列網格）。舊版七塊全擠在 rs:2，量出來是 220/59/32/59——「卡別人數 vs 業績貢獻」
+   只剩 32px，全站最扁。但那張圖真正的毛病不在高度：會員人數從 512,400 到 2,200 差 233 倍，
+   鑽石卡的柱在任何高度下都矮到看不見，而整張圖的重點恰恰就是鑽石卡。指標本身選錯了。
+
+     半列1-2  [回購率 cs:3][新客90天回購 cs:3][年度流失率 cs:3][業績來自誰 cs:3]
+     半列3-6  [ 生命週期漏斗 cs:3 ][ VIP 卡別升降級 cs:6 ][ 喚回清單 cs:3 ]
+
+   上排改四塊 cs:3：業績來自誰 cs:6→cs:3（比照業績頁商品線），空出的 cs:3 給新增的
+   「新客 90 天回購率」——開一條跟整體留存不同的軸（新客留存），與回購率／流失率不打架。
+   兩個回購指標（整體回購率、新客回購率）並列成一組，流失率線圖與業績來自誰在右。
+   Σ(cs×rs)＝ 6+6+6+6 +12+24+12 ＝ 72/72 滿格，底列全部 220px。 */
+M["CRM"] = { sub:"會員黏著度、結構與流失風險",
+  kpi:[
+    /* 回購率是零售 CRM 最高頻的單一指標，卻是舊版整頁唯一沒有的——流失是結果，
+       回購才是還能施力的地方。原本佔這格的「近三月活躍率」拿掉：漏斗最底兩層
+       （近三月活躍 13,298／本月購物 3,718）已經把同一件事講完了。 */
+    {type:"halfdonut",k:"會員回購率",cur:28.6,avg:33.5,avgLab:"去年同期",goodWhenUp:true,
+     t:["lo","低於預期"],cs:3,rs:2},
+    /* 新客 90 天回購率：開一條跟「整體留存」不同的軸——拉進來的新客留不留得住
+       （呼應 Hero 的本月新入會 986 人，有沒有白拉）。緊接回購率並列（兩個回購指標
+       一組）。22.4%↓（去年 26.1）與整頁「留存在惡化」的基調一致。 */
+    {type:"halfdonut",k:"新客 90 天回購率",cur:22.4,avg:26.1,avgLab:"去年同期",goodWhenUp:true,
+     t:["lo","低於預期"],cs:3,rs:2},
+    /* 流失率走 miniline 而非 minibars：截斷基準的長條會誇大量級（壓過基準後末柱
+       是首柱數倍，讀成「翻倍」）。線編碼斜率——月間有起伏但整體往上惡化，那條
+       上行的鋸齒線才是訊息本身，也不跟左邊的半圓撞形式。末點 62.4 對齊大數字。 */
+    {type:"miniline",k:"年度流失率",v:"62.4",u:"%",d:"7.3 百分點 較去年同期",dc:"d",
+     t:["lo","高於預期"],cs:3,rs:2,
+     bars:[57.6,56.9,59.8,58.9,60.7,62.4],bx:["1月","2月","3月","4月","5月","6月"]}],
+  /* Hero 漲跌章：MoM（較上月）。CRM 三格無月度時間序列來源，MoM 為示意值、內部自洽
+     （現值 ÷ (1+變化) ＝ 上月值）。接真實資料時連同上月值一起換。 */
+  hero:[
+    {t:"stat",v:"945,408",u:"人",label:"全體有效會員",arw:"u",tone:"good",note:"0.4%",per:"截至 6/30",scope:"vs. 上月 941,641",vper:"截至 5/31"},
+    {t:"stat",v:"590,400",u:"人",label:"有消費紀錄",arw:"d",tone:"bad",note:"1.2%",per:"近 12 個月",scope:"vs. 上月 597,570",vper:"截至 5/31"},
+    {t:"stat",v:"986",u:"人",label:"本月新入會",arw:"d",tone:"bad",note:"11.6%",per:"6/1–6/30 · 30天",scope:"vs. 上月 1,115",vper:"5/1–5/31 · 31天"}],
+  charts:[
+    /* 半列 1-2 第 4 格（cs:3 rs:2）：整頁的定調——「業績到底有多少是會員撐的」。
+       100% 堆疊橫條不需要高度，59px 剛好；三段互斥（非會員／會員新客／會員回購客），
+       加起來就是全部營收，不會有重疊定義的爭議。
+       cs:6→cs:3 比照業績頁的商品線：cs:3(~340px) 下最小的「會員新客 14%」約 41px，
+       照寬度門檻只顯示「14%」不顯示名稱（可接受，商品線的小段同理）。 */
+    {cs:3,rs:2,type:"stackbar",h:"業績來自誰",s:"營收有多依賴既有會員 · 近 12 個月佔比",unit:"%",
+     /* 順序照「會員程度」遞減排，讀起來才是一條連續的光譜：回購客 → 新客 → 非會員 */
+     d:[["會員回購客",64],["會員新客",14],["非會員",22]],
+     dig:"百貨專櫃的新客有多少最後有辦會員？"},
+    /* 主角（cs:3 rs:4）：五層漏斗需要高度才讀得出「斷在哪一層」——
+       94.5 萬會員裡本月真正掏錢的只有 3,718 人，最大的斷層在「有消費 → 近一年活躍」。 */
+    {cs:3,rs:4,type:"funnel",h:"會員生命週期漏斗",s:"會員斷在哪一層 · 從全體到本月實際購物",
+     /* 第三元素 [女, 男]，加總＝該層人數，供 tooltip 拆分（示意值，接真實資料要換）。 */
+     d:[["全體有效會員",945408,[529400,416008]],["有消費紀錄",590400,[336500,253900]],
+        ["近一年活躍",47000,[27800,19200]],["近三月活躍",13298,[8100,5198]],
+        ["本月購物",3718,[2380,1338]]],
+     /* dig 要短：cs:3 的頁腳一行約 18 個中文字，原本「近三月只剩 1.4% 在買，主要斷在哪一層？」
+        會折成兩行，把圖區從 220 壓到 203px。 */
+     dig:"會員平均購買幾次才會流失？"},
+    /* 次主圖（cs:6 rs:4）：桑基——升等／降等／掉出去，一張圖講完 VIP 盤子的變化。
+       **刻意只畫銀卡以上**：把 51 萬人的顧客卡放進來，鑽石卡（2,200）會細成一條髮絲，
+       重蹈舊版柱狀圖的覆轍；而且沒人在管顧客卡的個別升降，真正的問題是「VIP 有沒有在流失」。
+       右側四個卡別節點的人數與下方漏斗、與舊版卡別數字完全對齊（58,600／17,200／2,200）。 */
+    {cs:6,rs:4,type:"sankey",h:"VIP 卡別升降級流動",s:"貴客盤子在長還是在縮 · 銀卡以上，較去年同期（人）",
+     nodes:[{n:"去年·銀卡",depth:0,c:1},{n:"去年·金卡",depth:0,c:2},
+            {n:"去年·鑽石卡",depth:0,c:3},{n:"去年·顧客卡升等",depth:0,c:0},
+            {n:"今年·銀卡",depth:1,c:1},{n:"今年·金卡",depth:1,c:2},
+            {n:"今年·鑽石卡",depth:1,c:3},{n:"今年·降回顧客卡",depth:1,c:0},
+            {n:"今年·休眠",depth:1,tone:"bad"}],
+     links:[["去年·銀卡","今年·銀卡",39000],["去年·銀卡","今年·金卡",5200],
+            ["去年·銀卡","今年·降回顧客卡",12000],["去年·銀卡","今年·休眠",6300],
+            ["去年·金卡","今年·金卡",10900],["去年·金卡","今年·鑽石卡",900],
+            ["去年·金卡","今年·銀卡",5600],["去年·金卡","今年·休眠",1200],
+            ["去年·鑽石卡","今年·鑽石卡",1300],["去年·鑽石卡","今年·金卡",1100],
+            ["去年·鑽石卡","今年·休眠",200],
+            ["去年·顧客卡升等","今年·銀卡",14000]],
+     cols:["去年卡別","今年卡別 · 去向"],
+     warn:"<b>這個 ERP 沒有「黑卡」</b>——最高等級是鑽石卡（<code>10VIP3</code>，85 折）。業務術語與系統代號的對照要寫進參數字典。",
+     dig:"鑽石卡會員的流失率高不高？"},
+    /* 行動層（cs:3 rs:4）：可帶走的名單，整頁收在一個動作上。
+       標籤要短——cs:3 只有約 340px，原本「鑽石／金卡 · 10 萬+ 休眠」在這個寬度會折行。
+       五列刻意加總＝1,516 人（＝副標的「共 1,516 人」），rs:4 的 220px 由 .rows 的
+       space-between 自動鋪滿。副標把「曾貢獻 1.45 億」拉到前面，呼應「高價值」。
+       排序＝撈回優先序（價值 × 回收機率）：「轉只買促銷」還在買、最好撈，排第二；
+       「點數將到期」有時效鉤子、現在就能動。 */
+    {cs:3,rs:4,type:"list",h:"高價值休眠 · 喚回清單",s:"曾貢獻 1.45 億 · 共 1,516 人",
+     d:[["鑽石／金卡休眠","曾年消 10 萬+","288 人"],
+        ["正價客轉只買促銷","降級前兆","372 人"],
+        ["曾年消 5 萬+","一年未回","314 人"],
+        ["點數 30 天內到期","貴客未使用","330 人"],
+        ["雙通路貴客","一次性大額客","212 人"]],
+     dig:"哪些休眠會員過去消費力很強，值得重點喚回？"}]};
+
+/* Hero 頂端摘要列（summary bar）：只放「count metric / 度量值」——直接聚合、不需運算的
+   基礎數字（總額、檔數、筆數…）。每格＝大數字＋標籤，同結構、固定 3 格 → 高度一致、
+   切換分頁不跳動、不溢出。比率型 KPI（達成率、佔比）改由下方圖表／KPI 卡承擔，不進這條。 */
+/* 業績三格的 MoM 直接鎖到現有圖表（不可亂編，改動要三處同步：Hero／業績走勢／交易筆數圖）：
+   業績 2,887 vs 走勢圖 5 月 3,265（−11.6%）；筆數 11,190 vs combo 5 月 14,929（−25.0%）；
+   客單價 2,580 vs combo 5 月 2,187（+18.0%）。客單價升＝綠：人流崩、少而精，價格沒垮。 */
+M["業績"].hero = [
+  {t:"stat",v:"2,887",u:"萬",label:"本月業績",arw:"d",tone:"bad",note:"11.6%",per:"6/1–6/30 · 30天",scope:"vs. 上月 3,265",vper:"5/1–5/31 · 31天"},
+  {t:"stat",v:"11,190",u:"筆",label:"本月交易筆數",arw:"d",tone:"bad",note:"25.0%",per:"6/1–6/30 · 30天",scope:"vs. 上月 14,929",vper:"5/1–5/31 · 31天"},
+  {t:"stat",v:"2,580",u:"元",label:"平均客單價",arw:"u",tone:"good",note:"18.0%",per:"6/1–6/30 · 30天",scope:"vs. 上月 2,187",vper:"5/1–5/31 · 31天"}];
+/* 庫存／促銷 MoM 為示意值（無月度時間序列來源），內部自洽（上月值取能算出自然小數者）。
+   庫存總額微升＝flat（多囤未必壞，但要盯）。 */
+M["庫存"].hero = [
+  {t:"stat",v:"6,991",u:"萬",label:"庫存總金額",arw:"u",tone:"flat",note:"2.3%",per:"截至 6/30",scope:"vs. 上月 6,834",vper:"截至 5/31"},
+  {t:"stat",v:"4,335",u:"萬",label:"過季壓貨",arw:"u",tone:"bad",note:"5.8%",per:"截至 6/30",scope:"vs. 上月 4,097",vper:"截至 5/31"},
+  {t:"stat",v:"2,474",u:"萬",label:"滯銷金額",arw:"u",tone:"bad",note:"8.4%",per:"截至 6/30",scope:"vs. 上月 2,282",vper:"截至 5/31"}];
+/* 促銷「進行中檔數」汰換成「帶動新客」——總折讓 vs 帶動業績已是「錢」的 ROI 對照，
+   帶動新客補上「客」這條軸（促銷有沒有在拉人），純 count、決策相關。 */
+M["促銷"].hero = [
+  {t:"stat",v:"3,240",u:"人",label:"促銷帶動新客",arw:"u",tone:"good",note:"9.2%",per:"6/1–6/30 · 30天",scope:"vs. 上月 2,967",vper:"5/1–5/31 · 31天"},
+  {t:"stat",v:"2,228",u:"萬",label:"總折讓金額",arw:"u",tone:"bad",note:"6.3%",per:"6/1–6/30 · 30天",scope:"vs. 上月 2,096",vper:"5/1–5/31 · 31天"},
+  {t:"stat",v:"2,339",u:"萬",label:"促銷帶動業績",arw:"u",tone:"good",note:"2.9%",per:"6/1–6/30 · 30天",scope:"vs. 上月 2,273",vper:"5/1–5/31 · 31天"}];
+
+/* ============================================================
+   圖表
+   ============================================================ */
+const tip = document.getElementById("tip");
+function showTip(e, html){
+  tip.innerHTML = html; tip.classList.add("on");
+  const r = tip.getBoundingClientRect();
+  tip.style.left = Math.min(e.clientX + 14, innerWidth - r.width - 10) + "px";
+  tip.style.top  = Math.max(e.clientY - r.height - 12, 8) + "px";
+}
+const hideTip = () => tip.classList.remove("on");
+
+function sparkline(d){
+  const W=100, H=26, mn=Math.min(...d), mx=Math.max(...d), rg=(mx-mn)||1;
+  const pt = d.map((v,i)=>[i/(d.length-1)*W, H-(v-mn)/rg*(H-4)-2]);
+  const path = pt.map((p,i)=>(i?"L":"M")+p[0].toFixed(1)+" "+p[1].toFixed(1)).join(" ");
+  const e = pt[pt.length-1];
+  return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true">
+    <path d="${path} L${W} ${H} L0 ${H} Z" fill="var(--dv-1-soft)"/>
+    <path d="${path}" fill="none" stroke="var(--dv-1)" stroke-width="1.6"
+      vector-effect="non-scaling-stroke" stroke-linejoin="round"/>
+    <circle cx="${e[0].toFixed(1)}" cy="${e[1].toFixed(1)}" r="2.4" fill="var(--dv-1)"
+      stroke="var(--paper)" stroke-width="1.4"/></svg>`;
+}
+
+/* ============================================================
+   圖表引擎 — ECharts（自 host：vendor/echarts.min.js，SVG renderer）
+   主題不寫死：每次繪製從 CSS token 讀色 → light/dark、改 token 都自動跟上。
+   手刻 SVG 時代的敘事細節，在此以 ECharts 手法對應保留：
+     · 高亮柱 → per-item itemStyle 換色＋數值標籤
+     · 參考線 → markLine   · 哨兵警示色（ci=9）→ per-item 換警示色
+     · 甜甜圈中央數字 → title   · 柱圖 note 註記 → graphic text
+   ============================================================ */
+function dvTokens(){
+  const s = getComputedStyle(document.documentElement), g = n => s.getPropertyValue(n).trim();
+  return {
+    dv:[g('--dv-1'),g('--dv-2'),g('--dv-3'),g('--dv-4'),g('--dv-5')],
+    grid:g('--dv-grid'), tick:g('--text-muted'), body:g('--text-body'), soft:g('--accent-soft'),
+    text:g('--text'), paper:g('--paper'), border:g('--border'), warn:g('--color-warning'),
+    good:g('--color-success'), bad:g('--color-danger'),
+    isDark: document.documentElement.getAttribute('data-theme')==='dark'
+  };
+}
+
+/* c = M 裡的原生圖表物件（沿用既有 schema，不另立資料格式）→ ECharts option */
+/* 漏斗流失欄（graphic）：第 2 層起，每個「步階」（層與層之間）標它較上一層的流失 %，
+   貼著漏斗右緣、隨漏斗收窄往內移。位置用實際容器寬高 W/H 回推像素——
+   · 垂直：步階＝下層頂邊（兩段間的縫）中心
+   · 水平：ECharts 漏斗寬度映射 wf(v)=minSize+(1-minSize)·v/maxV（min=0、maxSize=100%、
+     funnelAlign 置中、左右各留 6%），算出該步階右緣 x，再往外 8px 貼齊。
+   不寫死尺寸；resize 後由 renderCharts 帶新 W/H 重呼叫。文字走設計規範 muted 色票、克制字重。 */
+function funnelDrops(c, tk, H, W){
+  const n=c.d.length, Hh=H||220, Ww=W||330, pad=8, gpx=3;
+  const seg=(Hh-2*pad-(n-1)*gpx)/n, maxV=c.d[0][1], minSize=0.34, band=0.88*Ww, cx=0.5*Ww;
+  const wf=v=> minSize+(1-minSize)*v/maxV, g=[];
+  for(let i=1;i<n;i++){
+    const d=Math.round((c.d[i-1][1]-c.d[i][1])/c.d[i-1][1]*100);
+    const stepY=pad+i*seg+(i-1)*gpx+gpx/2, edgeX=cx+wf(c.d[i][1])*band/2;
+    g.push({ type:'text', left:edgeX+8, top:stepY,
+      style:{ text:'↓ '+d+'%', fill:tk.tick, fontSize:12, fontWeight:500,
+        textAlign:'left', textVerticalAlign:'middle' } });
+  }
+  return g;
+}
+
+function buildOption(c, tk, H, W){
+  const tip = { confine:true, textStyle:{fontSize:11,color:tk.body},
+    backgroundColor:tk.paper, borderColor:tk.border, borderWidth:1,
+    extraCssText:'border-radius:8px;box-shadow:0 6px 20px rgba(20,26,51,.14);padding:8px 11px;' };
+  const axX = { axisLine:{show:false}, axisTick:{show:false}, axisLabel:{color:tk.tick,fontSize:11} };
+  const axY = { splitLine:{lineStyle:{color:tk.grid,type:'dashed'}}, axisLine:{show:false},
+    axisTick:{show:false}, axisLabel:{color:tk.tick,fontSize:11,formatter:v=>F(v)} };
+
+  /* ── Line：多線；一律實線，以顏色（c 索引 palette）區分序列；缺值斷點不連
+       c.mark（x 軸類別值）→ 垂直虛線標一個轉折點（如折扣甜蜜點）；c.note → 右上註記 ── */
+  if(c.type==='line') return {
+    animation:true,
+    tooltip:{ trigger:'axis', ...tip, valueFormatter:v=> v==null?'—':F(v) },
+    legend:{ show:false },                              /* 圖例走面板頁腳，避免重複 */
+    grid:{ left:6, right:14, top: c.note?26:12, bottom:0, containLabel:true },
+    xAxis:{ type:'category', data:c.x, boundaryGap:false, ...axX },
+    yAxis:{ type:'value', ...axY },
+    series: c.series.map((s,si)=>({
+      name:s.n, type:'line', data:s.d, smooth:0.35, connectNulls:false,
+      symbol:'circle', symbolSize:5,
+      lineStyle:{ width:2.5, color:tk.dv[s.c], type:'solid' },
+      itemStyle:{ color:tk.dv[s.c], borderColor:tk.paper, borderWidth:1.5 },
+      markLine: (si===0 && c.mark!=null) ? { silent:true, symbol:'none',
+        data:[{ xAxis:c.mark,
+          label:{ show:!!c.markLabel, formatter:c.markLabel, position:'insideEndTop',
+            color:tk.dv[2], fontSize:11, fontWeight:600 },
+          lineStyle:{ color:tk.dv[2], type:'dashed', width:1.5 } }] } : undefined
+    })),
+    graphic: c.note?[{ type:'text', right:6, top:6,
+      style:{ text:c.note, fill:tk.dv[2], font:'600 11px sans-serif', textAlign:'right' } }]:[]
+  };
+
+  /* ── Bar：直柱；c.hl 高亮換色＋值標籤；c.note 右上註記 ────────── */
+  if(c.type==='bar'){
+    const labels=c.d.map(x=>x[0]), vals=c.d.map(x=>x[1]);
+    return {
+      animation:true,
+      tooltip:{ trigger:'axis', axisPointer:{type:'shadow'}, ...tip,
+        valueFormatter:v=>F(v)+(c.unit||'') },
+      grid:{ left:6, right:6, top: (c.note||c.labelAll)?26:12, bottom:0, containLabel:true },  /* 左右等寬 → 留白對稱 */
+      xAxis:{ type:'category', data:labels, ...axX },
+      yAxis:{ type:'value', ...axY,
+        axisLabel: c.labelAll ? {show:false} : axY.axisLabel },  /* 值已標在柱上 → 藏 Y 軸刻度 */
+      series:[{
+        type:'bar', barMaxWidth:46,
+        data: vals.map((v,i)=>({ value:v,
+          itemStyle:{ color: c.multi?tk.dv[i%5]:(i===c.hl?tk.dv[2]:tk.dv[0]),
+            opacity: i===c.hl?1:(c.multi?0.92:0.82), borderRadius:[4,4,0,0] },
+          label: (i===c.hl||c.labelAll)?{ show:true, position:'top',
+            color: i===c.hl?tk.dv[2]:tk.tick, fontSize:11, fontWeight:600,
+            formatter:F(v)+(c.labelAll?(c.unit||''):'') }:{ show:false } }))
+      }],
+      graphic: c.note?[{ type:'text', right:6, top:6,
+        style:{ text:c.note, fill:tk.dv[2], font:'600 11px sans-serif', textAlign:'right' } }]:[]
+    };
+  }
+
+  /* ── Stackbar：單一 100% 堆疊橫條；每段＝一類別，段內標 %、圖例列名稱。
+       適合「各部分佔整體幾成」的組成型資料（商品線貢獻/庫別分配）。 */
+  if(c.type==='stackbar'){
+    const total=c.d.reduce((s,x)=>s+x[1],0)||1;
+    /* 標籤門檻要跟著版位寬度換算：同一個百分比在 cs:3 只有 cs:6 一半的像素。
+       用實際可用寬度回推——「名稱 NN%」約需 58px、「NN%」約需 26px。 */
+    const plotW=(c.cs||4)/12*1430-40;
+    const needName=58/plotW*100, needPct=26/plotW*100;
+    return {
+      animation:true,
+      tooltip:{ trigger:'item', ...tip,
+        formatter:p=>`<b>${p.seriesName}</b> ${(p.value/total*100).toFixed(1)}% · ${F(p.value)}${c.unit||''}` },
+      legend:{ data:c.d.map(x=>x[0]), bottom:2, left:'center', itemWidth:9, itemHeight:9,
+        icon:'roundRect', itemGap:12, textStyle:{color:tk.body,fontSize:11} },
+      grid:{ left:4, right:4, top:12, bottom:34, containLabel:false },
+      xAxis:{ type:'value', max:total, show:false },
+      yAxis:{ type:'category', data:[''], show:false },
+      series: c.d.map((x,i)=>{
+        const pct=x[1]/total*100;
+        return { name:x[0], type:'bar', stack:'total', barWidth:90, data:[x[1]],
+          itemStyle:{ color:tk.dv[i%5], borderColor:tk.paper, borderWidth:1.5 },
+          label:{ show:true, position:'inside', color:'#fff', fontSize:11, fontWeight:600,
+            formatter: pct>=needName ? `${x[0]} ${pct.toFixed(0)}%`
+                     : (pct>=needPct ? `${pct.toFixed(0)}%` : '') } };
+      })
+    };
+  }
+
+  /* ── Hbar：橫排；ci 配色（ci=9 哨兵警示）；c.ref 參考線；末端值 ── */
+  if(c.type==='hbar'){
+    const rows=[...c.d].reverse();                      /* reverse → 第一名排最上 */
+    const cc=[tk.dv[0],tk.dv[2],tk.dv[4]];
+    const colAt=ci=> ci===9?tk.warn:(cc[ci]||tk.dv[0]);
+    return {
+      animation:true,
+      tooltip:{ trigger:'item', ...tip, formatter:p=>{ const r=rows[p.dataIndex];
+        return `<b>${r[0]}</b> ${F(r[1])}${c.unit||''}${r[2]===9?' — 系統斷層，非真實表現':''}`; } },
+      grid:{ left:6, right:46, top: c.note?26:(c.ref?18:8), bottom:6, containLabel:true },
+      xAxis:{ type:'value', max: Math.max(...c.d.map(x=>x[1]))*1.06,
+        splitLine:{lineStyle:{color:tk.grid,type:'dashed'}}, axisLabel:{show:false},
+        axisLine:{show:false}, axisTick:{show:false} },
+      yAxis:{ type:'category', data:rows.map(r=>r[0]), axisLine:{show:false},
+        axisTick:{show:false},
+        axisLabel:{color:tk.body,fontSize:11,interval:0} },   /* interval:0 → 矮面板也不省略店櫃名 */
+      series:[{
+        type:'bar', barMaxWidth:18,
+        data: rows.map(r=>({ value:r[1],
+          itemStyle:{ color:colAt(r[2]), opacity:r[2]===9?0.85:0.9, borderRadius:[0,4,4,0] } })),
+        label:{ show:true, position:'right', color:tk.text, fontSize:11, fontWeight:600,
+          formatter:p=>F(rows[p.dataIndex][1])+(c.unit||'') },   /* 千分位：排行的 4,820 萬 */
+        markLine: c.ref?{ silent:true, symbol:'none',
+          lineStyle:{ color:tk.tick, type:'dashed', width:1 },
+          label:{ show:true, position:'end', color:tk.tick, fontSize:10,
+            formatter:c.ref+(c.unit||'') },
+          data:[{ xAxis:c.ref }] }:undefined
+      }],
+      graphic: c.note?[{ type:'text', right:6, top:6,
+        style:{ text:c.note, fill:tk.dv[2], font:'600 11px sans-serif', textAlign:'right' } }]:[]
+    };
+  }
+
+  /* ── Donut：c.d=[名稱,金額]，%由金額自動算；tooltip 同時給 %與金額。
+       c.half   → 半圓甜甜圈（幻影切片補滿下半圈、放大弧體，圖例走底部）。
+       c.ci     → 逐片指定顏色（dv 索引；-1＝淡底，給「其餘/背景」那一片用）。 */
+  if(c.type==='donut'){
+    const half=c.half, total=c.d.reduce((s,x)=>s+x[1],0)||1;
+    const colAt=i=> c.ci ? (c.ci[i]===-1 ? tk.soft : tk.dv[c.ci[i]]) : tk.dv[i%5];
+    const data=c.d.map((x,i)=>({ name:x[0], value:x[1], itemStyle:{color:colAt(i)} }));
+    if(half) data.push({ value:total, name:"", silent:true, label:{show:false},
+      labelLine:{show:false}, tooltip:{show:false}, itemStyle:{color:"transparent"},
+      emphasis:{scale:false} });
+    return {
+      animation:true,
+      tooltip:{ trigger:'item', ...tip,
+        formatter:p=> p.name?`<b>${p.name}</b> ${(p.value/total*100).toFixed(1)}% · ${F(p.value)}${c.unit||""}`:"" },
+      /* 半圓版的留白平衡：弧體受「圖區高度」限制（矮面板只有 ~80px），寬度長不出去，
+         若圓心仍固定 37%、圖例貼右緣，左邊會空一大塊。做法是把半徑推到高度容許的極限
+         （180% ≒ 佔滿圖區高），再把「弧＋圖例」當一塊置中 → 左右留白才會相等。 */
+      /* c.cmp ＝ 把「較某基準變化多少」升格成圖區裡的一組數字（比照半圓 KPI 卡的中欄），
+         而不是埋在副標的小灰字裡。圖區只有 59px，弧體又佔掉左半，容不下「圖例＋數字」
+         兩者並存 → 有 cmp 時圖例讓位。兩片式 donut 的色義在標題與副標已經講完，
+         圖例的資訊量本來就低，但差異數字是老闆要看的。 */
+      legend: c.cmp ? {show:false} : { data:c.d.map(x=>x[0]), itemWidth:9, itemHeight:9, icon:"roundRect",
+        orient:"vertical", right: half?"14%":2, top:"middle", itemGap:11,
+        textStyle:{color:tk.body,fontSize:11} },
+      graphic: (()=>{ const G=[];
+        /* c.big ＝ 弧心裡的主數字（比照半圓 KPI 卡）。放得進去的前提是把環變薄——
+           見下方 radius：有 big 時內徑從 95% 拉到 125%，才挖得出容得下數字的洞。 */
+        /* ⚠️ 不要用 textAlign:'center' 配 left ——graphic 的 left 定位的是元素邊界框，
+           style 裡的 textAlign 又會把文字繞著 style.x 重畫，兩者打架會讓字跑到別的地方
+           （曾經設 left:30% 卻畫到 77%、壓在弧體上）。直接算左上角座標最可靠。
+           弧心在 x=30%、y=95%，環內徑 125%（約 37px）→ 字框置中於弧心正上方。 */
+        /* 水平置中於弧心（center[0]＝30%）。textAlign:'center' 配 left 會被 ECharts
+           重算到別處（實測 left:30%+center 會畫到右邊），所以直接算左上角：
+           left ＝ 弧心% − 半個字寬%。實測 instW≈327、"35.4%"≈52px → 30 − 26/327 ≈ 22%。
+           big 目前只有死貨佔比用、內容固定，故可寫定；換內容要重算。 */
+        if(c.big) G.push({type:'text', left:'22%', top:'56%',
+          style:{ text:c.big, fill:tk.text, font:'600 17px sans-serif' }});
+        if(c.cmp){ const m=c.cmp,
+            good = m.goodWhenUp ? m.up : !m.up,
+            col  = m.v===0 ? tk.tick : (good ? tk.good : tk.bad);
+          G.push({type:'text', left:'67%', top:'26%', style:{ text:`${m.up?'↑':'↓'}${m.v} 百分點`,
+            fill:col, font:'600 13px sans-serif' }},
+            {type:'text', left:'67%', top:'56%', style:{ text:m.lab,
+            fill:tk.tick, font:'11px sans-serif' }}); }
+        return G; })(),
+      series:[{ type:"pie",
+        radius: half?[c.big?"125%":"95%","180%"]:["48%","68%"],
+        center: half?["30%","95%"]:["30%","50%"],
+        startAngle: half?180:90,
+        avoidLabelOverlap:true, label:{show:false}, labelLine:{show:false},
+        itemStyle:{ borderRadius:3, borderWidth:2, borderColor:tk.paper },
+        emphasis:{ scale:true, scaleSize:5 },
+        data }]
+    };
+  }
+
+  /* ── Heatmap：二維交叉（如 星期 × 時段）;c.grid[y][x]，第一列 y 顯示在最上。
+       c.xp → x 軸標籤前綴（業績的星期軸要「週一/週二」，其他軸留空）。
+       c.vm:'bottom' → 色標改橫放在下（窄面板 cs:3 用，直立色標會吃掉 60px 寬）。 */
+  if(c.type==='heatmap'){
+    const data=[]; let maxV=0; const xp=c.xp||'';
+    c.grid.forEach((row,yi)=>row.forEach((v,xi)=>{ data.push([xi,yi,v]); if(v>maxV)maxV=v; }));
+    const ramp = tk.isDark ? [tk.grid, tk.dv[0], '#B9AEFF'] : ['#EEEEFC', tk.dv[0], '#2C1F8F'];
+    return {
+      animation:false,
+      tooltip:{ ...tip,
+        /* 懸浮窗偏移到游標右下、貼邊自動翻向 → 不遮住正在看的格子 */
+        position:(pt,params,dom,rect,size)=>{
+          let x=pt[0]+18, y=pt[1]+18;
+          if(x+size.contentSize[0]>size.viewSize[0]) x=pt[0]-size.contentSize[0]-18;
+          if(y+size.contentSize[1]>size.viewSize[1]) y=pt[1]-size.contentSize[1]-18;
+          return [x,y];
+        },
+        formatter:p=>`${c.y[p.data[1]]}・${xp}${c.x[p.data[0]]}<br/><b>${F(p.data[2])}</b>${c.unit||''}` },
+      grid:{ left:6, right: c.vm==='bottom'?8:60, top:3,
+        bottom: c.vm==='bottom'?26:3, containLabel:true },
+      xAxis:{ type:'category', data:c.x.map(d=>xp+d), splitArea:{show:true},
+        axisLine:{show:false}, axisTick:{show:false},
+        axisLabel:{color:tk.tick,fontSize:11,margin:8} },
+      yAxis:{ type:'category', data:c.y, inverse:true, splitArea:{show:true},
+        axisLine:{show:false}, axisTick:{show:false},
+        axisLabel:{color:tk.tick,fontSize:11,interval:0} },   /* 五個時段標籤都要顯示 */
+      visualMap: c.vm==='bottom'
+        ? { min:0, max:maxV, calculable:false, orient:'horizontal', bottom:0, left:'center',
+            itemWidth:9, itemHeight:64, text:['高','低'], textStyle:{color:tk.tick,fontSize:10},
+            inRange:{ color:ramp } }
+        : { min:0, max:maxV, calculable:false, orient:'vertical', right:2, top:'center',
+            itemWidth:9, itemHeight:70, text:['高','低'], textStyle:{color:tk.tick,fontSize:10},
+            inRange:{ color:ramp } },
+      series:[{ type:'heatmap', data, itemStyle:{borderColor:tk.paper,borderWidth:2},
+        emphasis:{itemStyle:{borderColor:tk.text,borderWidth:1}} }]
+    };
+  }
+
+  /* ── Treemap：方塊面積＝貢獻;標籤＝名稱＋佔比%（商品線/倉別分配）───── */
+  if(c.type==='treemap'){
+    const total=c.d.reduce((s,x)=>s+x[1],0)||1;
+    return {
+      animation:true,
+      tooltip:{ trigger:'item', ...tip,
+        formatter:p=>`<b>${p.name}</b> ${F(p.value)}${c.unit||''}（${(p.value/total*100).toFixed(1)}%）` },
+      series:[{ type:'treemap', roam:false, nodeClick:false, breadcrumb:{show:false},
+        top:2, bottom:2, left:2, right:2, width:'auto', height:'auto',
+        itemStyle:{ borderColor:tk.paper, borderWidth:2, gapWidth:2, borderRadius:3 },
+        label:{ show:true, color:'#fff', fontSize:11, lineHeight:15,
+          formatter:p=>p.name+'\n'+(p.value/total*100).toFixed(0)+'%' },
+        data:c.d.map((x,i)=>({ name:x[0], value:x[1], itemStyle:{color:tk.dv[i%5]} })) }]
+    };
+  }
+
+  /* ── Funnel：降序；iris 越往下越深。格子內只留「層名／人數」兩行（白字＋深色陰影
+       確保壓在淺色頂層也讀得清）；逐層流失率移到兩側夾層當註記——內文不再擠第三個數字。
+       tooltip 帶男女拆分（c.d 第三元素 [女,男]）。minSize 34%：底層容得下兩行標籤。 */
+  if(c.type==='funnel'){
+    const n=c.d.length;
+    const drop=i=> i===0?null:Math.round((c.d[i-1][1]-c.d[i][1])/c.d[i-1][1]*100);
+    const gn=i=> c.d[i][2];   /* [女, 男]，選配 */
+    return {
+      animation:true,
+      tooltip:{ trigger:'item', ...tip, formatter:p=>{ const d=drop(p.dataIndex), g=gn(p.dataIndex);
+        return `<b>${p.name}</b> ${F(p.value)} 人`
+          + (g?`<br>女 ${F(g[0])} 人・男 ${F(g[1])} 人`:'')
+          + (d===null?'':`<br>較上一層流失 ${d}%`); } },
+      series:[{ type:'funnel', left:'6%', right:'6%', top:8, bottom:8, minSize:'34%',
+        sort:'descending', gap:3,
+        label:{ show:true, position:'inside', color:'#fff', fontSize:11.5, lineHeight:15,
+          textShadowColor:'rgba(16,19,48,.32)', textShadowBlur:3,
+          formatter:p=> p.name+'\n'+F(p.value) },
+        labelLine:{show:false},
+        data:c.d.map((x,i)=>({ name:x[0], value:x[1],
+          itemStyle:{ color:tk.dv[0], opacity: n>1?(0.58+i*0.4/(n-1)):0.9 } })) }],
+      graphic: funnelDrops(c, tk, H, W)
+    };
+  }
+
+  /* ── Sankey：兩期之間的「流向」——誰升等、誰降等、誰掉出去。
+       節點名一律寫成「期別·名稱」（如 去年·銀卡），因為 ECharts 用 name 當節點 id，
+       兩側同名會被併成同一個節點、變成自環而整張圖畫不出來；標籤再切掉期別只顯示名稱。
+       節點高度正比於人數，所以**餵進來的量級差距不能太大**：全會員（顧客卡 51 萬 vs
+       鑽石卡 2,200，差 233 倍）畫出來鑽石卡會細到看不見——這也正是舊版那張柱狀圖壞掉的
+       原因。要嘛限縮族群（本頁只畫銀卡以上），要嘛換圖型。 */
+  if(c.type==='sankey'){
+    const nm = s => String(s).split('·').pop();
+    const col = n => n.tone==='bad' ? tk.bad : tk.dv[(n.c??0)%5];
+    return {
+      animation:true,
+      tooltip:{ trigger:'item', ...tip, formatter:p => p.dataType==='edge'
+        ? `${nm(p.data.source)} → <b>${nm(p.data.target)}</b><br>${F(p.value)} 人`
+        : `<b>${nm(p.name)}</b> ${F(p.value)} 人` },
+      series:[{ type:'sankey', left:6, right:6, top: (c.note||c.cols)?26:10, bottom:8,
+        nodeWidth:10, nodeGap:9, nodeAlign:'justify',
+        /* 標籤要分邊：全部預設靠右的話，最右那排會整片溢出面板外 */
+        data: c.nodes.map(n=>({ name:n.n, depth:n.depth,
+          itemStyle:{ color:col(n), borderWidth:0 },
+          label:{ position: n.depth===0?'right':'left' } })),
+        links: c.links.map(l=>({ source:l[0], target:l[1], value:l[2] })),
+        label:{ color:tk.body, fontSize:10, formatter:p=>nm(p.name) },
+        lineStyle:{ color:'gradient', opacity:.3, curveness:.5 },
+        emphasis:{ focus:'adjacency' } }],
+      /* c.cols=[左標,右標]：兩欄頂標，把「去年→今年」這條時間軸點破——沒有它，
+         左邊多的「顧客卡升等」來源、右邊多的「降回顧客卡／休眠」去向會被誤讀成
+         跟卡別同一類。用 muted 色、當軸標讀，不搶節點。 */
+      graphic: (()=>{ const g=[];
+        if(c.cols){
+          g.push({ type:'text', left:6, top:6,
+            style:{ text:c.cols[0], fill:tk.tick, font:'600 10px sans-serif' } });
+          g.push({ type:'text', right:6, top:6,
+            style:{ text:c.cols[1], fill:tk.tick, font:'600 10px sans-serif', textAlign:'right' } });
+        }
+        if(c.note) g.push({ type:'text', right:6, top:6,
+          style:{ text:c.note, fill:tk.dv[2], font:'600 11px sans-serif', textAlign:'right' } });
+        return g; })()
+    };
+  }
+
+  /* ── Combo：柱（左軸，量體）＋ 線（右軸，比率）雙軸。
+       給「量大不代表賺／量小卻貢獻高」這類「兩個單位不同但必須並看」的題目：
+       卡別人數 vs 業績貢獻、檔期業績 vs 淨增量佔比。
+       line.ref → 右軸畫一條基準虛線（如 0% 損益分界），線掉到線下＝壞消息。 */
+  if(c.type==='combo'){
+    const B=c.bar, L=c.line, bc=tk.dv[B.c??0], lc=tk.dv[L.c??2];
+    return {
+      animation:true,
+      tooltip:{ trigger:'axis', axisPointer:{type:'shadow'}, ...tip,
+        formatter:p=>`<b>${p[0].axisValue}</b><br>` + p.map(s=>
+          `${s.marker}${s.seriesName} <b>${F(s.value)}</b>${s.seriesIndex===0?(B.unit||''):(L.unit||'')}`
+        ).join('<br>') },
+      legend:{ show:false },                            /* 圖例走面板頁腳 */
+      grid:{ left:6, right:6, top: c.note?26:14, bottom:0, containLabel:true },
+      xAxis:{ type:'category', data:c.x, ...axX,
+        axisLabel:{ color:tk.tick, fontSize:10, interval:0 } },
+      yAxis:[
+        { type:'value', ...axY },                       /* 左：柱的量體 */
+        { type:'value', ...axY, splitLine:{show:false}, /* 右：線的比率，不重複畫格線 */
+          axisLabel:{ color:tk.tick, fontSize:11, formatter:v=>v+(L.unit||'') } }
+      ],
+      series:[
+        { name:B.n, type:'bar', yAxisIndex:0, barMaxWidth:34, data:B.d,
+          itemStyle:{ color:bc, opacity:0.78, borderRadius:[4,4,0,0] } },
+        { name:L.n, type:'line', yAxisIndex:1, data:L.d, smooth:0.35, z:3,
+          symbol:'circle', symbolSize:6,
+          lineStyle:{ width:2.5, color:lc },
+          itemStyle:{ color:lc, borderColor:tk.paper, borderWidth:1.5 },
+          markLine: L.ref!=null ? { silent:true, symbol:'none',
+            data:[{ yAxis:L.ref, label:{show:false},
+              lineStyle:{ color:tk.tick, type:'dashed', width:1 } }] } : undefined }
+      ],
+      /* 靠左——combo 右側有第二條軸，右對齊的註記會壓在右軸刻度上（line/bar 沒有這個問題） */
+      graphic: c.note?[{ type:'text', left:6, top:6,
+        style:{ text:c.note, fill:tk.dv[2], font:'600 11px sans-serif' } }]:[]
+    };
+  }
+
+  return { series:[] };                                 /* 未知型別 → 空 option */
+}
+const chList = c => `<div class="rows">` + c.d.map(([a,b,v])=>
+  `<div class="r"><span class="nm">${a}${b?`<em>${b}</em>`:""}</span>
+   <span class="val num">${v}</span></div>`).join("") + `</div>`;
+
+/* Hero 達成率圓（KPI 引擎風格）：iris 進度弧 + 淡白軌，中央數字，caption 在下。
+   三個橫排；每個都是獨立的完整物件（深色 hero scope 內）。 */
+function gaugeRing(g){
+  const S=76, c=S/2, sw=8, r=(S-sw)/2-2, circ=2*Math.PI*r;
+  const pct=Math.max(0,Math.min(100,g.v)), dash=circ*pct/100;
+  return `<div class="gauge">
+    <svg class="gring" viewBox="0 0 ${S} ${S}" role="img" aria-label="${g.label} ${g.v}%">
+      <circle cx="${c}" cy="${c}" r="${r}" fill="none" stroke="var(--accent-soft)" stroke-width="${sw}"/>
+      <circle cx="${c}" cy="${c}" r="${r}" fill="none" stroke="var(--accent)" stroke-width="${sw}"
+        stroke-linecap="round" stroke-dasharray="${dash.toFixed(1)} ${(circ-dash).toFixed(1)}"
+        transform="rotate(-90 ${c} ${c})"/>
+      <text x="${c}" y="${c+1}" text-anchor="middle" class="g-num">${g.v}<tspan class="g-unit">%</tspan></text>
+    </svg>
+    <span class="g-cap">${g.label}</span>
+  </div>`;
+}
+
+/* Gauge KPI 卡（大欄網格內，非 hero）：比率對 100% 目標的進度環 + 漲跌，取代數字+sparkline。
+   給「離目標還差多少」型指標（達成率）——sparkline 對這種指標沒意義，環才講得清。 */
+function kpiGauge(k){
+  const S=72, c=S/2, sw=8, r=(S-sw)/2-2, circ=2*Math.PI*r;
+  const pct=Math.max(0,Math.min(100,parseFloat(k.v))), dash=circ*pct/100;
+  const arrow = k.dc==="u"?ic("up","ic sm"):k.dc==="d"?ic("down","ic sm"):ic("dash","ic sm");
+  return `<div class="kpi kpi-g${k.sent?" sent":""}" style="--cs:${k.cs||3};--rs:${k.rs||1}">
+    <div class="kh">
+      <span class="k">${k.k}</span>
+      ${k.sent?`<span class="warnicon" title="${k.sent}">${ic("alert","ic sm")}</span>`:""}
+      <span class="tag ${k.t[0]}">${k.t[1]}</span>
+    </div>
+    <div class="kg-body">
+      <svg class="kg-ring" viewBox="0 0 ${S} ${S}" role="img" aria-label="${k.k} ${k.v}%">
+        <circle cx="${c}" cy="${c}" r="${r}" fill="none" stroke="var(--accent-soft)" stroke-width="${sw}"/>
+        <circle cx="${c}" cy="${c}" r="${r}" fill="none" stroke="var(--accent)" stroke-width="${sw}"
+          stroke-linecap="round" stroke-dasharray="${dash.toFixed(1)} ${(circ-dash).toFixed(1)}"
+          transform="rotate(-90 ${c} ${c})"/>
+        <text x="${c}" y="${c+1}" text-anchor="middle" class="kg-num">${k.v}<tspan class="kg-unit">%</tspan></text>
+      </svg>
+      <span class="delta ${k.dc} num">${arrow}${k.d}</span>
+    </div>
+  </div>`;
+}
+
+/* to-target 進度條卡：大數字即達成率本身，分段條顯示離 100% 目標多遠（比 Gauge 更貼「差多少」）。 */
+function kpiTarget(k){
+  const pct=Math.max(0,Math.min(100,parseFloat(k.v))), N=24, on=Math.round(pct/100*N);
+  const arrow=k.dc==="u"?ic("up","ic sm"):k.dc==="d"?ic("down","ic sm"):ic("dash","ic sm");
+  const segs=Array.from({length:N},(_,i)=>`<i class="${i<on?"on":""}"></i>`).join("");
+  return `<div class="kpi kpi-t${k.sent?" sent":""}" style="--cs:${k.cs||3};--rs:${k.rs||1}">
+    <div class="kh">
+      <span class="k">${k.k}</span>
+      ${k.sent?`<span class="warnicon" title="${k.sent}">${ic("alert","ic sm")}</span>`:""}
+      <span class="tag ${k.t[0]}">${k.t[1]}</span>
+    </div>
+    <span class="v num">${k.v}<small>${k.u||"%"}</small></span>
+    <div class="kt-bar" role="img" aria-label="${k.k} ${k.v}%">${segs}</div>
+    <div class="foot">
+      <span class="delta ${k.dc} num">${arrow}${k.d}</span>
+      <span class="kt-tgt">目標 100%</span>
+    </div>
+  </div>`;
+}
+/* 近 N 月 mini 長條卡：大數字＋末柱高亮，看短期趨勢（連帶率 UPT 這類）。 */
+function kpiMiniBars(k, ki){
+  const arrow=k.dc==="u"?ic("up","ic sm"):k.dc==="d"?ic("down","ic sm"):ic("dash","ic sm");
+  /* 長條走 ECharts（.plot.kmini），renderCharts 就地 init → 正式懸浮窗顯示每月值 */
+  return `<div class="kpi kpi-mb${k.sent?" sent":""}" style="--cs:${k.cs||3};--rs:${k.rs||1}">
+    <div class="kh">
+      <span class="k">${k.k}</span>
+      ${k.sent?`<span class="warnicon" title="${k.sent}">${ic("alert","ic sm")}</span>`:""}
+      <span class="tag ${k.t[0]}">${k.t[1]}</span>
+    </div>
+    <span class="v num">${k.v}<small>${k.u||""}</small></span>
+    <div class="kt-mini"><div class="plot kmini" data-ki="${ki}"></div></div>
+    <div class="foot">
+      <span class="delta ${k.dc} num">${arrow}${k.d}</span>
+    </div>
+  </div>`;
+}
+/* 半圓甜甜圈組合卡：左＝當月比率半圓、中＝當月 vs 其他月均的 delta、右＝其他月均值。
+   goodWhenUp 預設 false（如死貨佔比：上升＝壞→紅）。 */
+/* 半圓 KPI 卡：當月與對照期各一條弧，同尺度並排。
+   兩條弧的差距若只有幾 pt，在弧上不到 20 度、肉眼分不出來——所以當月弧上再刻一道
+   對照期的虛線基準：差距讀成「弧端到刻度的那一小段」，不必比較兩張圖。 */
+function kpiHalfDonut(k){
+  const cur=parseFloat(k.cur), avg=parseFloat(k.avg);
+  const delta=+(cur-avg).toFixed(1), good=k.goodWhenUp?delta>0:delta<0;
+  const cls=delta===0?"m":(good?"u":"d");
+  const arrow=delta>0?ic("up","ic sm"):delta<0?ic("down","ic sm"):ic("dash","ic sm");
+  /* viewBox 上方留 18px 給基準線的標籤，所以 H 比半圓實際需要的高。 */
+  const W=100,H=68,sw=9,r=38,cx=50,cy=62,semi=Math.PI*r;
+  const path=`M ${cx-r} ${cy} A ${r} ${r} 0 0 1 ${cx+r} ${cy}`;
+  const clamp=v=>Math.max(0,Math.min(100,v));
+
+  /* 對照期基準線：一條跨過弧體、往外突出並帶標籤的徑向線。
+     標籤是關鍵——先前只畫一道無標籤的短刻度，看不出那條線代表什麼。 */
+  const refLine=pct=>{
+    const th=Math.PI*(1-clamp(pct)/100), co=Math.cos(th), si=Math.sin(th);
+    /* 外端多伸 7px 當延伸桿，標籤才連得回弧上那一點，不會像浮在空中的字 */
+    const r0=r-sw/2-2, r1=r+sw/2+7;
+    const px=(rr)=>(cx+rr*co).toFixed(1), py=(rr)=>(cy-rr*si).toFixed(1);
+    const tx=Math.max(20,Math.min(W-20,+px(r1)));   /* 夾住標籤，避免貼近兩端時溢出 */
+    return `<line x1="${px(r0)}" y1="${py(r0)}" x2="${px(r1)}" y2="${py(r1)}"
+        stroke="var(--accent-2)" stroke-width="2.5" stroke-linecap="round"/>
+      <text x="${tx}" y="${(+py(r1)-3).toFixed(1)}" text-anchor="middle"
+        class="hd-ref">${k.avgLab||"其他月均"}</text>`;
+  };
+  /* dim＝對照期那條弧，降透明度退到背景，當月仍是主角 */
+  const ring=(val,lab,dim,ref)=>{
+    const fill=semi*clamp(val)/100;
+    return `<div class="hd-ring">
+      <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${k.k} ${lab} ${val}%">
+        <path d="${path}" fill="none" stroke="var(--accent-soft)" stroke-width="${sw}" stroke-linecap="round"/>
+        <path d="${path}" fill="none" stroke="var(--accent)" stroke-width="${sw}" stroke-linecap="round"
+          ${dim?'opacity=".45"':""} stroke-dasharray="${fill.toFixed(1)} ${(semi-fill).toFixed(1)}"/>
+        ${ref!=null?refLine(ref):""}
+        <text x="${cx}" y="${cy-7}" text-anchor="middle"
+          class="hd-cur${dim?" dim":""}">${val}<tspan class="hd-u">%</tspan></text>
+      </svg>
+      <span class="hd-cap">${lab}</span>
+    </div>`;
+  };
+
+  const avgLab=k.avgLab||"其他月均";
+  return `<div class="kpi kpi-hd${k.sent?" sent":""}" style="--cs:${k.cs||3};--rs:${k.rs||1}">
+    <div class="kh">
+      <span class="k">${k.k}</span>
+      ${k.sent?`<span class="warnicon" title="${k.sent}">${ic("alert","ic sm")}</span>`:""}
+      <span class="tag ${k.t[0]}">${k.t[1]}</span>
+    </div>
+    <div class="hd-body">
+      ${ring(cur, k.curLab||"當月", false, avg)}
+      <div class="hd-mid">
+        <span class="delta ${cls} num">${arrow}${Math.abs(delta)} 百分點</span>
+        <span class="hd-cap">較${avgLab}</span>
+      </div>
+      ${ring(avg, avgLab, true, null)}
+    </div>
+  </div>`;
+}
+/* mini 長條卡的 ECharts option：月份為 x 軸、末柱高亮、hover 顯示月份+值。
+   yAxis 下探壓低基準 → 放大高低差視覺。 */
+function miniBarOption(k, tk){
+  const n=k.bars.length, mn=Math.min(...k.bars), mx=Math.max(...k.bars), rg=(mx-mn)||1;
+  return {
+    animation:false,
+    grid:{ left:2, right:2, top:6, bottom:16 },
+    tooltip:{ trigger:"axis", axisPointer:{type:"shadow"}, confine:true,
+      textStyle:{fontSize:11,color:tk.body}, backgroundColor:tk.paper,
+      borderColor:tk.border, borderWidth:1,
+      extraCssText:"border-radius:8px;box-shadow:0 6px 20px rgba(20,26,51,.14);padding:6px 9px;",
+      formatter:p=>`${p[0].axisValue} <b>${p[0].value}</b>${k.u||""}` },
+    xAxis:{ type:"category", data:k.bx||k.bars.map((_,i)=>i+1),
+      axisLine:{show:false}, axisTick:{show:false},
+      axisLabel:{color:tk.tick,fontSize:9,interval:0,margin:5} },
+    yAxis:{ type:"value", show:false, min:mn-rg*0.8, max:mx+rg*0.15 },
+    series:[{ type:"bar", barWidth:"58%",
+      data:k.bars.map((v,i)=>({ value:v,
+        itemStyle:{ color:tk.dv[0], opacity:i===n-1?1:0.32, borderRadius:[2,2,0,0] } })) }]
+  };
+}
+
+/* mini 折線卡的 ECharts option：比率型「連續惡化」的趨勢（如年度流失率）。
+   為什麼這類指標走線不走柱：截斷基準的長條會誇大量級——56.8→62.4 只差 5.6 個
+   百分點，壓過基準後末柱卻是首柱的 ~2.2 倍，眼睛讀成「翻倍」。線編碼的是斜率／位置，
+   本來就該配壓過的基準，一路往上的斜線才是訊息本身。y 軸上下各留 35% 全距當緩衝，
+   線不會貼邊。共用 minibars 的卡殼與 .kmini 機制 → 保留逐月懸浮窗。 */
+function miniLineOption(k, tk){
+  const n=k.bars.length, mn=Math.min(...k.bars), mx=Math.max(...k.bars), rg=(mx-mn)||1;
+  return {
+    animation:false,
+    grid:{ left:2, right:4, top:8, bottom:16 },
+    tooltip:{ trigger:"axis", axisPointer:{type:"line",lineStyle:{color:tk.border}}, confine:true,
+      textStyle:{fontSize:11,color:tk.body}, backgroundColor:tk.paper,
+      borderColor:tk.border, borderWidth:1,
+      extraCssText:"border-radius:8px;box-shadow:0 6px 20px rgba(20,26,51,.14);padding:6px 9px;",
+      formatter:p=>`${p[0].axisValue} <b>${p[0].value}</b>${k.u||""}` },
+    /* boundaryGap 留 true（預設）：首/末點才不會貼邊，"1月"/"6月" 標籤置中不被裁。 */
+    xAxis:{ type:"category", data:k.bx||k.bars.map((_,i)=>i+1),
+      axisLine:{show:false}, axisTick:{show:false},
+      axisLabel:{color:tk.tick,fontSize:9,interval:0,margin:5} },
+    yAxis:{ type:"value", show:false, min:mn-rg*0.35, max:mx+rg*0.35 },
+    series:[{ type:"line", data:k.bars, smooth:false, showSymbol:true,
+      lineStyle:{color:tk.dv[0],width:2},
+      areaStyle:{color:tk.dv[0],opacity:0.10},
+      symbol:"circle", symbolSize:(v,p)=>p.dataIndex===n-1?6:0,
+      itemStyle:{color:tk.dv[0],borderColor:tk.paper,borderWidth:1.4},
+      emphasis:{scale:false} }]
+  };
+}
+
+/* Hero 摘要卡的一格：標籤在上、大數字在下（漲跌章 tone 決定好壞配色，摘要列預設不帶）。
+   dual＝升/降兩個數字並列（升降級）。 */
+function heroStat(s){
+  if(s.dual) return `<div class="hstat">
+    <span class="hl">${s.label}</span>
+    <div class="hv-dual">
+      <span class="up">${ic("up","ic sm")}${s.up}</span>
+      <span class="down">${ic("down","ic sm")}${s.down}</span>
+    </div>
+  </div>`;
+  const tri = s.arw==="u"?"triUp":s.arw==="d"?"triDown":null;
+  const arrow = tri?`<svg class="tri" viewBox="0 0 24 24" aria-hidden="true">${P[tri]}</svg>`:"";
+  const badge = s.note ? `<span class="hbadge ${s.tone||"flat"} num">${arrow}${s.note}</span>` : "";
+  return `<div class="hstat">
+    <span class="hl">${s.label}${s.per?`<span class="hper num">（${s.per}）</span>`:""}${s.partial?`<span class="hpart">進行中</span>`:""}</span>
+    <div class="hrow"><span class="hv num">${s.v}${s.u?`<small>${s.u}</small>`:""}</span>${badge}</div>
+    ${s.scope?`<span class="hscope num">${s.scope}${s.vper?`（${s.vper}）`:""}</span>`:""}
+  </div>`;
+}
+/* 頂端混排派發：每項 t=ring→圓環（比率）、t=dual→升降雙值、其餘→數字格（絕對量）。 */
+function heroItem(it){
+  if(it.t === "ring") return gaugeRing(it);
+  if(it.t === "dual") return heroStat({dual:true, up:it.up, down:it.down, label:it.label});
+  return heroStat(it);
+}
+const renderHero = arr => arr.map(heroItem).join("");
+
+/* ============================================================
+   render
+   ============================================================ */
+const chEl    = document.getElementById("charts"),
+      gaugesEl= document.getElementById("hero-gauges");
+
+/* 依 12 欄網格模擬自動排版，回傳內容占用的「列數」（含 rs 跨列）。
+   draw() 用它算 grid-template-rows —— 之後改 cs/rs 或增減張數都自動對。 */
+function gridSpanRows(items, wOf){
+  const cols = 12, occ = [];
+  const ensure = r => { while(occ.length <= r) occ.push(new Array(cols).fill(false)); };
+  for(const it of items){
+    const w = Math.min(wOf(it), cols), h = it.rs || 1;
+    let placed = false;
+    for(let r = 0; !placed; r++){
+      ensure(r + h - 1);
+      for(let c = 0; c + w <= cols; c++){
+        let ok = true;
+        for(let dr = 0; dr < h && ok; dr++)
+          for(let dc = 0; dc < w; dc++) if(occ[r+dr][c+dc]){ ok = false; break; }
+        if(ok){
+          for(let dr = 0; dr < h; dr++) for(let dc = 0; dc < w; dc++) occ[r+dr][c+dc] = true;
+          placed = true; break;
+        }
+      }
+    }
+  }
+  return occ.length;
+}
+
+/* 統一排版：KPI 卡與圖表同放一張網格。回傳每列的高度設定——
+   只要該列含圖表就 1fr（圖需要高度），純 KPI 卡列則 auto（緊湊）。
+   items: {cs, rs, chart:bool}，順序＝實際 innerHTML 流。 */
+function placeRows(items){
+  const cols = 12, occ = [], hasChart = [];
+  const ensure = r => { while(occ.length <= r){ occ.push(new Array(cols).fill(false)); hasChart.push(false); } };
+  for(const it of items){
+    const w = Math.min(it.cs, cols), h = it.rs || 1;
+    let placed = false;
+    for(let r = 0; !placed; r++){
+      ensure(r + h - 1);
+      for(let c = 0; c + w <= cols; c++){
+        let ok = true;
+        for(let dr = 0; dr < h && ok; dr++)
+          for(let dc = 0; dc < w; dc++) if(occ[r+dr][c+dc]){ ok = false; break; }
+        if(ok){
+          for(let dr = 0; dr < h; dr++){
+            for(let dc = 0; dc < w; dc++) occ[r+dr][c+dc] = true;
+            if(it.chart) hasChart[r+dr] = true;
+          }
+          placed = true; break;
+        }
+      }
+    }
+  }
+  return hasChart.map(hc => hc ? "minmax(0,1fr)" : "auto");
+}
+let page = "業績";
+
+document.querySelectorAll(".tab").forEach(b =>
+  b.addEventListener("click", () => { page = b.dataset.p; draw(); }));
+
+const stripTags = s => String(s).replace(/<[^>]+>/g, "");
+
+/* 每張圖 = 一個 ECharts 實例，就地填進版位格（.plot flex:1，尺寸由格子決定）。
+   重繪／切分頁前先 dispose 舊實例（否則實例累積吃記憶體）；尺寸變動只 resize，不重建。 */
+let _charts = [], _funnels = [];
+function renderCharts(D){
+  _charts.forEach(ch => ch.dispose()); _charts = []; _funnels = [];
+  const tk = dvTokens();
+  chEl.querySelectorAll(".plot[data-i]").forEach(el => {
+    const c = D.charts[+el.dataset.i];
+    if(!c) return;
+    const chart = echarts.init(el, null, { renderer:"svg" });
+    chart.setOption(buildOption(c, tk, el.clientHeight, el.clientWidth));   /* 傳實際寬高：漏斗流失欄靠它貼齊各步階右緣 */
+    _charts.push(chart);
+    if(c.type==='funnel') _funnels.push({chart, el, c});   /* 漏斗流失欄是像素定位 → resize 要帶新高度重對齊 */
+  });
+  /* KPI 卡內的 mini 長條（連帶率 UPT 等）也走 ECharts → 有正式懸浮窗 */
+  chEl.querySelectorAll(".plot.kmini[data-ki]").forEach(el => {
+    const k = (D.kpi || [])[+el.dataset.ki];
+    if(!k || !k.bars) return;
+    const chart = echarts.init(el, null, { renderer:"svg" });
+    chart.setOption(k.type === "miniline" ? miniLineOption(k, tk) : miniBarOption(k, tk));
+    _charts.push(chart);
+  });
+}
+
+/* 事件委派：重繪會換掉 .plot 內容，逐一綁 listener 會漏綁；
+   tooltip 與「深入分析」統一掛在 chEl 上，一次搞定、重繪不受影響。 */
+chEl.addEventListener("mousemove", e => {
+  /* 挑圖模式下整張面板是一個可點的目標，資料點 tooltip 只會干擾 */
+  if(document.body.classList.contains("picking")){ hideTip(); return; }
+  const t = e.target.closest("[data-tip]");
+  t ? showTip(e, t.dataset.tip) : hideTip();
+});
+chEl.addEventListener("mouseleave", hideTip);
+chEl.addEventListener("click", e => {
+  /* 〔深入分析〕＝開新的一串，並把「哪個模組的哪張圖」當成第一則的引用 */
+  const b = e.target.closest(".dig");
+  if(b) open_(b.dataset.q, {m:page, h:b.dataset.c});
+});
+
+/* 視窗/格子尺寸變動 → 只叫 ECharts resize（rAF 去抖，避免縮放時狂重算）。
+   漏斗的流失欄是像素定位，高度一變就要用新 clientHeight 重算 graphic 才不會脫齊。 */
+let _raf;
+new ResizeObserver(() => {
+  cancelAnimationFrame(_raf);
+  _raf = requestAnimationFrame(() => {
+    _charts.forEach(ch => ch.resize());
+    if(_funnels.length){ const tk = dvTokens();
+      _funnels.forEach(f => f.chart.setOption({ graphic: funnelDrops(f.c, tk, f.el.clientHeight, f.el.clientWidth) })); }
+  });
+}).observe(chEl);
+
+/* Hero 快捷發問：每個模組三句。優先挑抽屜裡**已有凍結答案**的問句——點下去秒回，
+   示範效果最好；其餘落到 GENERIC（「新問題 · 完整推理」），那也是要示範的另一條路徑。 */
+const QC = {
+  業績:["業績最差的那個月是哪個月？為什麼？","最近有沒有哪家門市業績異常？","線上跟線下業績比例有沒有在變化？"],
+  庫存:["全部庫存裡面有多少比例是呆料？","現在最快斷貨的前十款是哪些？","哪些品項連續三個月都賣不動，要考慮清倉了？"],
+  促銷:["買贈跟直接打折，哪個對毛利傷害比較小？","促銷商品有沒有蠶食到旁邊正價商品的業績？","哪個檔期的促銷費用佔業績比例最高？"],
+  CRM :["鑽石卡會員的流失率高不高？","會員平均購買幾次才會流失？","點數累積最多的前一百個會員都是誰？"]
+};
+const qcEl = document.getElementById("qchips");
+/* 事件掛在容器上，重繪不受影響（比照 chEl 的做法） */
+qcEl.addEventListener("click", e => {
+  const b = e.target.closest(".chip");
+  if(b) open_(b.textContent.trim(), null);
+});
+/* 柔邊：淡出寬度＝離該側邊界的捲動距離，夾在 0–24px。
+   ⚠️ 不要用「過門檻就切 0↔24px」——那會在邊界瞬間跳一下（滑動時遮罩閃動）。
+   漸變版：滑到頭左側自然收成 0（第一顆完整顯示）、滑到底右側收成 0，中段才滿 24。 */
+function updateQcFade(){
+  const max = qcEl.scrollWidth - qcEl.clientWidth, x = qcEl.scrollLeft;
+  qcEl.style.setProperty("--fadeL", Math.max(0, Math.min(24, x)) + "px");
+  qcEl.style.setProperty("--fadeR", Math.max(0, Math.min(24, max - x)) + "px");
+}
+qcEl.addEventListener("scroll", updateQcFade);
+addEventListener("resize", updateQcFade);
+/* ⚠️ 初次 draw() 時字型可能還沒載入完，文字較窄、量不到溢出（fadeR 會誤判為 0）。
+   字型 ready 與 load 後各重算一次。 */
+addEventListener("load", updateQcFade);
+if(document.fonts && document.fonts.ready) document.fonts.ready.then(updateQcFade);
+
+function draw(){
+  document.querySelectorAll(".tab").forEach(b =>
+    b.dataset.p === page ? b.setAttribute("aria-current","page")
+                         : b.removeAttribute("aria-current"));
+  qcEl.innerHTML = (QC[page] || [])
+    .map(q => `<button class="chip" type="button">${q}</button>`).join("");
+  qcEl.scrollLeft = 0; updateQcFade();     /* 換頁後回捲到頭並重算柔邊 */
+  const D = M[page];
+
+  /* 上方頂端區：單一 hero 陣列，圓環（比率）＋ 數字（絕對量）逐項混排。 */
+  gaugesEl.className = "hero-gauges";
+  gaugesEl.innerHTML = renderHero(D.hero);
+
+  /* KPI 卡：併入下方 12 欄網格（每張 cs:3，四張排一列）。CRM 無 KPI 卡。
+     type:"gauge" → 進度環卡（比率對目標）；其餘 → 數字＋漲跌＋sparkline。 */
+  const kpiHTML = (D.kpi || []).map((k, ki) => {
+    if(k.type === "gauge") return kpiGauge(k);
+    if(k.type === "target") return kpiTarget(k);
+    if(k.type === "minibars" || k.type === "miniline") return kpiMiniBars(k, ki);
+    if(k.type === "halfdonut") return kpiHalfDonut(k);
+    const arrow = k.dc === "u" ? ic("up","ic sm") : k.dc === "d" ? ic("down","ic sm") : ic("dash","ic sm");
+    return `<div class="kpi${k.sent ? " sent" : ""}" style="--cs:${k.cs||3};--rs:${k.rs||1}">
+      <div class="kh">
+        <span class="k">${k.k}</span>
+        ${k.sent ? `<span class="warnicon" title="${k.sent}">${ic("alert","ic sm")}</span>` : ""}
+        <span class="tag ${k.t[0]}">${k.t[1]}</span>
+      </div>
+      <span class="v num">${k.v}<small>${k.u}</small></span>
+      <div class="foot">
+        ${k.sp ? `<span class="sp">${sparkline(k.sp)}</span>` : ""}
+        <span class="delta ${k.dc} num">${arrow}${k.d}</span>
+      </div>
+    </div>`;
+  }).join("");
+
+  /* 版位：--cs（跨欄）/--rs（跨列）由資料宣告，未給預設 cs:4（1/3 寬）。
+     圖表本體先留空（.plot），innerHTML 落定後由 renderCharts 用 ECharts 填入。 */
+  const chartHTML = D.charts.map((c,i) => {
+    const inner = c.type === "list" ? chList(c) : `<div class="plot" data-i="${i}"></div>`;
+    /* 多序列圖的圖例統一走面板頁腳（ECharts 內建圖例關掉）→ 圖區高度全給資料 */
+    const lgOf = arr => `<span class="legend">` + arr.map(s =>
+      `<span class="lg"><i style="background:${DV[s.c]}"></i>${s.n}</span>`).join("") + `</span>`;
+    const leg  = c.type === "line"  ? lgOf(c.series)
+               : c.type === "combo" ? lgOf([{n:c.bar.n, c:c.bar.c ?? 0}, {n:c.line.n, c:c.line.c ?? 2}])
+               : "";
+    return `<section class="panel${c.warn ? " sent" : ""}"
+        style="--cs:${c.cs || 4};--rs:${c.rs || 1}">
+      <div class="phd">
+        <div><h3>${c.h}</h3><p class="sub">${c.s}</p></div>
+        ${c.legTop ? leg : ""}
+        ${c.warn ? `<button class="warnbtn" type="button" aria-label="資料哨兵"
+            title="${attr(stripTags(c.warn))}">${ic("alert","ic sm")}</button>` : ""}
+        ${c.blocked ? `<span class="blocked">上線前阻斷</span>` : ""}
+      </div>
+      ${inner}
+      <div class="pft">
+        <button class="dig" type="button" data-q="${c.dig}" data-c="${c.h}">
+          ${planeMark()}深入分析 · ${c.dig}
+        </button>
+        ${c.legTop ? "" : leg}
+      </div>
+    </section>`;
+  });                                       /* 陣列（不 join）→ 下面才能把 KPI 卡插進中間 */
+
+  /* 版位順序＝網格 auto-flow 順序（誰先出現誰先佔格）。
+     D.kpiAfter = 先排幾張圖，KPI 卡才插進來；預設 0＝KPI 卡在最前（業績／庫存）。
+     促銷／CRM 設 1 → 主角大圖佔左上，KPI 卡退到右上角。 */
+  const kAfter = D.kpiAfter || 0;
+  chEl.innerHTML = chartHTML.slice(0, kAfter).join("")
+                 + kpiHTML
+                 + chartHTML.slice(kAfter).join("");
+
+  /* 動態列高：KPI 卡與圖表同排一張網格，用 placeRows 統一推算每列高度——
+     含圖表的列 1fr（均分剩餘高度）、純 KPI 卡列 auto（緊湊）。
+     業績模組 KPI 卡與 各店櫃／通路 同列 → 該列含圖，卡片會被撐高。
+     順序必須與上面的 innerHTML 一致（同樣照 kpiAfter 插入），否則列高會算到別列去。 */
+  const chartItems = D.charts.map(c => ({ cs:c.cs || 4, rs:c.rs || 1, chart:true }));
+  const layoutItems = [
+    ...chartItems.slice(0, kAfter),
+    ...(D.kpi || []).map(k => ({ cs:k.cs || 3, rs:k.rs || 1, chart:false })),
+    ...chartItems.slice(kAfter)
+  ];
+  chEl.style.gridTemplateRows = placeRows(layoutItems).join(" ");
+
+  renderCharts(D);
+}
+
+/* ============================================================
+   抽屜 — 答案落在這裡，Dashboard 上的圖完全不動。
+   隱式的改動不保存；只有顯式「釘選」才會進 Dashboard。
+   （目前是示意答案。接後端時：帶 card context 的走凍結 SQL，
+     自由問句走完整 AI，而且每一句自由問句都要記下來——
+     問了三次以上的問題，就是該凍結成 Dashboard 元件的問題。）
+   ============================================================ */
+const drawer = document.getElementById("drawer"),
+      db     = document.getElementById("db"),
+      dt     = document.getElementById("dt"),
+      dex    = document.getElementById("dex"),
+      ci     = document.getElementById("ci"),
+      dft    = document.getElementById("dft"),
+      attwrap= document.getElementById("attwrap");
+
+const A = {
+  "業績最差的那個月是哪個月？為什麼？":{
+    v:"掉的是<em>人流</em>，不是價格。",
+    b:"6 月交易筆數 <b>11,190 筆</b>，比 5 月少 <b>25%</b>；但客單價反而從 2,187 元升到 <b>2,580 元</b>（+18%）。<br><br>換句話說，願意來的人買得更多了，<b>問題出在來的人變少</b>。要檢視的是來客量與檔期排程，不是定價策略。",
+    f:["最近有沒有哪家門市業績異常？","最近進店人數有沒有比之前少？業績有沒有跟著跌？","最近有辦活動嗎？業績有沒有拉上來？"]},
+  "客單價最近有沒有下降？為什麼？":{
+    v:"是<em>警訊</em>，不是定價成功。",
+    b:"客單價從 2,187 元升到 <b>2,580 元</b>（+18%），單看這個數字像好事。但同期交易筆數從 14,929 筆掉到 <b>11,190 筆</b>（−25%），兩者相乘的淨效果是業績從 3,265 萬掉到 <b>2,887 萬</b>。<br><br>客單價會上升，通常不是因為每個人都多買了，而是<b>低消費力的客人先不來了</b>——留下的是原本就買得多的那群，把平均值墊高。<br><br>要盯的是<b>來客量</b>。客單價這時候是結果，不是槓桿。",
+    f:["最近進店人數有沒有比之前少？業績有沒有跟著跌？","最近轉換率有沒有下降？","最近有沒有哪個通路的客單價下降很多？"]},
+  "最近有沒有哪家門市業績異常？":{
+    v:"這不是門市的問題，是<em>系統斷層</em>。",
+    b:"南西新光整層櫃位（<b>EM／SM2／Techichi</b>）在同一時間點一起變成零交易——一家店可能表現差，<b>三家不同品牌的櫃同時歸零，只可能是資料沒進來</b>。<br><br>Techichi 最後一筆交易停在 5 月。這是 ETL 斷點，不是營運問題。",
+    f:["上季業績最好的門市是哪家？","哪個百貨專櫃業績成長最多？","最近業績有沒有哪個禮拜特別差？"]},
+  "買贈跟直接打折，哪個對毛利傷害比較小？":{
+    v:"因為深折扣<em>沒有帶來新客</em>，只是讓每件商品變現變少。",
+    b:"6 折帶的交易筆數（30,983）跟 7 折（33,701）只差 <b>8%</b>，但業績從 8,749 萬掉到 <b>5,944 萬（−32%）</b>——因為件均價從 1,304 元縮到 <b>1,100 元</b>。<br><br>折扣加深沒有把更多人拉進來，只是把同一批人的消費金額壓低了。<b>7 折是這條曲線的最高點。</b>",
+    f:["上次5月的AH春夏促銷活動衝高的業績，有多少是靠折扣讓掉的？","哪個檔期的促銷費用佔業績比例最高？","我們的促銷ROI，跟業界比算高還是低？"]},
+  "鑽石卡會員的流失率高不高？":{
+    v:"不是流失，是<em>降級</em>——掉下去的比掉出去的多五倍。",
+    b:"去年 <b>2,600</b> 位鑽石卡，今年剩 <b>2,200</b>。拆開來看：續留 <b>1,300</b> 人、降回金卡 <b>1,100</b> 人、整個休眠 <b>200</b> 人；同期從金卡升上來的只有 <b>900</b> 人。<br><br>也就是說，<b>真正消失的只有 200 人，但有 1,100 人是消費力掉到門檻以下</b>。這兩群要的動作完全不同——降級的還在買，只是買少了，回推門檻的機會遠高於已經休眠的那批。<br><br>而且升等補位（900）追不上降級（1,100），頂端是<b>結構性在縮</b>，不是單月波動。",
+    f:["鑽石卡會員裡面有沒有人最近很久沒來了？","鑽石卡會員都在哪個通路消費最多？","一般會員的客單價跟鑽石卡差多少倍？"]},
+  "點數累積最多的前一百個會員都是誰？":{
+    v:"名單已備妥，<em>246 位</em>鑽石卡。",
+    b:"依「去年消費金額 × 今年降幅」排序。第 1 位去年消費 <b>683 萬</b>、今年僅 <b>12 萬</b>。<br><br>前 20 位合計流失 <b>4,180 萬</b>——<b>這 20 通電話的期望值，比後面 226 位加起來還高。</b>",
+    f:["高消費的那群人，他們平均多久來一次？","我們會員的平均終身價值大概是多少？","消費金額最高的前五十個會員，有多少是只在線上買的？"]}
+};
+const GENERIC = {
+  v:"這是一個<em>新問題</em>，我需要實際查一下。",
+  b:"它不對應任何一個凍結的查詢，所以會走完整的 AI 推理：探索 schema、寫 SQL、交叉驗證、揪出資料陷阱。大約 <b>25 輪、30–40 秒</b>。<br><br>答完之後如果有價值，可以把它<b>凍結成 Dashboard 上的一張圖</b>——下次就是秒回、免費的了。",
+  f:["好，開始查"]};
+
+/* ============================================================
+   Thread —— 抽屜裡的對話是「一串」，不是一問一答的取代式面板。
+   ⚠️ 改版前 open_() 每次都覆寫 db.innerHTML，追問三層之後看不到自己怎麼走到這裡，
+      而 ⤢「同一段對話長大」要長的那段東西根本不存在。現在改成往下追加。
+
+   一串的邊界＝「開場」：
+     · 圖表〔深入分析〕 → 開新的一串（帶該圖引用）
+     · Hero askbar / 快捷 chips → 開新的一串（無引用）
+     · 抽屜內追問 chip、抽屜輸入框 → 追加到當前這一串
+   關閉時把整串存進側欄歷史，點側欄那一則可以原封不動重開、繼續問。
+
+   引用（.ctx）是「某一則訊息」的附件，不是整串的屬性——對話中期可以用 ＋
+   再引用別張圖，所以它跟著問句走，不會升到標頭去。
+   ============================================================ */
+const HIST = [];          /* 過去的 threads（新的在前） */
+let TH = null;            /* 當前 thread：{title, turns:[{q,ctx}]} */
+let ATT = null;           /* 待送出的引用：{m:模組, h:圖表名} */
+
+const trim_ = (s,n=28) => s.length > n ? s.slice(0,n) + "…" : s;
+
+/* icon 跟分頁標籤同一顆（TAB_IC）——引用標籤講的就是「哪個模組的哪張圖」，
+   用跟分頁一樣的圖示，模組這件事在兩個地方是同一個視覺記號。 */
+function ctxHTML(c){
+  return `<p class="ctx">${ic(TAB_IC[c.m],"ic sm")}<b>${c.m}</b> › ${c.h}</p>`;
+}
+/* ---- 思考動畫（移植自 index.html）----------------------------------
+   現場問一題 → 先跑思考動畫再出答案；重開歷史 → 直接鋪答案、不重演。
+   ⚠️ 動畫純屬演出：dashboard 的答案是預烘焙的（A{}／GENERIC），這裡只是把
+   「完整 AI 在算」這件事視覺化。使用者拍板：每一題都跑（暫不分「凍結秒回」車道）。
+   logo 是 index 那組 FLAPS 紙飛機逐幀 morph（8 幀），與側欄 .plane i 同源。
+   prefers-reduced-motion 下整段退場、直接出答案（DS 規則 8）。 */
+const STEP_MS = 700;      /* 每步停留；5 步 ≈ 3.5 秒 */
+/* 每一步都帶「具體在做什麼」，且扣著這一題（引用了哪張圖、哪個模組）——
+   不是空泛的「分析中」。答案是預烘焙的，這串是演出，但演的是真的推理路徑。 */
+function traceSteps(q, ctx){
+  const scan = ({業績:"比對交易筆數與客單價",庫存:"比對庫齡分佈與週轉",
+    促銷:"比對檔期增量與蠶食",CRM:"比對會員分層與流動"})[ctx && ctx.m] || "讀取相關明細與維度";
+  return [
+    ["理解問題", `拆解「${trim_(q,16)}」的意圖`],
+    ["確認資料", ctx ? `鎖定「${ctx.h}」的來源表` : "盤點相關的資料表"],
+    ["讀取資料", scan],
+    ["交叉驗證", "排除季節性與單店波動，確認不是雜訊"],
+    ["整理回答", "歸納主因，準備結論"]
+  ];
+}
+const LOGO_FRAMES = [
+  'M249.49,190.22a6,6,0,0,1-5-2.62L123.22,9.54a6,6,0,0,1,9.92-6.75L254.45,180.84a6,6,0,0,1-5,9.38Z',
+  'M249.49,190.22a5.51,5.51,0,0,1-1.39-.17L150,166.7A6,6,1,1,1,152.76,155l98.12,23.35a6,6,0,0,1-1.39,11.84Z',
+  'M128.11,234.31a6,6,0,0,1-5.67-8l23.26-67.44a6,6,0,0,1,7.06-3.88l98.12,23.35a6,6,0,0,1-2.78,11.67L155.27,168l-21.49,62.3A6,6,0,0,1,128.11,234.31Z',
+  'M128.12,234.31a5.72,5.72,0,0,1-1-.09,6,6,0,0,1-5-5.91L122,85.64a6,6,0,0,1,6-6h0a6,6,0,0,1,6,6l.08,107,11.62-33.68a6,6,0,0,1,7.06-3.88l98.12,23.35a6,6,0,0,1-2.78,11.67L155.27,168l-21.49,62.3A6,6,0,0,1,128.12,234.31Z',
+  'M128.12,234.31a5.72,5.72,0,0,1-1-.09,6,6,0,0,1-5-5.91L122,121.5l-13.86,40.36A6,6,1,1,1,96.82,158l25.51-74.28A6,6,0,0,1,134,85.63l.08,107,11.62-33.68a6,6,0,0,1,7.06-3.88l98.12,23.35a6,6,0,0,1-2.78,11.67L155.27,168l-21.49,62.3A6,6,0,0,1,128.12,234.31Z',
+  'M128.12,234.31a5.72,5.72,0,0,1-1-.09,6,6,0,0,1-5-5.91L122,121.5l-13.86,40.36a6,6,0,0,1-4.2,3.87L8.21,190a6,6,0,0,1-3-11.63l92.62-23.51,24.45-71.21A6,6,0,0,1,134,85.63l.08,107,11.62-33.68a6,6,0,0,1,7.06-3.88l98.12,23.35a6,6,0,0,1-2.78,11.67L155.27,168l-21.49,62.3A6,6,0,0,1,128.12,234.31Z',
+  'M128.12,234.31a5.72,5.72,0,0,1-1-.09,6,6,0,0,1-5-5.91L122,121.5l-13.86,40.36a6,6,0,0,1-4.2,3.87L8.21,190a6,6,0,0,1-6.43-9.19l121.44-178a6,6,0,1,1,9.91,6.76l-112.5,165,77.25-19.61,24.45-71.21A6,6,0,0,1,134,85.63l.08,107,11.62-33.68a6,6,0,0,1,7.06-3.88l98.12,23.35a6,6,0,0,1-2.78,11.67L155.27,168l-21.49,62.3A6,6,0,0,1,128.12,234.31Z',
+  'M128.12,234.31a5.72,5.72,0,0,1-1-.09,6,6,0,0,1-5-5.91L122,121.5l-13.86,40.36a6,6,0,0,1-4.2,3.87L8.21,190a6,6,0,0,1-6.43-9.19l121.44-178a6,6,0,0,1,5-2.62h0a6,6,0,0,1,5,2.62L254.45,180.84a6,6,0,0,1-6.35,9.21L155.27,168l-21.49,62.3A6,6,0,0,1,128.12,234.31ZM128,79.63a6.83,6.83,0,0,1,1,.08,6,6,0,0,1,5,5.92l.08,107,11.62-33.68a6,6,0,0,1,7.06-3.88l83.05,19.77-107.63-158L20.63,174.5l77.25-19.61,24.45-71.21A6,6,0,0,1,128,79.63Z'
+];
+const logoSvg = i =>
+  `<svg viewBox="0 0 256.23 234.47" width="18" height="17" fill="currentColor" aria-hidden="true"><path d="${LOGO_FRAMES[i]}"/></svg>`;
+const reduced = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+let TURN_SEQ = 0;
+const _think = {};        /* turnId → {frameTimer, stepTimer} */
+const _elapsed = {};      /* turnId → 思考秒數（供收合摘要顯示） */
+function stopThink(id){ const t=_think[id]; if(t){ clearInterval(t.frameTimer); clearInterval(t.stepTimer); delete _think[id]; } }
+function stopAllThink(){ Object.keys(_think).forEach(stopThink); }
+
+function answerHTML(q){
+  const r = A[q] || GENERIC;
+  return `<div class="a">
+       <p class="av">${r.v}</p>
+       <p class="ab">${r.b}</p>
+       <div class="chips">${r.f.map(f=>`<button class="chip" type="button">${f}</button>`).join("")}</div>
+     </div>`;
+}
+function revealAnswer(id, q){
+  stopThink(id);
+  const turn = db.querySelector(`.turn[data-t="${id}"]`); if(!turn) return;
+  const pend = turn.querySelector(`#pend-${id}`); if(!pend) return;
+  const trace = pend.querySelector(".trace");
+  const hasTrace = trace && trace.querySelector(".tstep");
+  let head = "";
+  if(hasTrace){
+    const secs = (_elapsed[id] || 0).toFixed(1);
+    const n = trace.querySelectorAll(".tstep").length;
+    head = `<div class="trace-wrap collapsed">
+       <button class="trace-sum" type="button" aria-expanded="false">
+         ${ic("chev","ic sm")}<span>已思考 ${secs} 秒 · ${n} 步</span></button>
+       ${trace.outerHTML}</div>`;
+  }
+  pend.outerHTML = head + answerHTML(q);
+  turn.querySelectorAll(".chip").forEach(b =>
+    b.addEventListener("click", () => ask(b.textContent.trim(), null)));
+  const sum = turn.querySelector(".trace-sum");
+  if(sum) sum.addEventListener("click", () => {
+    const w = sum.closest(".trace-wrap"), collapsed = w.classList.toggle("collapsed");
+    sum.setAttribute("aria-expanded", collapsed ? "false" : "true");
+    db.scrollTop = db.scrollHeight;
+  });
+  delete _elapsed[id];
+  db.scrollTop = db.scrollHeight;
+}
+/* Claude 式軌跡：步驟逐條 append，前一條做完打勾留著，最後一條是動態。 */
+function runThink(id, q, ctx){
+  const pend = document.getElementById(`pend-${id}`); if(!pend) return;
+  const steps = traceSteps(q, ctx);
+  pend.innerHTML = `<div class="trace" id="trace-${id}"></div>`;
+  const wrap = document.getElementById(`trace-${id}`);
+  const t0 = performance.now();
+  let si = -1, fi = 0;
+  const frameTimer = setInterval(() => {
+    if(!wrap.isConnected){ stopThink(id); return; }   /* thread 被切走／關閉 → 收手 */
+    fi = (fi + 1) % LOGO_FRAMES.length;
+    const p = wrap.querySelector(".tstep.active .tdot path"); if(p) p.setAttribute("d", LOGO_FRAMES[fi]);
+  }, 280);
+  const advance = () => {
+    const cur = wrap.querySelector(".tstep.active");   /* 收掉上一條：打勾、轉灰 */
+    if(cur){ cur.classList.replace("active","done");
+      cur.querySelector(".tdot").innerHTML = ic("check","ic sm"); }
+    si++;
+    if(si >= steps.length){ _elapsed[id] = (performance.now() - t0) / 1000; revealAnswer(id, q); return; }
+    const [tt, td] = steps[si];
+    wrap.insertAdjacentHTML("beforeend",
+      `<div class="tstep active"><span class="tdot">${logoSvg(fi)}</span>
+         <span class="tlbl"><span class="tt">${tt}</span><span class="td">${td}</span></span></div>`);
+    db.scrollTop = db.scrollHeight;
+  };
+  advance();                                            /* 第一條立刻出現 */
+  const stepTimer = setInterval(advance, STEP_MS);
+  _think[id] = {frameTimer, stepTimer};
+}
+
+/* 一輪：引用（可選）＋ 問 ＋ 答，append 而非覆寫。
+   animate＝現場新問（先思考再出答案）；false＝重開歷史（直接鋪，不重演）。 */
+function renderTurn(q, ctx, animate){
+  const id = ++TURN_SEQ;
+  db.insertAdjacentHTML("beforeend",
+    `<div class="turn" data-t="${id}">
+       ${ctx ? ctxHTML(ctx) : ""}
+       <p class="q">${q}</p>
+       <div class="pend" id="pend-${id}"></div>
+     </div>`);
+  db.scrollTop = db.scrollHeight;
+  if(animate && !reduced()) runThink(id, q, ctx);
+  else revealAnswer(id, q);
+}
+/* 追加一輪到當前 thread；沒有當前 thread 就先開一串 */
+function ask(q, ctx){
+  if(!TH) startThread(q, ctx); else { TH.turns.push({q,ctx}); renderTurn(q, ctx, true); }
+}
+/* 開新的一串（舊的先存進歷史） */
+function startThread(q, ctx){
+  archive();
+  TH = {title:q, turns:[{q,ctx}]};
+  dt.textContent = trim_(q);
+  stopAllThink(); db.innerHTML = "";
+  renderTurn(q, ctx, true);
+  showDrawer();
+}
+/* 把當前 thread 收進側欄歷史（同一串重開再關不會重複堆） */
+function archive(){
+  if(!TH || !TH.turns.length) return;
+  const i = HIST.indexOf(TH); if(i > -1) HIST.splice(i,1);
+  HIST.unshift(TH); TH = null; renderHist();
+}
+function showDrawer(){
+  /* 從「關著」變「開著」時才復位尺寸與位置——使用者拖過／拉過的版面只保留到關閉為止。
+     ⚠️ 復位放在這裡而不是 close_()：close_ 當下抽屜還在淡出，那時復位會看到它彈回右側。
+     抽屜「已經開著」時再開新的一串（點另一張圖的深入分析）不復位，
+     否則正在對照看圖的版面會在眼前跳掉。 */
+  if(!drawer.classList.contains("on")) resetDrawer();
+  drawer.classList.add("on");
+  drawer.setAttribute("aria-hidden","false");
+  ci.focus();
+}
+/* 對外：圖表〔深入分析〕與 Hero 的入口都走這裡＝一律開新的一串 */
+function open_(q, ctx){ startThread(q, ctx); }
+
+function close_(){
+  stopAllThink(); archive(); clearAtt(); closePick();
+  drawer.classList.remove("on");
+  drawer.setAttribute("aria-hidden","true");
+}
+/* 側欄點某一則歷史 → 原封不動重開那一串，可以繼續問。
+   重開＝直接鋪答案（animate=false），不把歷史每一輪都重演一次思考動畫。 */
+function openThread(t){
+  archive();
+  TH = t; const i = HIST.indexOf(t); if(i > -1) HIST.splice(i,1);
+  dt.textContent = trim_(t.title);
+  stopAllThink(); db.innerHTML = "";
+  t.turns.forEach(x => renderTurn(x.q, x.ctx, false));
+  renderHist(); showDrawer();
+}
+
+/* ---- 引用圖表（＋）＝直接跟大欄互動 ---------------------------------
+   ⚠️ 一開始做成下拉清單，但那要使用者把「畫面上看到的那張圖」翻譯成「清單裡的一行字」。
+   要引用的東西就在旁邊，改成：抽屜滑開讓位 → 大欄轉灰 → hover 那張回復彩色 → 點擊帶入。
+   Hero 保持原樣（它不是可引用的對象）。Esc 或再按一次 ＋ 取消。 */
+/* ＋／－ 一顆鈕兩種狀態：沒有引用時是＋（去挑一張），已有引用時是－（拿掉它）。
+   使用者不必看輸入框上方就知道現在有沒有帶引用。 */
+function syncPlus(){
+  const on = !!ATT;
+  cplus.innerHTML = ic(on ? "minus" : "plus","ic sm");
+  cplus.setAttribute("aria-label", on ? "移除引用" : "引用圖表");
+}
+function clearAtt(){ ATT = null; attwrap.innerHTML = ""; syncPlus(); }
+function setAtt(m, h){
+  ATT = {m, h};
+  attwrap.innerHTML = `<span class="att">${ic(TAB_IC[m],"ic sm")}
+    <span class="nm"><b>${m}</b> › ${h}</span>
+    <button type="button" aria-label="移除引用">${ic("x","ic sm")}</button></span>`;
+  attwrap.querySelector("button").addEventListener("click", clearAtt);
+  syncPlus();
+}
+const cplus = document.getElementById("cplus");
+function startPick(){
+  document.body.classList.add("picking");
+  drawer.classList.add("away");
+  cplus.setAttribute("aria-expanded","true");
+  document.getElementById("pickhint").innerHTML =
+    `${ic("chart","ic sm")}點一張圖表來引用<kbd>Esc</kbd>取消`;
+  hideTip();
+}
+function closePick(){
+  document.body.classList.remove("picking");
+  drawer.classList.remove("away");
+  cplus.setAttribute("aria-expanded","false");
+}
+const picking = () => document.body.classList.contains("picking");
+cplus.addEventListener("click", e => {
+  e.stopPropagation();
+  if(ATT){ clearAtt(); return; }        /* － ＝ 拿掉目前的引用 */
+  picking() ? closePick() : startPick();
+});
+/* capture 階段攔截：挑圖模式下，面板裡的〔深入分析〕與哨兵按鈕都不該被觸發 */
+chEl.addEventListener("click", e => {
+  if(!picking()) return;
+  e.preventDefault(); e.stopPropagation();
+  /* 圖表面板的名稱在 h3，KPI 卡在 .k —— 兩種都可引用 */
+  const p = e.target.closest(".panel,.kpi"); if(!p) return;
+  const h = p.querySelector("h3,.k"); if(!h) return;
+  setAtt(page, h.textContent.trim());
+  closePick(); ci.focus();
+}, true);
+
+/* ---- 抽屜可拖曳、可縮放 -------------------------------------------------
+   預設仍是右側靠邊的浮卡（CSS 的 top/right/bottom）。使用者一動它才切成
+   .free ＋ 明確的 left/top/width/height——在那之前不要寫死尺寸，否則視窗
+   一縮，抽屜就凸出畫面外。尺寸／位置記在 BOX，關掉再開會回到使用者擺的地方。
+   標頭連按兩下＝復位。 */
+/* MARGIN 用 --space-4＝預設浮卡離螢幕邊緣的縫隙，拖曳時的邊界跟它對齊 */
+const MINW = 320, MINH = 240, MARGIN = 16;
+let BOX = null, drag = null;
+/* ⤢ 最大化：撐到近滿版（避開左 rail、四周留 MARGIN）。⤡ 還原＝回到按下前的狀態。
+   ⚠️ 這不是 ③ 全屏對話（那換版型、且卡在「吸收 vs 跳頁」）——這只是視窗最大化，
+   還是同一個抽屜。maximized 記狀態、_preMax 記按下前的 BOX（null＝當時是預設浮卡）。 */
+let maximized = false, _preMax = null;
+
+/* 把目前的實際位置固定下來（第一次拖／拉時呼叫） */
+function dockDrawer(){
+  if(BOX) return;
+  const r = drawer.getBoundingClientRect();
+  BOX = {x:r.left, y:r.top, w:r.width, h:r.height};
+  drawer.classList.add("free"); applyBox();
+}
+function applyBox(){
+  drawer.style.left   = BOX.x + "px";
+  drawer.style.top    = BOX.y + "px";
+  drawer.style.width  = BOX.w + "px";
+  drawer.style.height = BOX.h + "px";
+}
+/* 完全不許出界：抽屜是唯一能看到答案的地方，被拖出去一半就等於答案被裁掉。
+   ⚠️ 左界不是 0 而是 rail 寬——側欄 z-index 66 蓋在抽屜(61)之上，
+   貼到 x=16 會鑽進 rail 底下、左緣文字被吃掉（截圖才看出來的）。
+   先夾尺寸（不得大於可用區），再夾位置（右／下界要扣掉自身寬高）。 */
+const RAIL = parseInt(getComputedStyle(document.documentElement)
+               .getPropertyValue("--rail")) || 56;
+function clampBox(){
+  const minX = RAIL + MARGIN;
+  const maxW = innerWidth - minX - MARGIN, maxH = innerHeight - MARGIN*2;
+  BOX.w = Math.min(Math.max(MINW, BOX.w), maxW);
+  BOX.h = Math.min(Math.max(MINH, BOX.h), maxH);
+  BOX.x = Math.min(Math.max(minX,   BOX.x), innerWidth  - BOX.w - MARGIN);
+  BOX.y = Math.min(Math.max(MARGIN, BOX.y), innerHeight - BOX.h - MARGIN);
+}
+function resetDrawer(){
+  BOX = null; drawer.classList.remove("free");
+  drawer.style.left = drawer.style.top = drawer.style.width = drawer.style.height = "";
+  setMax(false); _preMax = null;      /* 任何復位都同時解除最大化，圖示回 ⤢ */
+}
+/* ⤢／⤡ 一顆鈕兩種狀態 */
+function setMax(on){
+  maximized = on;
+  dex.innerHTML = ic(on ? "shrink" : "expand","ic sm");
+  dex.setAttribute("aria-label", on ? "還原大小" : "放大");
+}
+function maxBox(){
+  const minX = RAIL + MARGIN;
+  return {x:minX, y:MARGIN, w:innerWidth - minX - MARGIN, h:innerHeight - MARGIN*2};
+}
+function toggleMax(){
+  if(!maximized){
+    _preMax = BOX ? {...BOX} : null;   /* null＝按下前是預設浮卡（還原時 resetDrawer） */
+    dockDrawer();
+    BOX = maxBox(); clampBox(); applyBox();
+    setMax(true);
+  } else if(_preMax){
+    BOX = {..._preMax}; clampBox(); applyBox();
+    setMax(false); _preMax = null;
+  } else {
+    resetDrawer();                     /* resetDrawer 內已 setMax(false) */
+  }
+}
+
+function onMove(e){
+  if(!drag) return;
+  const dx = e.clientX - drag.px, dy = e.clientY - drag.py, s = drag.start;
+  if(drag.mode === "move"){ BOX.x = s.x + dx; BOX.y = s.y + dy; }
+  else {
+    const m = drag.mode;
+    if(m.includes("e")) BOX.w = Math.max(MINW, s.w + dx);
+    if(m.includes("s")) BOX.h = Math.max(MINH, s.h + dy);
+    /* 往左／上拉：寬高增加的同時，原點要跟著往回移 */
+    if(m.includes("w")){ BOX.w = Math.max(MINW, s.w - dx); BOX.x = s.x + (s.w - BOX.w); }
+    if(m.includes("n")){ BOX.h = Math.max(MINH, s.h - dy); BOX.y = s.y + (s.h - BOX.h); }
+  }
+  clampBox(); applyBox();
+}
+function endDrag(){
+  if(!drag) return;
+  drag = null;
+  drawer.classList.remove("dragging","resizing");
+  removeEventListener("pointermove", onMove);
+  removeEventListener("pointerup", endDrag);
+}
+function beginDrag(e, mode){
+  /* 最大化狀態下手動拖／拉 → 視為離開最大化（圖示回 ⤢，之後 ⤡ 不會亂還原） */
+  if(maximized){ maximized = false; _preMax = null; setMax(false); }
+  dockDrawer();
+  drag = {mode, px:e.clientX, py:e.clientY, start:{...BOX}};
+  drawer.classList.add(mode === "move" ? "dragging" : "resizing");
+  addEventListener("pointermove", onMove);
+  addEventListener("pointerup", endDrag);
+  e.preventDefault();
+}
+drawer.querySelector(".dhd").addEventListener("pointerdown", e => {
+  if(e.target.closest("button")) return;      /* ⤢／✕ 照常可點 */
+  beginDrag(e, "move");
+});
+drawer.querySelectorAll(".rz").forEach(h =>
+  h.addEventListener("pointerdown", e => beginDrag(e, h.dataset.rz)));
+drawer.querySelector(".dhd").addEventListener("dblclick", e => {
+  if(!e.target.closest("button")) resetDrawer();
+});
+/* 視窗變動時：最大化中就重算滿版，否則把抽屜拉回可見範圍 */
+addEventListener("resize", () => {
+  if(!BOX) return;
+  if(maximized) BOX = maxBox();
+  clampBox(); applyBox();
+});
+
+document.getElementById("dx").addEventListener("click", close_);
+/* ⤢ ＝最大化 ↔ 還原（視窗控制）。真正的 ③ 全屏對話（換版型）等「吸收 vs 跳頁」
+   拍板後另接——屆時可以是「已最大化時再按一次才進 ③」。 */
+dex.addEventListener("click", toggleMax);
+
+const sendCi = () => {
+  const q = ci.value.trim(); if(!q) return;
+  ask(q, ATT); ci.value = ""; clearAtt();
+};
+document.getElementById("cs").addEventListener("click", sendCi);
+ci.addEventListener("keydown", e => { if(e.key === "Enter") sendCi(); });
+
+/* 頂欄常駐輸入列 —— 自由問句一律走完整 AI（第一版不做路由器），
+   而且每一句都要記進側欄的歷史：問了三次以上的問題，就是該凍結成元件的問題。 */
+const ti = document.getElementById("ti");
+const askTop = () => { if(ti.value.trim()){ open_(ti.value.trim(), null); ti.value=""; } };
+document.getElementById("ts").addEventListener("click", askTop);
+ti.addEventListener("keydown", e => { if(e.key === "Enter") askTop(); });
+
+/* ---- 側欄：預設收起，展開是 overlay（不推擠主區） ---- */
+const side = document.getElementById("side"), sscrim = document.getElementById("sscrim");
+const openSide  = () => { side.classList.add("open"); sscrim.classList.add("on"); hideTip(); };
+const closeSide = () => { side.classList.remove("open"); sscrim.classList.remove("on"); };
+document.getElementById("plane").addEventListener("click", openSide);
+document.getElementById("tog").addEventListener("click", closeSide);
+sscrim.addEventListener("click", closeSide);
+
+/* ---- 側欄的兩個對話入口 ----
+   點一則歷史 → openThread()：thread 本來就住在抽屜(②)，重開它不需要知道 ③ 長什麼樣，
+   所以這個現在就是真的。
+   「新對話」→ ③ 的空狀態（那組跨模組通用的大卡片只該出現在那裡），仍是 stub：
+   「吸收進 dashboard.html vs 跳去 index.html」尚未拍板（見 進度與交接.md 第十一節），
+   那題決定的正是這個函式的本體（吸收＝展開同一份 DOM、⤢ 可做連續放大；
+   跳頁＝location.href + sessionStorage 交接）。刻意留白，不先接之後要拆的假動作。 */
+function newThread(){ }
+document.getElementById("newchat").addEventListener("click", newThread);
+
+const histlist = document.getElementById("histlist");
+function renderHist(){
+  histlist.innerHTML = HIST.length
+    ? HIST.map((t,i) => `<button class="hist" type="button" data-i="${i}">${t.title}</button>`).join("")
+    : `<p class="sempty">還沒有對話。點圖表下的〔深入分析〕或在上方發問。</p>`;
+  histlist.querySelectorAll(".hist").forEach(b =>
+    b.addEventListener("click", () => { openThread(HIST[+b.dataset.i]); closeSide(); }));
+}
+/* 種幾串舊對話，讓側欄一開就有東西（都對到 A{} 裡的凍結答案，點下去秒回）。
+   接後端後改成讀真實歷史。 */
+[["現在最快斷貨的前十款是哪些？", null],
+ ["週五的檔期要提前開嗎？", null],
+ ["最近有沒有哪家門市業績異常？", {m:"業績", h:"各店櫃達成率"}]
+].forEach(([q,c]) => HIST.unshift({title:q, turns:[{q, ctx:c}]}));
+renderHist();
+
+/* 收起態只有 icon，靠 tooltip 補回標籤 */
+[["plane","開啟選單"],["newchat","新對話"],["search","搜尋對話"]].forEach(([id,label]) => {
+  const el = document.getElementById(id);
+  el.addEventListener("mouseenter", e => { if(!side.classList.contains("open")) showTip(e, label); });
+  el.addEventListener("mouseleave", hideTip);
+});
+
+/* Esc：挑圖模式優先——只取消挑圖，不要順手把抽屜也關掉 */
+addEventListener("keydown", e => {
+  if(e.key !== "Escape") return;
+  if(picking()){ closePick(); return; }
+  close_(); closeSide(); closeProfile();
+});
+
+draw();
+</script>
+
+<!-- ── 開場 loading 動畫驅動（自 index.html 移植；index 的 _stagger 內容進場為該頁專屬，未移植）── -->
+<script>
+(function(){
+  const _sleep = ms => new Promise(r => setTimeout(r, ms));
+  const TAGLINE = "從提問到洞察，幾秒內完成";
+  let _done = false;
+  function _finish(){
+    if(_done) return; _done = true;
+    const ov = document.getElementById("intro-overlay");
+    if(ov){ ov.classList.add("intro-out"); setTimeout(() => { if(ov.parentNode) ov.remove(); }, 650); }
+  }
+  async function _run(){
+    const ov = document.getElementById("intro-overlay");
+    const wordEl = document.getElementById("intro-wordmark-wrap");
+    const aiTagEl = document.getElementById("intro-ai-tag");
+    const tagEl = document.getElementById("intro-tagline");
+    if(!ov) return;
+    ov.addEventListener("click", _finish);
+    if(window.matchMedia("(prefers-reduced-motion: reduce)").matches){
+      /* 無障礙底線（DS 規則 8）：直接跳到結束態 */
+      if(wordEl) wordEl.classList.add("revealed");
+      if(aiTagEl) aiTagEl.classList.add("visible");
+      if(tagEl){ tagEl.style.opacity = "1"; tagEl.textContent = TAGLINE; }
+      await _sleep(400); _finish(); return;
+    }
+    /* Phase 1：wordmark 左→右 reveal（.sheen 底下自己來回掃光） */
+    if(wordEl) wordEl.classList.add("revealed");
+    await _sleep(1600); if(_done) return;
+    /* Phase 1b：停在掃光的 wordmark 上當「載入中」的一拍 */
+    await _sleep(2000); if(_done) return;
+    if(aiTagEl) aiTagEl.classList.add("visible");
+    /* Phase 2：tagline 打字機 */
+    await _sleep(320); if(_done) return;
+    tagEl.style.opacity = "1";
+    for(const ch of TAGLINE){ if(_done) return; tagEl.textContent += ch; await _sleep(78); }
+    /* Phase 3：shimmer 停頓 → Phase 4：淡出露出 dashboard */
+    tagEl.classList.add("shimmer");
+    await _sleep(1050); if(_done) return;
+    _finish();
+  }
+  if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", _run);
+  else _run();
+}());
+</script>
+</body>
+</html>
