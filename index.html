@@ -1751,7 +1751,14 @@ function buildOption(c, tk, H, W){
   if(c.type==='donut'){
     const half=c.half, total=c.d.reduce((s,x)=>s+x[1],0)||1;
     const colAt=i=> c.ci ? (c.ci[i]===-1 ? tk.soft : tk.dv[c.ci[i]]) : tk.dv[i%5];
-    const data=c.d.map((x,i)=>({ name:x[0], value:x[1], itemStyle:{color:colAt(i)} }));
+    /* hover ＝**整片變色**（非只描外框）：淺色/亮色模式加深、暗色模式提亮。整片變深後與相鄰片
+       形成對比邊界，分隔線自然回來，且是整片 highlight。放大照舊保留。 */
+    const shade=(hex,f)=>{ const m=(hex||"").trim().match(/^#([0-9a-f]{6})$/i); if(!m) return hex;
+      const n=parseInt(m[1],16), t=f<0?0:255, a=Math.abs(f), ch=v=>Math.round(v+(t-v)*a);
+      return `rgb(${ch((n>>16)&255)},${ch((n>>8)&255)},${ch(n&255)})`; };
+    const emphCol=col=> shade(col, tk.isDark ? 0.16 : -0.12);
+    const data=c.d.map((x,i)=>{ const col=colAt(i);
+      return { name:x[0], value:x[1], itemStyle:{color:col}, emphasis:{itemStyle:{color:emphCol(col)}} }; });
     if(half) data.push({ value:total, name:"", silent:true, label:{show:false},
       labelLine:{show:false}, tooltip:{show:false}, itemStyle:{color:"transparent"},
       emphasis:{scale:false} });
@@ -1802,7 +1809,7 @@ function buildOption(c, tk, H, W){
         startAngle: half?180:90,
         avoidLabelOverlap:true, label:{show:false}, labelLine:{show:false},
         itemStyle:{ borderRadius:3, borderWidth:2, borderColor:tk.paper },
-        emphasis:{ scale:true, scaleSize:5 },
+        emphasis:{ scale:true, scaleSize:5 },   /* 整片變色的 itemStyle.color 掛在各 data 上（見 emphCol） */
         data }]
     };
   }
@@ -3085,7 +3092,7 @@ document.addEventListener("click", e => {
    一縮，抽屜就凸出畫面外。尺寸／位置記在 BOX，關掉再開會回到使用者擺的地方。
    標頭連按兩下＝復位。 */
 /* MARGIN 用 --space-4＝預設浮卡離螢幕邊緣的縫隙，拖曳時的邊界跟它對齊 */
-const MINW = 320, MINH = 240, MARGIN = 16;
+const MINW = 380, MINH = 240, MARGIN = 16;
 let BOX = null, drag = null;
 /* ⤢ 最大化：撐到近滿版（避開左 rail、四周留 MARGIN）。⤡ 還原＝回到按下前的狀態。
    ⚠️ 這不是 ③ 全屏對話（那換版型、且卡在「吸收 vs 跳頁」）——這只是視窗最大化，
