@@ -717,7 +717,7 @@ main{flex:1;min-height:0;overflow:hidden;
   line-height:var(--lh-tight);color:var(--text);font-weight:var(--fw-semibold);}
 .noans .na-t .ic{flex:none;width:16px;height:16px;color:var(--text-muted);}
 .noans .na-b{margin:0;font-size:var(--text-small);line-height:var(--lh-body);color:var(--text-muted);}
-.noans .chips{margin-top:var(--space-1);}
+.noans .na-sug{display:flex;flex-direction:column;gap:var(--space-1);}
 /* ---- 後端錯誤卡（逾時／通用查詢失敗）：header icon + 標題 + 說明 + 動作鈕。 -----------
    對齊 index.html .err-bubble，token 翻 v2。故意只做兩張、不建 _ERR_CFG 目錄（後端 code 太粗，
    B1–B8 大多 code:None，撐不起細分）。severity 走語意色：逾時=warning、通用失敗=danger，
@@ -2596,13 +2596,20 @@ function sampleChips(n){
 function noansHTML(){
   return `<div class="noans">
        <p class="na-t">${ic("find","ic")}<span>這題目前答不了</span></p>
-       <p class="na-b">為了確保最精準和正確的回覆，這個問題暫時不在已驗證的範圍。您可以先嘗試：</p>
-       <div class="chips">${sampleChips(5).map(f=>`<button class="chip" type="button">${f}</button>`).join("")}</div>
+       <p class="na-b">為了確保最精準和正確的回覆，這個問題暫時不在已驗證的範圍。</p>
+       <div class="na-sug">
+         <p class="na-b">您可以先嘗試：</p>
+         <div class="chips">${sampleChips(5).map(f=>`<button class="chip" type="button">${f}</button>`).join("")}</div>
+       </div>
      </div>`;
 }
 function wireReject(turn){
   turn.querySelectorAll(".noans .chip").forEach(b =>
-    b.addEventListener("click", () => ask(b.textContent.trim(), null)));
+    b.addEventListener("click", () => {          /* 點一顆＝選定，整個建議區（含「您可以先嘗試：」）移除，留誠實告知 */
+      const q = b.textContent.trim(), sug = b.closest(".na-sug");
+      if(sug) sug.remove();
+      ask(q, null);
+    }));
 }
 /* 逾時卡（TIMEOUT）：查詢跑太久。可行動——縮小範圍後重試。 */
 function timeoutHTML(id){
@@ -2649,7 +2656,7 @@ function wireTraceSum(turn){
   if(sum) sum.addEventListener("click", () => {
     const w = sum.closest(".trace-wrap"), collapsed = w.classList.toggle("collapsed");
     sum.setAttribute("aria-expanded", collapsed ? "false" : "true");
-    db.scrollTop = db.scrollHeight;
+    /* 不捲動：展開內容長在按鈕下方，維持 scrollTop 讓使用者停在原處（別跳到最底） */
   });
 }
 /* ---- 回饋：讚/倒讚（答案品質訊號，與後端凍結判斷無關，見 CSS .fb 註解）---------
@@ -2819,7 +2826,11 @@ function revealAnswer(id, q, animate){
        ${fbHTML(id, doType)}
      </div>`;
   turn.querySelectorAll(".chip").forEach(b =>
-    b.addEventListener("click", () => ask(b.textContent.trim(), null)));
+    b.addEventListener("click", () => {          /* 點一顆＝選定，整排追問移除，避免回頭重複選 */
+      const q = b.textContent.trim(), row = b.closest(".chips");
+      if(row) row.remove();
+      ask(q, null);
+    }));
   wireFeedback(turn, id);   /* 回饋鈕接線 ＋ 從 _fb[id] 還原讚/倒讚態（歷史重開會用到） */
   wireTraceSum(turn);
   const a = turn.querySelector(".a"),
