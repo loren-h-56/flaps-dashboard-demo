@@ -708,14 +708,51 @@ main{flex:1;min-height:0;overflow:hidden;
 .a .av em{font-style:normal;color:var(--accent);}
 .a .ab{font-size:var(--text-small);line-height:var(--lh-body);color:var(--text-body);margin:0;}
 .a .ab b{color:var(--text);}
-/* 無法回答：不是一則自信的答案。warning 三角（Lucide）＋主文 ＋ 淺色內文，
-   與真答案（.a 的 iris 顯示字）在視覺上分層。三角是語意色 warning，非頁面那一處 coral。 */
+/* 拒答卡（對應後端 NO_MATCH）：系統誠實說「這題不在已驗證範圍」。⚠️ 刻意**中性/友善**、
+   非故障樣式——icon 走 --text-muted（不是 warning/danger 語意色），並帶「換個問法」引導 +
+   幾句示範問句 chips。這與 B/C 類「查詢失敗」（.errcard）視覺分層：拒答≠故障。 */
 .noans{display:flex;flex-direction:column;gap:var(--space-2);}
 .noans .na-t{margin:0;display:flex;align-items:center;gap:var(--space-2);
   font-family:var(--font-display);font-size:var(--text-body-size);
   line-height:var(--lh-tight);color:var(--text);font-weight:var(--fw-semibold);}
-.noans .na-t .ic{flex:none;width:16px;height:16px;color:var(--color-warning);}
+.noans .na-t .ic{flex:none;width:16px;height:16px;color:var(--text-muted);}
 .noans .na-b{margin:0;font-size:var(--text-small);line-height:var(--lh-body);color:var(--text-muted);}
+.noans .chips{margin-top:var(--space-1);}
+/* ---- 後端錯誤卡（逾時／通用查詢失敗）：header icon + 標題 + 說明 + 動作鈕。 -----------
+   對齊 index.html .err-bubble，token 翻 v2。故意只做兩張、不建 _ERR_CFG 目錄（後端 code 太粗，
+   B1–B8 大多 code:None，撐不起細分）。severity 走語意色：逾時=warning、通用失敗=danger，
+   皆非頁面那一處 coral。demo 由測試輸入關鍵字觸發，接後端後改由 SSE error 事件驅動。 */
+.errcard{display:flex;flex-direction:column;gap:var(--space-3);}
+.errcard .eh{display:flex;align-items:center;gap:var(--space-2);}
+.errcard .eic{flex:none;width:32px;height:32px;border-radius:var(--radius-md);
+  display:inline-flex;align-items:center;justify-content:center;}
+.errcard .eic .ic{width:16px;height:16px;}
+.errcard.warn .eic{background:var(--color-warning-soft);color:var(--color-warning);}
+.errcard.danger .eic{background:var(--color-danger-soft);color:var(--color-danger);}
+.errcard .et{font-family:var(--font-display);font-size:var(--text-body-size);
+  font-weight:var(--fw-semibold);color:var(--text);line-height:var(--lh-tight);}
+.errcard .ed{margin:0;font-size:var(--text-small);line-height:var(--lh-body);color:var(--text-body);}
+.errcard .ea{display:flex;gap:var(--space-2);flex-wrap:wrap;}
+.ebtn{display:inline-flex;align-items:center;gap:5px;cursor:pointer;white-space:nowrap;
+  border:1px solid var(--border);background:var(--paper);color:var(--text);
+  border-radius:var(--radius-md);padding:6px 12px;
+  font-family:var(--font-body);font-size:var(--text-label);
+  transition:background .12s ease,border-color .12s ease,filter .12s ease;}
+.ebtn:hover{background:var(--surface-2);}
+.ebtn:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+.ebtn .ic{width:13px;height:13px;}
+/* 重試＝低調 iris（描邊，不用實心主按鈕，避免故障卡上有個太搶眼的鈕） */
+.ebtn.iris{color:var(--accent);border-color:color-mix(in srgb,var(--accent),transparent 55%);}
+.ebtn.iris:hover{background:var(--accent-soft);border-color:var(--accent);}
+@media (prefers-reduced-motion:reduce){.ebtn{transition:none;}}
+/* 截斷提示條（對應 result_init truncated:true）：非錯誤、是資訊——接在答案上緣。
+   走 iris 資訊色（非 warning/danger，那是「答案沒生出來」；這是「答案有、只是被截」）。 */
+.trunc{display:flex;align-items:center;gap:var(--space-2);
+  padding:var(--space-2) var(--space-3);border-radius:var(--radius-md);
+  background:var(--accent-soft);color:var(--text-body);
+  font-size:var(--text-label);line-height:var(--lh-body);}
+.trunc .ic{flex:none;width:14px;height:14px;color:var(--accent);}
+.trunc b{color:var(--accent);font-weight:var(--fw-semibold);}
 .chips{display:flex;gap:var(--space-2);flex-wrap:wrap;}
 .chips[hidden]{display:none;}   /* display:flex 會蓋掉 UA 的 [hidden]，打字未完前要真的藏住 */
 /* 打字機游標：逐字吐答案時跟在字尾閃動；追問 chips 打完內文才淡入。 */
@@ -896,6 +933,9 @@ body.picking .panel,body.picking .kpi{filter:grayscale(1);cursor:pointer;
 /* hover 的那張回復彩色並浮起——「這張就是你要引用的」 */
 body.picking .panel:hover,body.picking .kpi:hover{filter:none;border-color:var(--accent);
   box-shadow:var(--shadow-lg);}
+/* 挑圖模式下，Hero 的發問框與快捷 chips 停用——此刻只該挑圖，避免點到 chip 誤開視窗。
+   深入分析鈕本身不在此列（仍可點來取消）。 */
+body.picking .qchips,body.picking .askbar{opacity:.45;pointer-events:none;}
 /* 提示條：告訴使用者現在要做什麼，Esc 取消 */
 .pickhint{position:fixed;left:50%;bottom:var(--space-6);transform:translateX(-50%) translateY(8px);
   z-index:64;display:flex;align-items:center;gap:var(--space-2);
@@ -1093,7 +1133,7 @@ body.picking .pickhint{opacity:1;transform:translateX(-50%);}
       <div id="fbnormal">
         <div class="fbhd">
           <p class="fbt" id="fbt">這個回答哪裡可以更好？</p>
-          <p class="fbd">感謝您花時間告訴我們！<b>每一則回饋都能讓 FLAPS AI 變得更好。</b>任何不符合預期的地方，請放心分享。</p>
+          <p class="fbd" id="fbd">感謝您花時間告訴我們！<b>每一則回饋都能讓 FLAPS AI 變得更好。</b>任何不符合預期的地方，請放心分享。</p>
         </div>
         <div class="fbbody">
           <div class="fbcats" id="fbcats">
@@ -1175,6 +1215,10 @@ const P = {
   /* 拇指讚／倒讚——自 index.html 的 _ico.like／dislike 移植（維持全站同一支圖）。 */
   thumbUp:'<path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3H14z"/><path d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/>',
   thumbDown:'<path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3H10z"/><path d="M17 2h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17"/>',
+  /* 後端錯誤卡用（Lucide line）：clock 逾時 · refresh 重試 · info 截斷提示 */
+  clock:'<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
+  refresh:'<path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/><path d="M3 21v-5h5"/>',
+  info:'<circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>',
   db:'<ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14a9 3 0 0 0 18 0V5"/><path d="M3 12a9 3 0 0 0 18 0"/>'
 };
 const ic = (n, cls="ic") =>
@@ -2266,6 +2310,7 @@ const QC = {
 const qcEl = document.getElementById("qchips");
 /* 事件掛在容器上，重繪不受影響（比照 chEl 的做法） */
 qcEl.addEventListener("click", e => {
+  if(picking()) return;                 /* 挑圖模式下 chips 停用（CSS 也 pointer-events:none，這是雙保險）*/
   const b = e.target.closest(".chip");
   if(b) open_(b.textContent.trim(), null);
 });
@@ -2477,7 +2522,8 @@ const reduced = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
 let TURN_SEQ = 0;
 const _think = {};        /* turnId → {frameTimer, stepTimer} */
 const _elapsed = {};      /* turnId → 思考秒數（供收合摘要顯示） */
-const _typed = {};        /* turnId → 是否為「自由輸入」（非 chip 點擊）；true → 回「無法回答」UI */
+const _typed = {};        /* turnId → 是否為「自由輸入」（非 chip 點擊）；true 且無 _demo → 拒答卡 */
+const _demo = {};         /* turnId → demo 故障/截斷模擬：'timeout'|'fail'|'trunc'|''（''＝拒答） */
 const _type = {};         /* turnId → 打字機 interval；輸出答案時逐字顯示 */
 function stopThink(id){ const t=_think[id]; if(t){ clearInterval(t.frameTimer); clearInterval(t.stepTimer); delete _think[id]; } }
 function stopType(id){ const t=_type[id]; if(t){ clearInterval(t); delete _type[id]; } }
@@ -2523,13 +2569,81 @@ function answerHTML(q){
        <div class="chips">${r.f.map(f=>`<button class="chip" type="button">${f}</button>`).join("")}</div>
      </div>`;
 }
-/* 「無法回答」——自由輸入（非 chip）一律回這則。示範版只有 chip 走得到凍結答案，
-   自由問句沒有對應的凍結查詢，如實回不能答，而不是給一個看起來像答案的空話。 */
+/* ---- 後端錯誤／邊界情境卡（見「後端錯誤與安全邊界情境表.md」快速對照表）------------
+   demo 由 classifyDemo() 依測試輸入關鍵字模擬；接後端後改由 SSE error / result_init 事件驅動。
+   刻意只做四張、不建 _ERR_CFG 目錄（後端 code 太粗，撐不起細分）。 */
+function classifyDemo(q){
+  if(/逾時|timeout|太久|超時/i.test(q)) return "timeout";
+  if(/截斷|truncat|前?200|太多筆/i.test(q)) return "trunc";
+  if(/失敗|故障|系統錯誤|error|fail/i.test(q)) return "fail";
+  return "";   /* 其餘自由輸入 → 拒答（對應 NO_MATCH，最貼近真實：多落在 golden 範圍外） */
+}
+/* 拒答卡（NO_MATCH）：系統誠實說「這題不在已驗證範圍」。中性/友善、非故障樣式，
+   帶示範問句——⚠️ 接後端時這幾句＝該問題的 cosine 相似 top-5 golden；demo 先從問句池隨機取 5。 */
+const GOLDEN_POOL = [...new Set([].concat(...Object.values(QC), Object.keys(A)))];
+function sampleChips(n){
+  const p = GOLDEN_POOL.slice();
+  for(let i=p.length-1; i>0; i--){ const j=Math.floor(Math.random()*(i+1)); [p[i],p[j]]=[p[j],p[i]]; }
+  return p.slice(0, n);
+}
 function noansHTML(){
   return `<div class="noans">
-       <p class="na-t">${ic("alert","ic")}<span>這個問題目前無法回答</span></p>
-       <p class="na-b">為了確保最精準且正確的回答，此問題暫不支援。</p>
+       <p class="na-t">${ic("find","ic")}<span>這題目前答不了</span></p>
+       <p class="na-b">為了確保最精準和正確的回覆，這個問題暫時不在已驗證的範圍。您可以先嘗試：</p>
+       <div class="chips">${sampleChips(5).map(f=>`<button class="chip" type="button">${f}</button>`).join("")}</div>
      </div>`;
+}
+function wireReject(turn){
+  turn.querySelectorAll(".noans .chip").forEach(b =>
+    b.addEventListener("click", () => ask(b.textContent.trim(), null)));
+}
+/* 逾時卡（TIMEOUT）：查詢跑太久。可行動——縮小範圍後重試。 */
+function timeoutHTML(id){
+  return `<div class="errcard warn" data-err="${id}">
+       <div class="eh"><span class="eic">${ic("clock")}</span><span class="et">回應時間過長</span></div>
+       <p class="ed">這個查詢的資料量較大，處理時間超出預期。可以縮小查詢範圍——例如指定特定時間區間或單一門市——再試一次。</p>
+       <div class="ea">
+         <button class="ebtn iris er-retry" type="button">${ic("refresh")}重試</button>
+       </div>
+     </div>`;
+}
+/* 通用查詢失敗卡（無 code，最大宗）：純「請重試」，不細分成因（後端沒給區分依據）。 */
+function failHTML(id){
+  return `<div class="errcard danger" data-err="${id}">
+       <div class="eh"><span class="eic">${ic("alert")}</span><span class="et">查詢失敗</span></div>
+       <p class="ed">系統暫時出了點狀況，這次沒能完成查詢，您可以嘗試換種問法。</p>
+       <div class="ea">
+         <button class="ebtn iris er-retry" type="button">${ic("refresh")}重試</button>
+         <button class="ebtn er-report" type="button">問題回報</button>
+       </div>
+     </div>`;
+}
+/* 截斷：一則正常答案，上緣接「僅顯示前 200 筆」提示條（result_init truncated:true）。 */
+function truncAnswerHTML(){
+  return `<div class="a">
+       <div class="trunc">${ic("info","ic sm")}<span>資料筆數較多，此處顯示前 <b>200</b> 筆。</span></div>
+       <p class="av">符合條件的資料<em>超過 200 筆</em>。</p>
+       <p class="ab">以下為前 200 筆的摘要（示意）。實際接後端時，這條提示由 <b>result_init</b> 事件的 <b>truncated:true</b> 觸發，筆數上限＝200。</p>
+     </div>`;
+}
+/* 錯誤卡動作鈕：重試＝重問同題；換個問法＝聚焦輸入；問題回報＝複用回饋 modal 的 report 變體。 */
+function wireErrCard(turn, id, q){
+  const card = turn.querySelector(`.errcard[data-err="${id}"]`); if(!card) return;
+  const retry = card.querySelector(".er-retry"),
+        reph  = card.querySelector(".er-rephrase"),
+        rep   = card.querySelector(".er-report");
+  if(retry) retry.addEventListener("click", () => ask(q, null, true));
+  if(reph)  reph.addEventListener("click", () => { showDrawer(); ci.focus(); });
+  if(rep)   rep.addEventListener("click", () => openFb(id, "report"));
+}
+/* 思考軌跡收合摘要（「已思考 X 秒 · N 步」）點擊展開——正常答案與 demo 故障卡共用。 */
+function wireTraceSum(turn){
+  const sum = turn.querySelector(".trace-sum");
+  if(sum) sum.addEventListener("click", () => {
+    const w = sum.closest(".trace-wrap"), collapsed = w.classList.toggle("collapsed");
+    sum.setAttribute("aria-expanded", collapsed ? "false" : "true");
+    db.scrollTop = db.scrollHeight;
+  });
 }
 /* ---- 回饋：讚/倒讚（答案品質訊號，與後端凍結判斷無關，見 CSS .fb 註解）---------
    讚＝靜默記錄；倒讚＝先記錄再開 drawer 內彈窗收原因（不因懶得補充而遺失負評）。
@@ -2541,6 +2655,7 @@ let _fbId = null;      /* 目前彈窗對應的 turn id */
 let _fbTimer = null;   /* 感謝畫面自動關閉計時 */
 let _fbPrev = null;    /* 開倒讚彈窗前的評價：沒送出就關 → 還原它（不留孤兒 active） */
 let _fbDone = false;   /* 這次彈窗是否已送出（送出才是真的倒讚，取消不算） */
+let _fbMode = "down";  /* 'down'＝倒讚回饋（收評價）；'report'＝問題回報（不動評價，見錯誤卡）*/
 function fbHTML(id, hidden){
   return `<div class="fb" data-fb="${id}"${hidden?" hidden":""}>
        <button class="fbtn fb-up" type="button" title="有幫助" aria-pressed="false" aria-label="這則回答有幫助">${ic("thumbUp")}</button>
@@ -2583,17 +2698,23 @@ const fbOtherCb = document.getElementById("fbother-cb"),
       fbNormal  = document.getElementById("fbnormal"),
       fbThank   = document.getElementById("fbthank");
 const fbOpen = () => fbov.classList.contains("open");
-function openFb(id){
-  _fbId = id; _fbDone = false; clearTimeout(_fbTimer);
+function openFb(id, mode="down"){
+  _fbId = id; _fbMode = mode; _fbDone = false; clearTimeout(_fbTimer);
+  document.getElementById("fbt").textContent = mode==="report" ? "問題回報" : "這個回答哪裡可以更好？";
+  document.getElementById("fbd").innerHTML = mode==="report"
+    ? "遇到什麼問題了嗎？<b>你的每一則回報都很重要。</b>請描述發生了什麼，我們會認真看每一條。"
+    : "感謝您花時間告訴我們！<b>每一則回饋都能讓 FLAPS AI 變得更好。</b>任何不符合預期的地方，請放心分享。";
   fbov.querySelectorAll("#fbcats input").forEach(cb => cb.checked = false);
   fbOther.style.display = "none"; fbOtherIn.value = "";
+  document.getElementById("fbcats").style.display = mode==="report" ? "none" : "";  /* 回報只留描述欄 */
+  fbTa.placeholder = mode==="report" ? "請描述發生了什麼…" : "歡迎提出任何建議（選填）";
   fbTa.value = ""; fbErr.classList.remove("on");
   fbNormal.style.display = ""; fbThank.style.display = "none";
   fbov.classList.add("open");
 }
 function closeFb(){
   clearTimeout(_fbTimer);
-  if(!_fbDone && _fbId != null){          /* 沒送出就關 → 還原倒讚前的狀態，不留孤兒 active */
+  if(_fbMode==="down" && !_fbDone && _fbId != null){   /* 倒讚沒送出就關 → 還原，不留孤兒 active */
     if(_fbPrev) _fb[_fbId] = _fbPrev; else delete _fb[_fbId];
     persistFb(_fbId); syncFb(_fbId);
   }
@@ -2607,7 +2728,8 @@ function submitFb(){
   fbErr.classList.remove("on");
   const categories = checked.map(cb => cb.value === "其他"
     ? `其他：${fbOtherIn.value.trim()}` : cb.value);
-  if(_fbId != null){ _fb[_fbId] = {vote:"down", categories, detail}; persistFb(_fbId); postFeedback(_fbId); }
+  if(_fbMode==="report"){ console.log("[Report]", _fbId, {categories, detail}); }
+  else if(_fbId != null){ _fb[_fbId] = {vote:"down", categories, detail}; persistFb(_fbId); postFeedback(_fbId); }
   _fbDone = true;                          /* 已送出：closeFb 不再還原 */
   fbNormal.style.display = "none"; fbThank.style.display = "";
   _fbTimer = setTimeout(closeFb, 2000);
@@ -2654,9 +2776,10 @@ function revealAnswer(id, q, animate){
   stopThink(id);
   const turn = db.querySelector(`.turn[data-t="${id}"]`); if(!turn){ _setReplying(false); return; }
   const pend = turn.querySelector(`#pend-${id}`); if(!pend){ _setReplying(false); return; }
-  if(_typed[id]){                       /* 自由輸入 → 無法回答（不鋪思考軌跡、不給後續 chips） */
+  if(_typed[id] && !_demo[id]){         /* 自由輸入且非 demo 故障 → 拒答卡（不鋪思考軌跡） */
     pend.outerHTML = noansHTML();
-    delete _typed[id]; delete _elapsed[id]; _setReplying(false);
+    wireReject(turn);
+    delete _typed[id]; delete _elapsed[id]; delete _demo[id]; _setReplying(false);
     db.scrollTop = db.scrollHeight; return;
   }
   const trace = pend.querySelector(".trace");
@@ -2670,6 +2793,16 @@ function revealAnswer(id, q, animate){
          ${ic("chev","ic sm")}<span>已思考 ${secs} 秒 · ${n} 步</span></button>
        ${trace.outerHTML}</div>`;
   }
+  const kind = _demo[id];
+  if(kind){                             /* demo 故障/截斷：思考跑完後鋪對應卡，保留思考軌跡摘要 */
+    pend.outerHTML = head + (kind==="timeout" ? timeoutHTML(id)
+                          : kind==="fail"    ? failHTML(id)
+                          : truncAnswerHTML());
+    wireTraceSum(turn);
+    if(kind!=="trunc") wireErrCard(turn, id, q);
+    delete _typed[id]; delete _elapsed[id]; delete _demo[id]; _setReplying(false);
+    db.scrollTop = db.scrollHeight; return;
+  }
   const r = A[q] || GENERIC;
   const doType = animate && !reduced();
   pend.outerHTML = head + `<div class="a">
@@ -2681,12 +2814,7 @@ function revealAnswer(id, q, animate){
   turn.querySelectorAll(".chip").forEach(b =>
     b.addEventListener("click", () => ask(b.textContent.trim(), null)));
   wireFeedback(turn, id);   /* 回饋鈕接線 ＋ 從 _fb[id] 還原讚/倒讚態（歷史重開會用到） */
-  const sum = turn.querySelector(".trace-sum");
-  if(sum) sum.addEventListener("click", () => {
-    const w = sum.closest(".trace-wrap"), collapsed = w.classList.toggle("collapsed");
-    sum.setAttribute("aria-expanded", collapsed ? "false" : "true");
-    db.scrollTop = db.scrollHeight;
-  });
+  wireTraceSum(turn);
   const a = turn.querySelector(".a"),
         avEl = a.querySelector(".av"), abEl = a.querySelector(".ab"), chipsEl = a.querySelector(".chips"),
         fbEl = a.querySelector(".fb");
@@ -2742,6 +2870,7 @@ function runThink(id, q, ctx){
 function renderTurn(q, ctx, animate, typed, turnObj){
   const id = ++TURN_SEQ;
   _typed[id] = !!typed;
+  if(typed) _demo[id] = classifyDemo(q);               /* demo：關鍵字模擬故障/截斷；''＝拒答 */
   _turnObj[id] = turnObj || null;                       /* 回饋落點：thread 的 turn 物件 */
   if(turnObj && turnObj.fb) _fb[id] = {...turnObj.fb};  /* 重開歷史：把上次的評價 hydrate 回來 */
   db.insertAdjacentHTML("beforeend",
@@ -2751,8 +2880,8 @@ function renderTurn(q, ctx, animate, typed, turnObj){
        <div class="pend" id="pend-${id}"></div>
      </div>`);
   db.scrollTop = db.scrollHeight;
-  /* 自由輸入不跑思考動畫——直接鋪「無法回答」（沒在算，就別演在算）。 */
-  if(animate && !typed && !reduced()) runThink(id, q, ctx);
+  /* 拒答直接鋪（沒在算就別演在算）；chip 問答與 demo 故障/截斷都先跑思考動畫（像真的查了才有結果/失敗）。 */
+  if(animate && !reduced() && (!typed || _demo[id])) runThink(id, q, ctx);
   else revealAnswer(id, q, false);
 }
 /* 追加一輪到當前 thread；沒有當前 thread 就先開一串。typed＝非 chip 的自由輸入。 */
@@ -2785,9 +2914,13 @@ function showDrawer(){
   drawer.setAttribute("aria-hidden","false");
   ci.focus();
 }
-/* 對外：Hero（askbar／快捷 chips）的入口＝一律直接開新的一串。
-   圖表〔深入分析〕改走 openDig（先選角度），不再經過這裡。 */
-function open_(q, ctx, typed){ startThread(q, ctx, typed); }
+/* 對外：Hero（askbar／快捷 chips）的入口。
+   ⚠️ 抽屜**開著**＝延續當前同一串（ask append，同一視窗、同一紀錄）；
+      抽屜**關著**＝開新的一串並展開。圖表〔深入分析〕走 openDig（先選角度）。 */
+function open_(q, ctx, typed){
+  if(drawer.classList.contains("on")) ask(q, ctx, typed);
+  else startThread(q, ctx, typed);
+}
 
 /* ---- 深入分析：開「選角度」開場 -------------------------------------
    點圖表的〔深入分析〕不直接問一句，而是先在抽屜鋪一個開場：
@@ -2831,18 +2964,19 @@ const DIG_MORE = {
   "年度流失率":["哪個卡別的流失最嚴重？","流失的會員通常斷在第幾次購買？"]
 };
 function openDig(m, h, angles){
-  archive();                          /* 收掉上一串（空串不會存）；已開著的抽屜不復位 */
-  TH = null;                          /* 還沒開始一串——選了角度才算 */
-  dt.textContent = "深入分析";
-  stopAllThink(); db.innerHTML = "";
-  db.insertAdjacentHTML("beforeend",
-    `<div class="chooser">
-       ${ctxHTML({m, h})}
+  /* 抽屜開著＝延續同串：把「選角度」接在當前對話尾端，選了角度就 append 成新一輪（引用該圖）。
+     抽屜關著＝開新場：收掉舊串、清空、TH=null（選了角度才由 ask→startThread 起新串）。 */
+  const append = drawer.classList.contains("on");
+  if(!append){ archive(); TH = null; dt.textContent = "深入分析"; stopAllThink(); db.innerHTML = ""; }
+  const chooser = document.createElement("div");
+  chooser.className = "chooser";
+  chooser.innerHTML = `${ctxHTML({m, h})}
        <p class="dig-prompt">這張圖你想從哪個角度看？</p>
-       <div class="chips">${angles.map(a => `<button class="chip" type="button">${a}</button>`).join("")}</div>
-     </div>`);
-  db.querySelectorAll(".chooser .chip").forEach(b =>
-    b.addEventListener("click", () => startThread(b.textContent.trim(), {m, h})));
+       <div class="chips">${angles.map(a => `<button class="chip" type="button">${a}</button>`).join("")}</div>`;
+  db.appendChild(chooser);
+  chooser.querySelectorAll(".chip").forEach(b =>
+    b.addEventListener("click", () => { const q = b.textContent.trim(); chooser.remove(); ask(q, {m, h}); }));
+  db.scrollTop = db.scrollHeight;
   showDrawer();
 }
 
@@ -2936,6 +3070,14 @@ chEl.addEventListener("click", e => {
   closePick();
   if(cb) cb(page, name);
 }, true);
+/* 點空白處取消挑圖：picking 中，點到的不是圖表面板／深入分析鈕／＋／提示條，就收掉。
+   （面板挑選走上面的 capture 並 stopPropagation；hdig／＋ 自身 handler 也 stopPropagation，
+   都不會冒泡到這裡誤觸——所以這裡只會接到「其他地方」的點擊。） */
+document.addEventListener("click", e => {
+  if(!picking()) return;
+  if(e.target.closest("#hdig, #cplus, .panel, .kpi, .pickhint")) return;
+  closePick();
+});
 
 /* ---- 抽屜可拖曳、可縮放 -------------------------------------------------
    預設仍是右側靠邊的浮卡（CSS 的 top/right/bottom）。使用者一動它才切成
