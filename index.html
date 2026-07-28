@@ -279,16 +279,27 @@ button{font-family:inherit;}
 .askbar input{flex:1;min-width:0;border:0;background:transparent;outline:none;
   padding:8px 4px;color:var(--text);font-family:var(--font-body);font-size:15px;}
 .askbar input::placeholder{color:var(--text-muted);}
-/* Hero 深入分析在對話框「外側左方」：askrow 把 pill 與 askbar 並成一列 */
-.askrow{display:flex;align-items:center;gap:var(--space-2);max-width:600px;}
-.askrow .askbar{flex:1;max-width:none;margin:0;}
-/* Hero 深入分析：挑圖入口（複用大欄轉灰挑圖）。soft iris pill，picking 時實心。 */
-.askdig{flex:none;display:inline-flex;align-items:center;gap:5px;border:0;cursor:pointer;
-  background:var(--accent-soft);color:var(--accent);font-size:var(--text-label);font-weight:var(--fw-medium);
-  padding:var(--space-1) var(--space-3);border-radius:var(--radius-pill);white-space:nowrap;}
-.askdig:hover{background:color-mix(in srgb,var(--accent-soft),var(--accent) 14%);}
-.askdig.on{background:var(--accent);color:var(--text-on-accent);}
+/* Hero 深入分析：改放到快捷 chips 那一列、常態置左，與可捲動的 chips 分開（不再並進 askbar）。
+   qrow＝[深入分析 pill（固定不捲）] + [qchips（佔滿剩餘、可橫捲）]，中間留較大 gap 做區隔。
+   pill 左緣與 askbar 左緣切齊（兩者同起於左欄 x=0）。 */
+.qrow{display:flex;align-items:center;gap:var(--space-3);min-width:0;max-width:600px;}
+.qrow .qchips{flex:1;}
+/* Hero 深入分析：挑圖入口（複用大欄轉灰挑圖）。實心 iris 主按鈕——填滿＋白字＋淡陰影，
+   在虛線 chips 旁形成「主動作 vs 建議」的層次。1px 邊 + line-height 對齊 .chip → 與 chips 等高。
+   picking 時壓深成 pressed 態。DS：Hero 那一處 coral 記在問候漸變；此鈕走 iris、shadow-xs 是紙感非 glow。 */
+.askdig{flex:none;display:inline-flex;align-items:center;gap:5px;cursor:pointer;
+  background:var(--accent);color:var(--text-on-accent);
+  border:1px solid var(--accent);border-radius:var(--radius-pill);
+  font-size:var(--text-label);font-weight:var(--fw-semibold);line-height:var(--lh-body);
+  padding:var(--space-1) var(--space-3);white-space:nowrap;box-shadow:var(--shadow-xs);
+  transition:filter .15s ease,box-shadow .15s ease;}
+.askdig:hover{filter:brightness(1.08);}
+.askdig:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+.askdig.on{background:color-mix(in srgb,var(--accent),black 14%);
+  border-color:color-mix(in srgb,var(--accent),black 14%);
+  box-shadow:inset 0 1px 3px color-mix(in srgb,black,transparent 78%);}
 .askdig .digmark{width:13px;height:13px;flex:none;fill:currentColor;}
+@media (prefers-reduced-motion:reduce){.askdig{transition:none;}}
 .askbar #ts{flex:none;width:36px;height:36px;border-radius:var(--radius-md);border:0;
   background:var(--accent);color:var(--text-on-accent);cursor:pointer;opacity:.35;
   display:inline-flex;align-items:center;justify-content:center;
@@ -714,6 +725,94 @@ main{flex:1;min-height:0;overflow:hidden;
 .chips.rin{animation:answerIn .34s var(--ease-out) both;}
 @keyframes answerIn{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:none;}}
 @media (prefers-reduced-motion:reduce){.caret{display:none;}.chips.rin{animation:none;}}
+/* ---- 回饋:每則答案打完字後、接在 .chips 之後(hairline 分隔) -------------
+   讚/倒讚是**答案品質**訊號(這則好不好),與後端「凍結」判斷(該不該變常駐圖——見
+   server.py _stream_golden 的 NO_MATCH log)是兩條不重疊的訊號。這裡只捕捉,
+   不觸發任何凍結行為。樣式對齊 index.html 的 .action-btn(hover/active),token 換 v2。
+   拍板:讚與倒讚 active 皆用 iris(不染紅),不佔抽屜那處 coral 帳目。 */
+.fb{display:flex;align-items:center;gap:var(--space-1);
+  margin-top:var(--space-2);padding-top:var(--space-3);border-top:1px solid var(--border);}
+.fb[hidden]{display:none;}
+.fb.rin{animation:answerIn .34s var(--ease-out) both;}
+.fbtn{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;
+  border:0;border-radius:var(--radius-pill);background:transparent;color:var(--text-muted);
+  cursor:pointer;padding:0;transition:background .15s ease,color .15s ease;}
+.fbtn:hover{background:color-mix(in srgb,var(--accent),transparent 88%);color:var(--accent);}
+.fbtn:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+.fbtn .ic{width:16px;height:16px;}
+.fbtn.on{color:var(--accent);}
+@media (prefers-reduced-motion:reduce){.fb.rin{animation:none;}.fbtn{transition:none;}}
+/* ---- 倒讚彈窗:收在 drawer 內、置中 --------------------------------------
+   ⚠️ 這**不是** L587 移除的那道全螢幕 scrim——它是 .drawer 的子層(absolute inset:0),
+   只蓋抽屜、不鎖 Dashboard(仍可切分頁/點別張圖)。抽屜 overflow:hidden 會把它裁進圓角。
+   內容/行為對齊 index.html 的回饋 modal(checkbox 分類 + 選填 textarea + 感謝畫面)。 */
+.fbov{position:absolute;inset:0;z-index:10;display:flex;align-items:center;justify-content:center;
+  padding:var(--space-4);background:color-mix(in srgb,var(--text),transparent 78%);
+  opacity:0;pointer-events:none;transition:opacity .2s ease;}
+.fbov.open{opacity:1;pointer-events:auto;}
+.fbmodal{position:relative;width:100%;max-width:380px;max-height:100%;overflow-y:auto;
+  background:var(--paper);border:1px solid var(--border);border-radius:var(--radius-lg);
+  box-shadow:var(--shadow-lg);transform:translateY(10px);transition:transform .2s ease;}
+.fbov.open .fbmodal{transform:none;}
+.fbx{position:absolute;top:var(--space-3);right:var(--space-3);width:28px;height:28px;
+  display:inline-flex;align-items:center;justify-content:center;border:0;padding:0;
+  border-radius:var(--radius-md);background:transparent;color:var(--text-muted);cursor:pointer;
+  transition:background .12s ease,color .12s ease;}
+.fbx:hover{background:var(--surface-2);color:var(--text);}
+.fbx:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+.fbx .ic{width:16px;height:16px;}
+.fbhd{padding:var(--space-4) var(--space-7) var(--space-2) var(--space-5);}
+.fbt{margin:0 0 var(--space-1);font-size:var(--text-body-size);font-weight:var(--fw-semibold);color:var(--text);}
+.fbd{margin:0;font-size:var(--text-small);line-height:var(--lh-body);color:var(--text-muted);}
+.fbd b{color:var(--text-body);font-weight:var(--fw-medium);}
+.fbbody{padding:0 var(--space-5) var(--space-3);}
+.fbcats{display:flex;flex-direction:column;gap:2px;margin-bottom:var(--space-2);}
+.fbci{position:relative;display:flex;align-items:center;gap:var(--space-2);
+  padding:var(--space-2);border-radius:var(--radius-sm);cursor:pointer;user-select:none;
+  transition:background .1s ease;}
+.fbci:hover{background:var(--surface-2);}
+.fbci input{position:absolute;width:1px;height:1px;opacity:0;}
+.fbci input:focus-visible + .fbcb{outline:2px solid var(--accent);outline-offset:2px;}
+.fbcb{flex:none;width:16px;height:16px;border:1.5px solid var(--border-2);border-radius:var(--radius-sm);
+  display:flex;align-items:center;justify-content:center;transition:background .15s ease,border-color .15s ease;}
+.fbci input:checked + .fbcb{background:var(--accent);border-color:var(--accent);}
+.fbci input:checked + .fbcb::after{content:"";display:block;width:5px;height:8px;
+  border-right:2px solid var(--text-on-accent);border-bottom:2px solid var(--text-on-accent);
+  transform:rotate(45deg) translate(-1px,-1px);margin-top:1px;}
+.fbcl{font-size:var(--text-small);color:var(--text-body);}
+.fbci input:checked ~ .fbcl{color:var(--text);font-weight:var(--fw-medium);}
+.fbother{padding:0 var(--space-2) var(--space-1) 34px;}
+.fbother input{width:100%;border:1px solid var(--border-2);border-radius:var(--radius-sm);
+  background:var(--paper);color:var(--text);font-family:var(--font-body);font-size:var(--text-small);
+  padding:var(--space-2);outline:none;transition:border-color .15s ease;}
+.fbother input:focus{border-color:var(--accent);}
+.fbother input::placeholder{color:var(--text-muted);}
+.fbta{width:100%;border:1px solid var(--border-2);border-radius:var(--radius-md);
+  background:var(--paper);color:var(--text);font-family:var(--font-body);font-size:var(--text-small);
+  line-height:var(--lh-body);padding:var(--space-3);resize:vertical;min-height:64px;outline:none;
+  transition:border-color .15s ease;}
+.fbta:focus{border-color:var(--accent);}
+.fbta::placeholder{color:var(--text-muted);}
+.fberr{display:none;padding:0 var(--space-5) var(--space-2);
+  color:var(--color-danger);font-size:var(--text-label);}
+.fberr.on{display:block;}
+.fbft{display:flex;justify-content:flex-end;gap:var(--space-2);padding:0 var(--space-5) var(--space-5);}
+.fbb{height:34px;padding:0 var(--space-4);border-radius:var(--radius-sm);
+  font-family:var(--font-body);font-size:var(--text-small);cursor:pointer;border:0;}
+.fbb-cancel{background:var(--surface-2);color:var(--text-body);border:1px solid var(--border);}
+.fbb-cancel:hover{background:color-mix(in srgb,var(--surface-2),var(--text) 6%);}
+.fbb-submit{background:var(--accent);color:var(--text-on-accent);}
+.fbb-submit:hover{filter:brightness(1.08);}
+.fbb:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+/* 感謝畫面(對齊 index.html .fb-ty)——iris 勾勾圓章 + 標題 + 內文,送出後 2 秒自動關 */
+.fbty{display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:var(--space-5) var(--space-5) var(--space-6);text-align:center;gap:var(--space-1);}
+.fbty-ic{width:34px;height:34px;border-radius:var(--radius-pill);background:var(--accent-soft);
+  display:flex;align-items:center;justify-content:center;color:var(--accent);margin-bottom:var(--space-1);}
+.fbty-ic .ic{width:17px;height:17px;stroke-width:2.5;}
+.fbty-t{font-size:var(--text-small);font-weight:var(--fw-semibold);color:var(--text);}
+.fbty-x{font-size:var(--text-label);line-height:var(--lh-body);color:var(--text-muted);}
+@media (prefers-reduced-motion:reduce){.fbov,.fbmodal{transition:none;}.fbmodal{transform:none;}}
 /* 追問 chip＝下一步該問什麼。v2 起每句都是完整、可獨立送檢索的 golden 原句
    （不再有「只看信義店」那種需前端組句的參數式片段）。 */
 /* 虛線邊＝「這是一句可以問的話」，hover 才實心。
@@ -938,14 +1037,14 @@ body.picking .pickhint{opacity:1;transform:translateX(-50%);}
       <b id="ttl">歡迎回來</b>
       <span class="greet-sub">從提問到洞察，幾秒內完成</span>
     </div>
-    <div class="askrow">
-      <button id="hdig" class="askdig" type="button" aria-label="深入分析：挑一張圖表">深入分析</button>
-      <div class="askbar">
-        <input id="ti" placeholder="問 FLAPS.AI 任何事" aria-label="發問">
-        <button id="ts" type="button" aria-label="送出"></button>
-      </div>
+    <div class="askbar">
+      <input id="ti" placeholder="問 FLAPS.AI 任何事" aria-label="發問">
+      <button id="ts" type="button" aria-label="送出"></button>
     </div>
-    <div class="qchips" id="qchips"></div>
+    <div class="qrow">
+      <button id="hdig" class="askdig" type="button" aria-label="深入分析：挑一張圖表">深入分析</button>
+      <div class="qchips" id="qchips"></div>
+    </div>
     <div class="heronav">
       <div class="tabs" role="tablist">
         <button class="tab" data-p="業績">業績</button>
@@ -984,6 +1083,41 @@ body.picking .pickhint{opacity:1;transform:translateX(-50%);}
       <button class="plus" id="cplus" type="button" aria-label="引用圖表" aria-haspopup="menu" aria-expanded="false"></button>
       <input id="ci" placeholder="什麼都可以問……" aria-label="發問">
       <button class="snd" id="cs" type="button" aria-label="送出"></button>
+    </div>
+  </div>
+
+  <!-- 倒讚彈窗：drawer 內置中（非全螢幕 scrim，見 .fbov 註解）。內容對齊 index.html 回饋 modal。 -->
+  <div class="fbov" id="fbov">
+    <div class="fbmodal" role="dialog" aria-modal="true" aria-labelledby="fbt">
+      <button class="fbx" id="fbx" type="button" aria-label="關閉"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
+      <div id="fbnormal">
+        <div class="fbhd">
+          <p class="fbt" id="fbt">這個回答哪裡可以更好？</p>
+          <p class="fbd">感謝您花時間告訴我們！<b>每一則回饋都能讓 FLAPS AI 變得更好。</b>任何不符合預期的地方，請放心分享。</p>
+        </div>
+        <div class="fbbody">
+          <div class="fbcats" id="fbcats">
+            <label class="fbci"><input type="checkbox" value="數字或資料有誤"><span class="fbcb"></span><span class="fbcl">數字或資料有誤</span></label>
+            <label class="fbci"><input type="checkbox" value="問題解讀錯誤"><span class="fbcb"></span><span class="fbcl">問題解讀錯誤</span></label>
+            <label class="fbci"><input type="checkbox" value="回答不完整"><span class="fbcb"></span><span class="fbcl">回答不完整</span></label>
+            <label class="fbci"><input type="checkbox" value="其他" id="fbother-cb"><span class="fbcb"></span><span class="fbcl">其他</span></label>
+            <div class="fbother" id="fbother" style="display:none"><input type="text" id="fbother-in" placeholder="請說明…"></div>
+          </div>
+          <textarea class="fbta" id="fbta" placeholder="歡迎提出任何建議（選填）"></textarea>
+        </div>
+        <p class="fberr" id="fberr">請至少勾選一個項目，或在文字欄填寫說明。</p>
+        <div class="fbft">
+          <button class="fbb fbb-cancel" id="fbcancel" type="button">取消</button>
+          <button class="fbb fbb-submit" id="fbsubmit" type="button">送出回饋</button>
+        </div>
+      </div>
+      <div id="fbthank" style="display:none">
+        <div class="fbty">
+          <div class="fbty-ic"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></div>
+          <div class="fbty-t">感謝您的回饋！</div>
+          <div class="fbty-x">您的聲音是我們持續優化的最大動力。</div>
+        </div>
+      </div>
     </div>
   </div>
 </aside>
@@ -1038,6 +1172,9 @@ const P = {
   msgSq:'<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M12 7v4"/><path d="M12 15h.01"/>',
   logout:'<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/>',
   chev:'<path d="m6 9 6 6 6-6"/>',
+  /* 拇指讚／倒讚——自 index.html 的 _ico.like／dislike 移植（維持全站同一支圖）。 */
+  thumbUp:'<path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3H14z"/><path d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/>',
+  thumbDown:'<path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3H10z"/><path d="M17 2h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17"/>',
   db:'<ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14a9 3 0 0 0 18 0V5"/><path d="M3 12a9 3 0 0 0 18 0"/>'
 };
 const ic = (n, cls="ic") =>
@@ -2244,7 +2381,8 @@ const drawer = document.getElementById("drawer"),
       dex    = document.getElementById("dex"),
       ci     = document.getElementById("ci"),
       dft    = document.getElementById("dft"),
-      attwrap= document.getElementById("attwrap");
+      attwrap= document.getElementById("attwrap"),
+      fbov   = document.getElementById("fbov");
 
 const A = {
   "業績最差的那個月是哪個月？為什麼？":{
@@ -2393,6 +2531,95 @@ function noansHTML(){
        <p class="na-b">為了確保最精準且正確的回答，此問題暫不支援。</p>
      </div>`;
 }
+/* ---- 回饋：讚/倒讚（答案品質訊號，與後端凍結判斷無關，見 CSS .fb 註解）---------
+   讚＝靜默記錄；倒讚＝先記錄再開 drawer 內彈窗收原因（不因懶得補充而遺失負評）。
+   狀態存 _fb[id]，歷史重開 thread 會由 wireFeedback→syncFb 還原。
+   真接後端時把 postFeedback 換成打 API；demo 只 console.log（比照 index.html）。 */
+const _fb = {};        /* _fb[id] = {vote:'up'|'down', categories:[], detail}（本次 render 的 id 對照） */
+const _turnObj = {};   /* id → thread 的 turn 物件；回饋要落在它上面才能跨「重開歷史」還原 */
+let _fbId = null;      /* 目前彈窗對應的 turn id */
+let _fbTimer = null;   /* 感謝畫面自動關閉計時 */
+let _fbPrev = null;    /* 開倒讚彈窗前的評價：沒送出就關 → 還原它（不留孤兒 active） */
+let _fbDone = false;   /* 這次彈窗是否已送出（送出才是真的倒讚，取消不算） */
+function fbHTML(id, hidden){
+  return `<div class="fb" data-fb="${id}"${hidden?" hidden":""}>
+       <button class="fbtn fb-up" type="button" title="有幫助" aria-pressed="false" aria-label="這則回答有幫助">${ic("thumbUp")}</button>
+       <button class="fbtn fb-down" type="button" title="沒幫助" aria-pressed="false" aria-label="這則回答沒幫助">${ic("thumbDown")}</button>
+     </div>`;
+}
+function wireFeedback(scope, id){
+  const fb = scope.querySelector(`.fb[data-fb="${id}"]`); if(!fb) return;
+  fb.querySelector(".fb-up").addEventListener("click", () => setVote(id, "up"));
+  fb.querySelector(".fb-down").addEventListener("click", () => setVote(id, "down"));
+  syncFb(id);
+}
+function syncFb(id){
+  const fb = db.querySelector(`.fb[data-fb="${id}"]`); if(!fb) return;
+  const v = _fb[id] && _fb[id].vote;
+  const up = fb.querySelector(".fb-up"), down = fb.querySelector(".fb-down");
+  up.classList.toggle("on", v==="up");     up.setAttribute("aria-pressed", v==="up");
+  down.classList.toggle("on", v==="down"); down.setAttribute("aria-pressed", v==="down");
+}
+function setVote(id, vote){
+  const cur = _fb[id] && _fb[id].vote;
+  if(cur === vote){ delete _fb[id]; persistFb(id); syncFb(id); return; }   /* 再點一次同一顆＝收回 */
+  if(vote === "up"){ _fb[id] = {vote:"up"}; persistFb(id); syncFb(id); postFeedback(id); return; }
+  /* 倒讚：先讓鈕亮起（視覺回饋），但**不落地**——要送出才算數。取消/關閉會還原成 _fbPrev。 */
+  _fbPrev = _fb[id] || null;
+  _fb[id] = {vote:"down", categories:[], detail:""}; syncFb(id); openFb(id);
+}
+function postFeedback(id){ console.log("[Feedback]", id, _fb[id]); }   /* 真接後端改打 API */
+/* 把回饋寫回 thread 的 turn 物件——重開歷史時 turn 會拿到新 id，靠這份才還原得回來。 */
+function persistFb(id){
+  const t = _turnObj[id]; if(!t) return;
+  if(_fb[id]) t.fb = {..._fb[id]}; else delete t.fb;
+}
+/* ---- 倒讚彈窗 ---- */
+const fbOtherCb = document.getElementById("fbother-cb"),
+      fbOther   = document.getElementById("fbother"),
+      fbOtherIn = document.getElementById("fbother-in"),
+      fbTa      = document.getElementById("fbta"),
+      fbErr     = document.getElementById("fberr"),
+      fbNormal  = document.getElementById("fbnormal"),
+      fbThank   = document.getElementById("fbthank");
+const fbOpen = () => fbov.classList.contains("open");
+function openFb(id){
+  _fbId = id; _fbDone = false; clearTimeout(_fbTimer);
+  fbov.querySelectorAll("#fbcats input").forEach(cb => cb.checked = false);
+  fbOther.style.display = "none"; fbOtherIn.value = "";
+  fbTa.value = ""; fbErr.classList.remove("on");
+  fbNormal.style.display = ""; fbThank.style.display = "none";
+  fbov.classList.add("open");
+}
+function closeFb(){
+  clearTimeout(_fbTimer);
+  if(!_fbDone && _fbId != null){          /* 沒送出就關 → 還原倒讚前的狀態，不留孤兒 active */
+    if(_fbPrev) _fb[_fbId] = _fbPrev; else delete _fb[_fbId];
+    persistFb(_fbId); syncFb(_fbId);
+  }
+  fbov.classList.remove("open");
+  _fbId = null; _fbPrev = null;
+}
+function submitFb(){
+  const checked = [...fbov.querySelectorAll("#fbcats input:checked")];
+  const detail  = fbTa.value.trim();
+  if(checked.length === 0 && !detail){ fbErr.classList.add("on"); return; }   /* 防呆 */
+  fbErr.classList.remove("on");
+  const categories = checked.map(cb => cb.value === "其他"
+    ? `其他：${fbOtherIn.value.trim()}` : cb.value);
+  if(_fbId != null){ _fb[_fbId] = {vote:"down", categories, detail}; persistFb(_fbId); postFeedback(_fbId); }
+  _fbDone = true;                          /* 已送出：closeFb 不再還原 */
+  fbNormal.style.display = "none"; fbThank.style.display = "";
+  _fbTimer = setTimeout(closeFb, 2000);
+}
+fbOtherCb.addEventListener("change", () => {
+  fbOther.style.display = fbOtherCb.checked ? "block" : "none";
+  if(fbOtherCb.checked) setTimeout(() => fbOtherIn.focus(), 50);
+});
+document.getElementById("fbx").addEventListener("click", closeFb);
+document.getElementById("fbcancel").addEventListener("click", closeFb);
+document.getElementById("fbsubmit").addEventListener("click", submitFb);
+fbov.addEventListener("click", e => { if(e.target === fbov) closeFb(); });   /* 點 backdrop 關 */
 /* ---- 打字機：逐字吐答案，讓輸出有「正在生成」的動態感 -----------------
    答案含行內標記（<em>/<b>/<br>），不能直接切字串（會切斷標籤）。先把 HTML 切成
    「一個完整標籤／實體」或「一個字」的 token，再逐 token 累加後重寫 innerHTML——
@@ -2449,9 +2676,11 @@ function revealAnswer(id, q, animate){
        <p class="av"></p>
        <p class="ab"></p>
        <div class="chips"${doType?" hidden":""}>${r.f.map(f=>`<button class="chip" type="button">${f}</button>`).join("")}</div>
+       ${fbHTML(id, doType)}
      </div>`;
   turn.querySelectorAll(".chip").forEach(b =>
     b.addEventListener("click", () => ask(b.textContent.trim(), null)));
+  wireFeedback(turn, id);   /* 回饋鈕接線 ＋ 從 _fb[id] 還原讚/倒讚態（歷史重開會用到） */
   const sum = turn.querySelector(".trace-sum");
   if(sum) sum.addEventListener("click", () => {
     const w = sum.closest(".trace-wrap"), collapsed = w.classList.toggle("collapsed");
@@ -2459,13 +2688,15 @@ function revealAnswer(id, q, animate){
     db.scrollTop = db.scrollHeight;
   });
   const a = turn.querySelector(".a"),
-        avEl = a.querySelector(".av"), abEl = a.querySelector(".ab"), chipsEl = a.querySelector(".chips");
+        avEl = a.querySelector(".av"), abEl = a.querySelector(".ab"), chipsEl = a.querySelector(".chips"),
+        fbEl = a.querySelector(".fb");
   if(doType){
-    /* 結論句逐字吐 → 內文（快一點）→ 追問 chips 淡入；全程 _replyingId 維持著，
-       停止鈕在打字階段仍是「停止」，按下就留住已吐出的部分（見 stopReply）。 */
+    /* 結論句逐字吐 → 內文（快一點）→ 追問 chips ＋ 回饋列一起淡入；全程 _replyingId
+       維持著，停止鈕在打字階段仍是「停止」，按下就留住已吐出的部分（見 stopReply）。 */
     typeInto(id, avEl, r.v, 1, () =>
       typeInto(id, abEl, r.b, 2, () => {
         chipsEl.hidden = false; chipsEl.classList.add("rin");
+        if(fbEl){ fbEl.hidden = false; fbEl.classList.add("rin"); }
         db.scrollTop = db.scrollHeight; _setReplying(false);
       }));
   } else {
@@ -2508,9 +2739,11 @@ function runThink(id, q, ctx){
 
 /* 一輪：引用（可選）＋ 問 ＋ 答，append 而非覆寫。
    animate＝現場新問（先思考再出答案）；false＝重開歷史（直接鋪，不重演）。 */
-function renderTurn(q, ctx, animate, typed){
+function renderTurn(q, ctx, animate, typed, turnObj){
   const id = ++TURN_SEQ;
   _typed[id] = !!typed;
+  _turnObj[id] = turnObj || null;                       /* 回饋落點：thread 的 turn 物件 */
+  if(turnObj && turnObj.fb) _fb[id] = {...turnObj.fb};  /* 重開歷史：把上次的評價 hydrate 回來 */
   db.insertAdjacentHTML("beforeend",
     `<div class="turn" data-t="${id}">
        ${ctx ? ctxHTML(ctx) : ""}
@@ -2525,7 +2758,7 @@ function renderTurn(q, ctx, animate, typed){
 /* 追加一輪到當前 thread；沒有當前 thread 就先開一串。typed＝非 chip 的自由輸入。 */
 function ask(q, ctx, typed){
   if(!TH) startThread(q, ctx, typed);
-  else { TH.turns.push({q,ctx,typed}); renderTurn(q, ctx, true, typed); }
+  else { const t = {q,ctx,typed}; TH.turns.push(t); renderTurn(q, ctx, true, typed, t); }
 }
 /* 開新的一串（舊的先存進歷史） */
 function startThread(q, ctx, typed){
@@ -2533,7 +2766,7 @@ function startThread(q, ctx, typed){
   TH = {title:q, turns:[{q,ctx,typed}]};
   dt.textContent = trim_(q);
   stopAllThink(); db.innerHTML = "";
-  renderTurn(q, ctx, true, typed);
+  renderTurn(q, ctx, true, typed, TH.turns[0]);
   showDrawer();
 }
 /* 把當前 thread 收進側欄歷史（同一串重開再關不會重複堆） */
@@ -2625,7 +2858,7 @@ function openThread(t){
   TH = t; const i = HIST.indexOf(t); if(i > -1) HIST.splice(i,1);
   dt.textContent = trim_(t.title);
   stopAllThink(); db.innerHTML = "";
-  t.turns.forEach(x => renderTurn(x.q, x.ctx, false, x.typed));
+  t.turns.forEach(x => renderTurn(x.q, x.ctx, false, x.typed, x));
   renderHist(); showDrawer();
 }
 
@@ -2891,6 +3124,7 @@ renderHist();
 /* Esc：挑圖模式優先——只取消挑圖，不要順手把抽屜也關掉 */
 addEventListener("keydown", e => {
   if(e.key !== "Escape") return;
+  if(fbOpen()){ closeFb(); return; }        /* 倒讚彈窗開著：Esc 只關彈窗，不關抽屜 */
   if(picking()){ closePick(); return; }
   close_(); closeSide(); closeProfile();
 });
