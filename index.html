@@ -104,6 +104,14 @@ button{font-family:inherit;}
   stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round;}
 .ic.sm{width:12px;height:12px;stroke-width:2.25;}
 :root{--rail:56px;--side:260px;}
+/* 發問區寬度（app-layer token，比照 --rail／--side／--shadow-xl 的前例：
+   加在 token 層而不是就地手刻 px —— DS 規則 1）。
+   ⚠️ 之前 askbar 560／qrow 600 是兩個寫死的數字，於是 ≥1512 之後完全凍住：
+   實測左欄可用寬 1512→637、2560→1685，發問區卻永遠 560，寬螢幕上整條 Hero 左半是空的。
+   改成流動值後，**chips 列的寬度由輸入框推導**（+一階 space），不各自訂上限——
+   兩個數字各走各的才是「chips 突出去一大截」的成因。上限 780 是刻意的：
+   輸入框再寬就不像發問框像網址列了，而且左欄還要留白給右側量表透氣。 */
+:root{--ask-w:clamp(560px,40vw,780px);--qrow-w:calc(var(--ask-w) + var(--space-7));}
 
 /* ============================================================
    側欄 = 對話這條線（新對話／搜尋／釘選／專案／歷史）。
@@ -270,7 +278,7 @@ button{font-family:inherit;}
 
 /* 發問列：比照 index.html 首頁發問框——靜止時低調（無邊、幾乎無影、鈕變淡），
    點擊聚焦後才浮出框框＋iris 光暈、送出鈕轉為實心。iris 由 color-mix 推導，非臨時 hex。 */
-.askbar{margin:0;flex:none;display:flex;align-items:center;gap:var(--space-2);max-width:560px;
+.askbar{margin:0;flex:none;display:flex;align-items:center;gap:var(--space-2);max-width:var(--ask-w);
   padding:6px 6px 6px var(--space-5);border-radius:var(--radius-lg);
   border:1px solid transparent;background:var(--paper);box-shadow:var(--shadow-xs);
   transition:border-color .3s ease,box-shadow .3s ease,background .3s ease;}
@@ -282,7 +290,7 @@ button{font-family:inherit;}
 /* Hero 深入分析：改放到快捷 chips 那一列、常態置左，與可捲動的 chips 分開（不再並進 askbar）。
    qrow＝[深入分析 pill（固定不捲）] + [qchips（佔滿剩餘、可橫捲）]，中間留較大 gap 做區隔。
    pill 左緣與 askbar 左緣切齊（兩者同起於左欄 x=0）。 */
-.qrow{display:flex;align-items:center;gap:var(--space-3);min-width:0;max-width:600px;}
+.qrow{display:flex;align-items:center;gap:var(--space-3);min-width:0;max-width:var(--qrow-w);}
 .qrow .qchips{flex:1;}
 /* Hero 深入分析：挑圖入口（複用大欄轉灰挑圖）。實心 iris 主按鈕——填滿＋白字＋淡陰影，
    在虛線 chips 旁形成「主動作 vs 建議」的層次。1px 邊 + line-height 對齊 .chip → 與 chips 等高。
@@ -314,7 +322,14 @@ button{font-family:inherit;}
    就該是同一個元件，各寫一份只會讓字級／padding／hover 各自漂移。這裡只多一個橫排容器。
    題目隨分頁換（見 QC）：Dashboard 已經知道你在看哪個模組，固定幾句是浪費這個資訊。 */
 /* golden 文案較長、三顆一行放不下 → 可水平捲動。左右柔邊淡出，只在「那一側還有
-   內容」時出現（起點不淡左、到底不淡右），用 mask 漸層做，不佔空間、不加捲軸。 */
+   內容」時出現（起點不淡左、到底不淡右），用 mask 漸層做，不佔空間、不加捲軸。
+   ⚠️ 這條列在**任何螢幕寬度**都會溢出（實測 1366→2560，CRM 恆溢 365px），
+   因為 .qrow 的 600px 上限是跟 .askbar 的 560px 綁一組的（發問區＝一個約 560–600 的
+   區塊），放寬會讓寬螢幕上 chips 排到 1500px、發問框還是 560，Hero 就散了。
+   所以不靠「把溢出消掉」解決，而是把捲動本身補齊三條路徑：
+     滾輪（deltaY→scrollLeft）／拖曳（4px 閾值）／捲動鈕（.qcnav）。
+   前兩者是隱形手勢，只服務「已經知道可以捲的人」——drawer 那八個 6px 縮放把手
+   踩過同一個坑。真正負責可發現性的是捲動鈕。鍵盤 Tab 本來就通，不動。 */
 .qchips{display:flex;gap:var(--space-2);flex-wrap:nowrap;min-width:0;
   overflow-x:auto;scrollbar-width:none;
   -webkit-mask-image:linear-gradient(to right,transparent 0,#000 var(--fadeL,0),
@@ -323,6 +338,32 @@ button{font-family:inherit;}
     #000 calc(100% - var(--fadeR,0)),transparent 100%);}
 .qchips::-webkit-scrollbar{display:none;}
 .qchips .chip{flex:none;white-space:nowrap;}
+/* 拖曳中：整條（含 chips）改 grabbing，並鎖住選字。
+   ⚠️ 靜止時**不**把 chips 改成 grab —— chip 的主動作是「點下去發問」，
+   cursor:pointer 講的是真話；可發現性交給 .qcnav，不必讓游標說謊。 */
+.qchips.grabbing,.qchips.grabbing .chip{cursor:grabbing;}
+.qchips.grabbing{user-select:none;-webkit-user-select:none;}
+
+/* 捲動鈕：疊在柔邊上的絕對定位圓鈕，**不佔版位** —— Hero 是高度預算最緊的一帶
+   （見交接文件「chips 擺哪裡是被高度預算決定的」），加高度不可接受。
+   只在「該側真的還有內容」時淡入，判準是每次 scroll/resize 實測 scrollWidth，
+   不靠斷點猜 → 任何沒測過的螢幕尺寸也會自己得出正確答案。
+   走 iris＋紙面 hairline，不佔 Hero 那處 coral（已記在問候語漸變上）。 */
+.qcwrap{position:relative;flex:1;min-width:0;display:flex;}
+.qcwrap .qchips{flex:1;}
+.qcnav{position:absolute;top:50%;z-index:2;width:24px;height:24px;padding:0;
+  border:1px solid var(--border);border-radius:var(--radius-pill);
+  background:var(--paper);color:var(--accent);box-shadow:var(--shadow-sm);cursor:pointer;
+  display:inline-flex;align-items:center;justify-content:center;
+  opacity:0;pointer-events:none;transform:translateY(-50%);
+  transition:opacity .16s var(--ease-out),background .15s ease;}
+.qcnav.on{opacity:1;pointer-events:auto;}
+.qcnav.prev{left:0;} .qcnav.next{right:0;}
+.qcnav:hover{background:var(--surface-2);}
+.qcnav .ic{width:14px;height:14px;}
+@media (prefers-reduced-motion:reduce){.qcnav{transition:none;}}
+/* 挑圖模式下 chips 停用 → 捲動鈕也一起收掉（比照下方 body.picking .qchips） */
+body.picking .qcnav{opacity:0;pointer-events:none;}
 
 /* 分頁列：surface 軌 + 白底 active pill；旁附資料時間 */
 .heronav{display:flex;align-items:center;gap:var(--space-3);flex-wrap:wrap;}
@@ -493,8 +534,12 @@ main{flex:1;min-height:0;overflow:hidden;
    全灌進元素之間，三塊被推到各自貼邊，讀起來像三張無關的小卡。收成一組才看得出是在對比。 */
 .kpi-hd .hd-body{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;
   gap:2px;margin-top:auto;}
-.hd-ring{display:flex;flex-direction:column;align-items:center;gap:1px;flex:none;}
-.hd-ring svg{width:100px;height:68px;display:block;}   /* 68 含上方的基準線延伸桿與標籤 */
+/* 兩個半圓可壓縮（flex:0 1 100px）——12 欄下探到 1280 後，cs:3 卡片內容寬只剩約 249px，
+   而 100＋mid＋100 至少要 289px。原本 flex:none 會讓 .hd-body 溢出，被 .kpi 的
+   overflow:hidden 從兩側切掉（左半圓的「當月／去年同期」小標最先不見）。
+   SVG 走 viewBox＋aspect-ratio 等比縮，弧與數字一起變小、不變形。 */
+.hd-ring{display:flex;flex-direction:column;align-items:center;gap:1px;flex:0 1 100px;min-width:0;}
+.hd-ring svg{width:100%;max-width:100px;aspect-ratio:100/68;height:auto;display:block;}   /* 68 含上方的基準線延伸桿與標籤 */
 .hd-ref{font-size:9px;font-weight:var(--fw-semibold);fill:var(--text);}
 .hd-cur{font-family:var(--font-display);font-weight:var(--fw-semibold);font-size:16px;fill:var(--text);}
 .hd-cur.dim{fill:var(--text-muted);}          /* 對照期的數字退一階，當月仍是視線落點 */
@@ -948,21 +993,18 @@ body.picking .pickhint{opacity:1;transform:translateX(-50%);}
 .pickhint kbd{font-family:var(--font-mono);font-size:var(--text-micro);color:var(--text-muted);
   border:1px solid var(--border-2);border-radius:var(--radius-sm);padding:0 var(--space-1);}
 
-/* 中寬螢幕（1061–1400，如 1366 投影機、未最大化的視窗）：12 欄會把 cs:3 面板擠到
-   太窄（半圓圖例互撞、軸標籤被 ECharts 隱藏）。改收成 2 欄、寬圖(cs≥6)跨滿、允許捲動，
-   面板就一直保持夠寬。≥1400（含 1440 Mac）維持原本 12 欄不捲。 */
-@media (min-width:1061px) and (max-width:1400px){
-  body{height:auto;min-height:100dvh;overflow:auto;}
-  main{flex:auto;overflow:visible;padding:var(--space-4);}
-  .charts{grid-template-columns:repeat(2,minmax(0,1fr));
-    grid-template-rows:none!important;grid-auto-rows:auto;gap:var(--space-3);}
-  .panel{grid-column:auto!important;grid-row:auto!important;min-height:260px;}
-  .panel.wide{grid-column:1 / -1!important;}
-  .kpi{grid-column:auto!important;grid-row:auto!important;min-height:130px;}
-}
-/* 「一屏不捲」是桌機（≥1060 寬）的約束。窄於此 = 平板/手機，
+/* ⚠️ 這裡原本有一段「1061–1400 改 2 欄可捲」的 fallback，已整段移除。
+   移除的理由是實測（headless，4 模組 × 16 種尺寸）推翻了它的前提：
+   它想解決「12 欄下 cs:3 太窄」，代價卻是**同時違反兩條硬約束**——
+     · 要捲：CRM 在 1280 的文件高 1,575px vs 視窗 813px，接近兩屏
+     · 最扁：最寬面板 1312×260（長寬比 5.05）——是所有尺寸裡最扁的版型
+   而且 1400/1401 是道反向懸崖：視窗**變寬 1px**，面板反而從 1312 掉到 635。
+   同尺寸（1280×813）把 12 欄延伸下來量到的是：一屏不捲、最扁 1.72、四個模組都讀得出來。
+   12 欄的下限實測在 1152 與 1280 之間，而 1152 先破的是 hero（三張數字卡＋輸入框橫向擠不下），
+   不是網格 → 下限取 1280。若日後要再往下推，該動的是 hero 而不是 .charts。 */
+/* 「一屏不捲」是桌機（≥1280 寬）的約束。窄於此 = 平板/手機，
    改回自然流、允許捲動——硬塞一屏在窄螢幕上只會更糟。 */
-@media (max-width:1060px){
+@media (max-width:1279px){
   body{height:auto;min-height:100dvh;overflow:auto;}
   main{flex:auto;overflow:visible;padding:var(--space-4);
     display:flex;flex-direction:column;gap:var(--space-4);}
@@ -1083,7 +1125,15 @@ body.picking .pickhint{opacity:1;transform:translateX(-50%);}
     </div>
     <div class="qrow">
       <button id="hdig" class="askdig" type="button" aria-label="深入分析：挑一張圖表">深入分析</button>
-      <div class="qchips" id="qchips"></div>
+      <!-- .qcwrap 只為了給捲動鈕一個定位框：左鈕要貼在 chips 的左緣（＝深入分析 pill 之後），
+           掛在 .qrow 上就得寫死 pill 的寬度當位移。捲動鈕 aria-hidden＋tabindex=-1——
+           它們純粹是滑鼠的替代路徑，鍵盤 Tab 逐顆走 chips（瀏覽器自動 scroll-into-view）
+           本來就通，放進 tab order 只會在 chips 之間多兩個按不出東西的停點。 -->
+      <div class="qcwrap">
+        <div class="qchips" id="qchips"></div>
+        <button class="qcnav prev" id="qcprev" type="button" tabindex="-1" aria-hidden="true"></button>
+        <button class="qcnav next" id="qcnext" type="button" tabindex="-1" aria-hidden="true"></button>
+      </div>
     </div>
     <div class="heronav">
       <div class="tabs" role="tablist">
@@ -1212,6 +1262,9 @@ const P = {
   msgSq:'<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M12 7v4"/><path d="M12 15h.01"/>',
   logout:'<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/>',
   chev:'<path d="m6 9 6 6 6-6"/>',
+  /* 快捷發問列的左右捲動鈕（lucide chevron-left／right） */
+  chevL:'<path d="m15 18-6-6 6-6"/>',
+  chevR:'<path d="m9 18 6-6-6-6"/>',
   /* 拇指讚／倒讚——自 index.html 的 _ico.like／dislike 移植（維持全站同一支圖）。 */
   thumbUp:'<path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3H14z"/><path d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/>',
   thumbDown:'<path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3H10z"/><path d="M17 2h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17"/>',
@@ -1667,7 +1720,11 @@ function buildOption(c, tk, H, W){
       tooltip:{ trigger:'axis', axisPointer:{type:'shadow'}, ...tip,
         valueFormatter:v=>F(v)+(c.unit||'') },
       grid:{ left:6, right:6, top: (c.note||c.labelAll)?26:12, bottom:0, containLabel:true },  /* 左右等寬 → 留白對稱 */
-      xAxis:{ type:'category', data:labels, ...axX },
+      /* interval:0 → 四個庫齡區間都要出現。ECharts 的 auto 在窄面板會隔一個藏一個，
+         而這裡藏掉的正好是「180 天+」——那是整張圖的重點（死貨），不能省。
+         窄面板（12 欄下探到 1280 後 cs:3 約 281px）字級退一階讓四個標籤排得下。 */
+      xAxis:{ type:'category', data:labels, ...axX,
+        axisLabel:{...axX.axisLabel, interval:0, fontSize: W < 300 ? 10 : 11} },
       yAxis:{ type:'value', ...axY,
         axisLabel: c.labelAll ? {show:false} : axY.axisLabel },  /* 值已標在柱上 → 藏 Y 軸刻度 */
       series:[{
@@ -2317,19 +2374,42 @@ const QC = {
   CRM :["點數累積最多的前一百個會員都是誰？","我們官網 EC 的會員跟百貨專櫃的會員重疊有多少？","會員推薦朋友加入的機制，這半年帶進來多少新會員？"]
 };
 const qcEl = document.getElementById("qchips");
+const qcPrev = document.getElementById("qcprev"), qcNext = document.getElementById("qcnext");
+qcPrev.innerHTML = ic("chevL"); qcNext.innerHTML = ic("chevR");
+
+/* ── 快捷發問列的捲動：四條路徑 ────────────────────────────────────────────
+   這條列在任何螢幕寬度都溢出（見 .qchips 的 CSS 註解），所以捲動不是「加分項」
+   而是「拿得到第三顆 chip 的唯一方法」。四條路徑各自服務不同的人：
+     ① 捲動鈕 .qcnav —— 唯一看得見的，負責可發現性
+     ② 滾輪 deltaY→scrollLeft —— 滑鼠熟手最快
+     ③ 拖曳（只限 pointerType==="mouse"）—— 觸控／筆走原生捲動，不要攔
+     ④ 鍵盤 Tab —— 瀏覽器自動 scroll-into-view，本來就通，一個字都沒動
+   ①②③ 都只在真的溢出時才生效，不溢出時完全不介入。 */
+
+/* 拖過就要吃掉緊接著的那次 click，否則「拖到第三顆」會順手把第二顆送出去。 */
+let _qcDrag = null, _qcNoClick = false;
+
 /* 事件掛在容器上，重繪不受影響（比照 chEl 的做法） */
 qcEl.addEventListener("click", e => {
+  if(_qcNoClick){ _qcNoClick = false; return; }   /* 這次 click 是拖曳的尾巴，不是發問 */
   if(picking()) return;                 /* 挑圖模式下 chips 停用（CSS 也 pointer-events:none，這是雙保險）*/
   const b = e.target.closest(".chip");
   if(b) open_(b.textContent.trim(), null);
 });
+
+const qcMax = () => qcEl.scrollWidth - qcEl.clientWidth;
+
 /* 柔邊：淡出寬度＝離該側邊界的捲動距離，夾在 0–24px。
    ⚠️ 不要用「過門檻就切 0↔24px」——那會在邊界瞬間跳一下（滑動時遮罩閃動）。
-   漸變版：滑到頭左側自然收成 0（第一顆完整顯示）、滑到底右側收成 0，中段才滿 24。 */
+   漸變版：滑到頭左側自然收成 0（第一顆完整顯示）、滑到底右側收成 0，中段才滿 24。
+   捲動鈕的顯隱同一個函式決定：**用實測 scrollWidth，不用斷點猜**——
+   沒測過的螢幕尺寸（含未來換字級、換文案）也會自己得出正確答案。 */
 function updateQcFade(){
-  const max = qcEl.scrollWidth - qcEl.clientWidth, x = qcEl.scrollLeft;
+  const max = qcMax(), x = qcEl.scrollLeft;
   qcEl.style.setProperty("--fadeL", Math.max(0, Math.min(24, x)) + "px");
   qcEl.style.setProperty("--fadeR", Math.max(0, Math.min(24, max - x)) + "px");
+  qcPrev.classList.toggle("on", x > 1);
+  qcNext.classList.toggle("on", x < max - 1);
 }
 qcEl.addEventListener("scroll", updateQcFade);
 addEventListener("resize", updateQcFade);
@@ -2337,6 +2417,55 @@ addEventListener("resize", updateQcFade);
    字型 ready 與 load 後各重算一次。 */
 addEventListener("load", updateQcFade);
 if(document.fonts && document.fonts.ready) document.fonts.ready.then(updateQcFade);
+
+/* ① 捲動鈕：一次走 80% 可視寬——不走滿版，留一顆在畫面上當「接續點」，
+   不然每按一次整排全換，會失去自己捲到哪裡的感覺。 */
+const qcStep = dir => qcEl.scrollBy({
+  left: dir * qcEl.clientWidth * .8,
+  behavior: matchMedia("(prefers-reduced-motion:reduce)").matches ? "auto" : "smooth"});
+qcPrev.addEventListener("click", () => qcStep(-1));
+qcNext.addEventListener("click", () => qcStep(1));
+
+/* ② 滾輪：垂直滾輪轉橫捲。
+   ⚠️ 只在「這一捲真的有被吃掉」時才 preventDefault——捲到底就放行讓事件冒泡，
+   否則在 ≤1400（頁面本身可捲）時，游標壓在這條 30px 高的列上會整頁捲不動。
+   |deltaX| ≥ |deltaY| 代表是觸控板橫向手勢，原生已經會處理，不要插手。 */
+qcEl.addEventListener("wheel", e => {
+  const max = qcMax();
+  if(max <= 0 || Math.abs(e.deltaX) >= Math.abs(e.deltaY)) return;
+  const next = Math.max(0, Math.min(max, qcEl.scrollLeft + e.deltaY));
+  if(next === qcEl.scrollLeft) return;
+  e.preventDefault();
+  qcEl.scrollLeft = next;
+}, {passive:false});
+
+/* ③ 拖曳：4px 閾值後才算拖曳，之前一律當點擊。
+   限 pointerType==="mouse"：觸控與筆的原生慣性捲動比手刻的好，攔了只會變差。 */
+qcEl.addEventListener("pointerdown", e => {
+  if(e.pointerType !== "mouse" || e.button !== 0) return;
+  if(picking() || qcMax() <= 0) return;
+  _qcDrag = {x:e.clientX, from:qcEl.scrollLeft, id:e.pointerId, moved:false};
+});
+qcEl.addEventListener("pointermove", e => {
+  if(!_qcDrag || e.pointerId !== _qcDrag.id) return;
+  const dx = e.clientX - _qcDrag.x;
+  if(!_qcDrag.moved){
+    if(Math.abs(dx) < 4) return;        /* 手抖不算拖曳，否則點不動 chip */
+    _qcDrag.moved = true;
+    qcEl.setPointerCapture(_qcDrag.id); /* 拖出容器外仍跟手 */
+    qcEl.classList.add("grabbing");
+  }
+  qcEl.scrollLeft = _qcDrag.from - dx;
+});
+const qcEndDrag = () => {
+  if(!_qcDrag) return;
+  if(_qcDrag.moved && qcEl.hasPointerCapture(_qcDrag.id)) qcEl.releasePointerCapture(_qcDrag.id);
+  qcEl.classList.remove("grabbing");
+  _qcNoClick = _qcDrag.moved;           /* pointerup 早於 click，旗標來得及擋 */
+  _qcDrag = null;
+};
+qcEl.addEventListener("pointerup", qcEndDrag);
+qcEl.addEventListener("pointercancel", qcEndDrag);
 
 function draw(){
   document.querySelectorAll(".tab").forEach(b =>
