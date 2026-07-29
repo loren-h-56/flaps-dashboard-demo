@@ -112,6 +112,16 @@ button{font-family:inherit;}
    兩個數字各走各的才是「chips 突出去一大截」的成因。上限 780 是刻意的：
    輸入框再寬就不像發問框像網址列了，而且左欄還要留白給右側量表透氣。 */
 :root{--ask-w:clamp(560px,40vw,780px);--qrow-w:calc(var(--ask-w) + var(--space-7));}
+/* Hero 右欄（三張數字卡）的固定寬度。
+   ⚠️ 原本是 grid 的 auto ＝ 內容決定，而卡片寬度又由數字字數決定
+   （CRM「945,408人」比庫存「6,991萬」寬將近 100px）→ 切分頁時右欄在 652–750 之間跳，
+   左欄是「剩下的」也跟著跳，於是 askbar／chips 列的 max-width 在左欄不夠寬時失效、
+   直接跟著縮：1470 上 chips 列跳 68px，1280 上 askbar 跳 98px。
+   釘死之後左欄寬、發問框、chips 列全部與分頁無關。
+   ⚠️ 釘的是**格線欄位**，不是卡片本身——卡片仍照內容寬、靠右切齊（見 .hero-gauges 註解）。
+   760 的來源：四頁裡最寬的是 CRM 的 750（249+250+233 ＋ 容器內距 16），留 10px 餘裕。
+   取值只要 ≥ 最寬那頁即可，多給的部分落在卡片左側、是 hero 的 canvas 底，看不出來。 */
+:root{--hero-metrics:760px;}
 
 /* ============================================================
    側欄 = 對話這條線（新對話／搜尋／釘選／專案／歷史）。
@@ -219,9 +229,16 @@ button{font-family:inherit;}
    左欄由上而下：歡迎語 → 發問框 → 分頁（旁附資料截取時間）；
    右欄由上而下：帳號膠囊（dropdown）→ 三個達成率圓（橫排）。
    ============================================================ */
-.hero{flex:none;height:33dvh;min-height:248px;max-height:340px;overflow:hidden;
+/* ⚠️ 高度不再綁 dvh。實測 hero 的自然內容高度是**常數 268px**（4 模組 × 9 種尺寸量到同一個
+   數字——內容是固定的：歡迎語 62 ＋ 發問框 50 ＋ chips 29 ＋ 分頁 43，右欄更矮）。
+   原本 height:33dvh;min-height:248;max-height:340 讓高度跟著「螢幕」走，內容卻跟著「自己」走，
+   兩者無關，於是：視窗高 700 時 hero 只拿到 248（比需要的少 20，靠行高餘裕吸收，目視沒破）、
+   視窗高 ≥1030 時拿到 340（**多 72px 純空白**）——而那 72px 每一分都是從圖表區扣的。
+   自然高既然是常數，clamp() 沒有東西可夾 → 直接 height:auto。
+   overflow:hidden 保留：ambience 的 ::before/::after 是 200%×220% 放射漸層，靠它裁邊。 */
+.hero{flex:none;height:auto;overflow:hidden;
   position:relative;isolation:isolate;
-  display:grid;grid-template-columns:minmax(0,1fr) auto;gap:var(--space-6);
+  display:grid;grid-template-columns:minmax(0,1fr) var(--hero-metrics);gap:var(--space-6);
   padding:var(--space-6) var(--space-6) var(--space-4);
   background:var(--canvas);
   /* 呼吸燈用色（紙面：iris + coral，極淡） */
@@ -418,6 +435,10 @@ body.picking .qcnav{opacity:0;pointer-events:none;}
 /* 頂端 vital-sign 列：圓環（比率）在左、數字（絕對量）在右，混排在「單一不換行列」。
    固定單排 → 每個模組高度恆定，切換分頁不會撐爆 hero、不會裁掉左側分頁。
    圓環軌 accent-soft + iris 進度弧，數字格同 Resq.io 樣式。 */
+/* ⚠️ 刻意**不**加 align-self:stretch。右欄的格線寬度已經釘死（--hero-metrics），
+   askbar／chips 因此與分頁無關；這一層則靠 .heroright 的 align-items:flex-end
+   保持「按內容寬、整塊靠右」——卡片寬度貼著數字，右緣切齊 hero 右邊界。
+   拉滿整欄的話最後一張卡的右側會空出一截（數字短、卡卻被撐到 1/3 欄寬）。 */
 .hero-gauges{display:flex;flex-wrap:nowrap;align-items:center;
   /* iris tint 再淡一階（往 paper 混）＋ iris hairline 收邊＋最淡紙陰影＝白底優先的層次做法 */
   background:color-mix(in srgb,var(--accent-soft),var(--paper) 35%);
@@ -433,6 +454,7 @@ body.picking .qcnav{opacity:0;pointer-events:none;}
   text-align:center;line-height:1.3;}
 
 /* Hero 數字格（Resq.io 樣式）：漲跌章（圓角膠囊，箭頭＋%）在大數字左側、標籤在下。 */
+/* flex:none ＝ 寬度貼著數字（等寬 flex:1 試過，數字短的那張右側會空一截）。 */
 .hstat{display:flex;flex:none;flex-direction:column;gap:6px;min-width:82px;padding:0 var(--space-5);}
 /* 各數值間的分隔線：iris 淡線（color-mix 推導，符合「紙面不新增品牌 hex」） */
 .hstat + .hstat{border-left:1px solid color-mix(in srgb,var(--accent),transparent 82%);}
@@ -518,7 +540,13 @@ main{flex:1;min-height:0;overflow:hidden;
 .kg-unit{font-size:.52em;fill:var(--text-muted);font-weight:var(--fw-regular);}
 .kpi-g .kg-body .delta{flex:none;}
 /* 進度條卡（目標達成率 to-target）：大數字即達成率，分段條顯示離 100% 目標多遠。 */
-.kpi-t .kt-bar{display:flex;gap:2px;align-items:stretch;height:20px;margin-top:6px;}
+/* 分段條吃掉卡片的剩餘高度。實測（1470×841）這張卡是 329×172、內容只用掉 87
+   → **49% 是空白**，而且 .v 與 .foot 各有一個 margin-top:auto，空白平均堆在
+   「標題↔數字」與「條↔頁腳」兩處，看起來像沒排完。
+   flex:1 讓條先吃（flex-grow 排在 auto margin 之前），max-height 收住——不封頂的話
+   在 1440 螢幕上 24 段會長成一整塊色磚，比留白更難看。 */
+.kpi-t .kt-bar{display:flex;gap:2px;align-items:stretch;
+  flex:1;min-height:20px;max-height:72px;margin-top:6px;}
 .kpi-t .kt-bar i{flex:1;border-radius:2px;background:var(--accent-soft);}
 .kpi-t .kt-bar i.on{background:var(--accent);}
 .kpi-t .foot{justify-content:space-between;}
@@ -1015,6 +1043,16 @@ body.picking .pickhint{opacity:1;transform:translateX(-50%);}
   .charts{grid-template-columns:1fr;grid-template-rows:none!important;grid-auto-rows:auto;}
   .kpi{grid-column:auto;grid-row:auto;min-height:120px;}
   .panel{grid-column:auto;grid-row:auto;min-height:250px;}
+}
+/* 矮視窗把 hero 的內距與欄內間距各收一階（不動任何內容）。
+   單純 height:auto 在視窗高 700 會**倒退**（hero 從被壓縮的 248 長回自然的 268，
+   圖表區 420→400）；收一階後是 236，圖表區 432 —— 五種高度全部改善。
+   ⚠️ min-width:1280px 是必要的：下方 max-width:1279 那段已把 hero 改成四邊等距 --space-4，
+      不加寬度條件，這段會在「窄又矮」的視窗把左右內距又推回 --space-6。 */
+@media (min-width:1280px) and (max-height:820px){
+  .hero{padding:var(--space-4) var(--space-6) var(--space-3);}
+  .heroleft{gap:var(--space-2);}
+  .heroright{gap:var(--space-3);}
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important;}
   .hero::before,.hero::after{animation:none;}}
@@ -1680,6 +1718,39 @@ function funnelDrops(c, tk, H, W){
   return g;
 }
 
+/* 熱力圖的 grid 基準（buildOption 與 squareHeat 共用一份，避免兩邊的數字走鐘）。 */
+const heatGrid = c => ({ left:6, right: c.vm==='bottom'?8:60, top:3,
+  bottom: c.vm==='bottom'?26:3, containLabel:true });
+
+/* 把熱力圖的格子校成正方形。
+   為什麼要校：格子寬高由「面板寬 ÷ 欄數」與「面板高 ÷ 列數」各自決定，兩者無關。
+   業績的 7 欄 × 5 列在 1470 螢幕上量到格子 39×49（**高比寬多 25%**），
+   讀熱力圖是在比色塊的相對深淺，格子不等比會讓橫向與縱向的比較尺度不一致。
+   （庫存的 4×4 本來就接近 1:1，這段對它幾乎不動作——slack < 4px 就直接跳過。）
+
+   做法：寬度被 cs:3 鎖死不能加，所以只能收高度。收下來的餘裕**不全塞在底下**——
+   45% 給上緣（圖與副標之間），55% 給下緣（正好讓「低—高」色標有呼吸空間，
+   原本它是貼著 x 軸標籤的）。
+
+   ⚠️ 必須先把 grid 還原成基準再量：第二次呼叫（resize）時，量到的會是上一次已經
+      校正過的格子，不還原就會一路把圖越收越扁。 */
+function squareHeat(chart, c){
+  chart.setOption({ grid: heatGrid(c) });
+  const rows = c.grid.length, cols = c.grid[0] ? c.grid[0].length : 0;
+  if(rows < 2 || cols < 2) return;
+  const a = chart.convertToPixel({gridIndex:0}, [0,0]);
+  const b = chart.convertToPixel({gridIndex:0}, [1,1]);
+  if(!a || !b) return;
+  const cw = Math.abs(b[0]-a[0]), ch = Math.abs(b[1]-a[1]);
+  /* 上限 22%：面板越高、要收的高度越多（1470 螢幕只要收 50px，1920 要收 166px），
+     不設限的話大螢幕上會在圖的上下挖出一個比圖還顯眼的洞。
+     於是「筆電上完全方、大螢幕上接近方」——比「處處正方但處處有洞」好看。 */
+  const slack = Math.min(Math.round((ch - cw) * rows), Math.round(chart.getHeight() * .22));
+  if(slack < 4) return;                       /* 已經夠方，不為 3px 折騰 */
+  const g = heatGrid(c), up = Math.round(slack * .45);
+  chart.setOption({ grid:{ ...g, top:g.top + up, bottom:g.bottom + (slack - up) } });
+}
+
 function buildOption(c, tk, H, W){
   const tip = { confine:true, textStyle:{fontSize:11,color:tk.body},
     backgroundColor:tk.paper, borderColor:tk.border, borderWidth:1,
@@ -1889,8 +1960,7 @@ function buildOption(c, tk, H, W){
           return [x,y];
         },
         formatter:p=>`${c.y[p.data[1]]}・${xp}${c.x[p.data[0]]}<br/><b>${F(p.data[2])}</b>${c.unit||''}` },
-      grid:{ left:6, right: c.vm==='bottom'?8:60, top:3,
-        bottom: c.vm==='bottom'?26:3, containLabel:true },
+      grid: heatGrid(c),
       xAxis:{ type:'category', data:c.x.map(d=>xp+d), splitArea:{show:true},
         axisLine:{show:false}, axisTick:{show:false},
         axisLabel:{color:tk.tick,fontSize:11,margin:8} },
@@ -2310,9 +2380,9 @@ const stripTags = s => String(s).replace(/<[^>]+>/g, "");
 
 /* 每張圖 = 一個 ECharts 實例，就地填進版位格（.plot flex:1，尺寸由格子決定）。
    重繪／切分頁前先 dispose 舊實例（否則實例累積吃記憶體）；尺寸變動只 resize，不重建。 */
-let _charts = [], _funnels = [], _donuts = [];
+let _charts = [], _funnels = [], _donuts = [], _heats = [];
 function renderCharts(D){
-  _charts.forEach(ch => ch.dispose()); _charts = []; _funnels = []; _donuts = [];
+  _charts.forEach(ch => ch.dispose()); _charts = []; _funnels = []; _donuts = []; _heats = [];
   const tk = dvTokens();
   chEl.querySelectorAll(".plot[data-i]").forEach(el => {
     const c = D.charts[+el.dataset.i];
@@ -2322,6 +2392,7 @@ function renderCharts(D){
     _charts.push(chart);
     if(c.type==='funnel') _funnels.push({chart, el, c});   /* 漏斗流失欄是像素定位 → resize 要帶新高度重對齊 */
     if(c.type==='donut')  _donuts.push({chart, el, c});    /* 半圓的圖例/數字也是像素定位 → resize 要用新寬高重算 */
+    if(c.type==='heatmap'){ _heats.push({chart, c}); squareHeat(chart, c); }   /* 格子校正要在算得出像素之後 */
   });
   /* KPI 卡內的 mini 長條（連帶率 UPT 等）也走 ECharts → 有正式懸浮窗 */
   chEl.querySelectorAll(".plot.kmini[data-ki]").forEach(el => {
@@ -2356,6 +2427,7 @@ new ResizeObserver(() => {
   cancelAnimationFrame(_raf);
   _raf = requestAnimationFrame(() => {
     _charts.forEach(ch => ch.resize());
+    _heats.forEach(h => squareHeat(h.chart, h.c));   /* 格子比例隨面板寬高變 → 每次都要重校 */
     if(_funnels.length || _donuts.length){ const tk = dvTokens();
       _funnels.forEach(f => f.chart.setOption({ graphic: funnelDrops(f.c, tk, f.el.clientHeight, f.el.clientWidth) }));
       /* 半圓：用新寬高整段重算（圖例位置＋中央數字＋弧半徑都依 W/H） */
