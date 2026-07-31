@@ -108,10 +108,14 @@ button{font-family:inherit;}
    加在 token 層而不是就地手刻 px —— DS 規則 1）。
    ⚠️ 之前 askbar 560／qrow 600 是兩個寫死的數字，於是 ≥1512 之後完全凍住：
    實測左欄可用寬 1512→637、2560→1685，發問區卻永遠 560，寬螢幕上整條 Hero 左半是空的。
-   改成流動值後，**chips 列的寬度由輸入框推導**（+一階 space），不各自訂上限——
+   改成流動值後，**chips 列的寬度由輸入框推導**，不各自訂上限——
    兩個數字各走各的才是「chips 突出去一大截」的成因。上限 780 是刻意的：
-   輸入框再寬就不像發問框像網址列了，而且左欄還要留白給右側量表透氣。 */
-:root{--ask-w:clamp(560px,40vw,780px);--qrow-w:calc(var(--ask-w) + var(--space-7));}
+   輸入框再寬就不像發問框像網址列了，而且左欄還要留白給右側量表透氣。
+   ⚠️ qrow 曾經是 ask-w ＋ 一階 space-7（＝多 32px），用意是給右側捲動鈕留位置。
+   但那 32px 讓 chips 列的右緣**突出發問框之外**，讀起來像兩個沒對齊的區塊
+   （使用者回報「chips 寬度不應該超出對話框」）。改成同寬：捲動鈕本來就是
+   absolute、不佔版位，柔邊 mask 也只是繪製，兩者都不需要那 32px。 */
+:root{--ask-w:clamp(560px,40vw,780px);--qrow-w:var(--ask-w);}
 /* Hero 右欄（三張數字卡）的固定寬度。
    ⚠️ 原本是 grid 的 auto ＝ 內容決定，而卡片寬度又由數字字數決定
    （CRM「945,408人」比庫存「6,991萬」寬將近 100px）→ 切分頁時右欄在 652–750 之間跳，
@@ -509,7 +513,13 @@ main{flex:1;min-height:0;overflow:hidden;
   grid-column:span var(--cs,3);grid-row:span var(--rs,1);}   /* --rs：半列網格下 KPI 卡也要能跨列 */
 .kpi.sent{border-color:var(--color-warning);}
 .kpi .kh{display:flex;align-items:center;gap:5px;}
-.kpi .kh .tag{align-self:center;}
+/* 狀態徽章（低於預期／符合預期／高於預期…）**靠右**，四個模組的 KPI 卡一律如此。
+   margin-left:auto 把它推到頁首列尾 ＝ 卡片右上角；警示三角維持貼在卡名右側不動
+   （它是「這個數字有問題」的註記，屬於名稱；徽章是「好壞判定」，屬於卡片）。
+   ⚠️ 這一列右側原本住著 .dig pill（見下方 .dig 註解），dig 改成 Hero 鈕＋挑圖之後
+      整站已經沒有 .dig 元素（實測 0 個），右側是空的，徽章不會跟誰搶位。
+      若日後 dig 搬回頁首，這裡要改成兩者共用 margin-left:auto ＋ gap。 */
+.kpi .kh .tag{align-self:center;margin-left:auto;}
 .kpi .k{font-size:12.5px;color:var(--text-muted);}
 .kpi .warnicon{color:var(--color-warning);display:inline-flex;}
 .kpi .v{font-family:var(--font-display);font-size:29px;font-weight:var(--fw-semibold);
@@ -545,15 +555,36 @@ main{flex:1;min-height:0;overflow:hidden;
    「標題↔數字」與「條↔頁腳」兩處，看起來像沒排完。
    flex:1 讓條先吃（flex-grow 排在 auto margin 之前），max-height 收住——不封頂的話
    在 1440 螢幕上 24 段會長成一整塊色磚，比留白更難看。 */
+/* ⚠️ min-height 必須是 0，理由與 .kt-mini 那段完全相同：地板在窄螢幕不會退讓，而
+   .kpi 是 overflow:hidden，超出的部分會靜默裁掉 .foot 那行「落後進度 8 百分點」。
+   實測 1512×700 卡高只有 107px：留著 20px 地板時裁掉 24px（漲跌整行消失），
+   拿掉之後條子自己壓到 0、爆版縮到 4px，該讀的字都還在。
+   「保護內容一律不用 min-height：要嘛給更大的 rs，要嘛降級」——這條規則沒有例外。 */
 .kpi-t .kt-bar{display:flex;gap:2px;align-items:stretch;
-  flex:1;min-height:20px;max-height:72px;margin-top:6px;}
+  flex:1;min-height:0;max-height:72px;margin-top:6px;}
 .kpi-t .kt-bar i{flex:1;border-radius:2px;background:var(--accent-soft);}
 .kpi-t .kt-bar i.on{background:var(--accent);}
 .kpi-t .foot{justify-content:space-between;}
+/* ⚠️ 這張卡曾經有一套「進度條 ＋ 月達成率小柱」的三段降級（.has-mini／.no-bar／.no-mini），
+   第十三輪整組移除。移除的理由不是實作有問題（七個尺寸實測都 OVER=0），而是降級本身
+   造成**同一張卡在兩台螢幕上長得不一樣**——MacBook 卡高 154 落在「藏進度條」那一段、
+   外接螢幕 223 兩個都顯示。使用者兩台對照時立刻發現，而且合理地把它讀成 bug。
+   規則：同一張卡的「有幾個圖形」不該隨螢幕高度變。降級可以改**尺寸**、可以整塊換
+   呈現，但不要讓元素在支援尺寸之間時有時無。 */
 .kt-tgt{font-family:var(--font-mono);font-size:10.5px;color:var(--text-muted);}
 /* mini 長條卡（連帶率 UPT 等）：大數字＋近 N 月小柱看短期趨勢，末柱高亮。 */
-.kt-mini{margin-top:8px;flex:1;min-height:48px;display:flex;flex-direction:column;}
-.kt-mini .plot{flex:1;min-height:48px;}        /* mini 長條走 ECharts → 有正式懸浮窗 */
+/* ⚠️ min-height 必須是 0——這兩行原本是 48px，是全站唯一的爆版來源。
+   一屏不捲的架構下卡高 = 螢幕高 ÷ 版位，向下沒有下限；48px 的地板在窄螢幕
+   不會退讓，而 .kpi 的 overflow:hidden 又把超出的部分靜默裁掉（無捲軸、無
+   console error），於是 .foot 那行漲跌數字在下列尺寸憑空消失：
+     1366×768 −2px｜1280×720 −18px｜1512×700 −25px
+   而開發機 1470×841 有 +11px 餘裕 → 眼前永遠是好的，這就是它活到第十一輪的原因。
+   改 0 後八個尺寸實測 OVER=0。小柱改為可壓縮，實測 1470→59／1366→45／1280→29／
+   1512×700→22／1200×640→7 px。**7px 已無判讀價值但不遮蓋**——真正的解是高度
+   不足時整塊降級（換呈現），不是壓扁；門檻與降級樣貌待定，見交接第十八節。
+   保護內容一律不用 min-height：要嘛給更大的 rs，要嘛降級。 */
+.kt-mini{margin-top:8px;flex:1;min-height:0;display:flex;flex-direction:column;}
+.kt-mini .plot{flex:1;min-height:0;}        /* mini 長條走 ECharts → 有正式懸浮窗 */
 /* 卡片與 rs:2 大圖同列被撐高時（促銷／CRM 的右上角），把多出來的高度給長條而不是留白：
    大數字緊貼標題（取消 .kpi .v 的 margin-top:auto），剩餘空間全歸 .kt-mini。 */
 .kpi-mb .v{margin-top:0;}
@@ -618,7 +649,33 @@ main{flex:1;min-height:0;overflow:hidden;
 /* 系列圖例（本期/去年同期 這類）下移對齊副標列、靠右 → 填掉副標右邊的空白，不再擠在標題那行 */
 .legend{margin-left:auto;align-self:flex-end;display:flex;gap:var(--space-3);flex-wrap:wrap;}
 .lg{display:inline-flex;align-items:center;gap:5px;font-size:11px;color:var(--text-muted);}
-.lg i{width:9px;height:9px;border-radius:2px;flex:none;}
+/* 色塊的色與明度走 inline 的 --sw／--swo（不是 inline background）——關掉時
+   .lg.off 才推翻得了它。直接寫 inline background 的話只剩 !important 一條路。 */
+.lg i{width:9px;height:9px;border-radius:2px;flex:none;
+  background:var(--sw,var(--dv-1));opacity:var(--swo,1);}
+/* 可點圖例：點一下暫時隱藏那條線（比照商品線業績貢獻的 ECharts 內建圖例）。
+   ⚠️ 是 <button> 不是 <span>：鍵盤 Tab／Enter 本來就通，不必自己補 tabindex 與 keydown。
+   關掉的那項＝色塊轉灰 ＋ 文字整個變淡。
+   ⚠️ 原本文字是加**刪除線**（想多一層不依賴顏色的編碼），已移除：刪除線的語意是
+      「這筆被刪掉／作廢」，但這裡實際只是「暫時不顯示」，而且同一頁的商品線業績貢獻
+      走 ECharts 內建圖例、關掉是變灰，兩張圖同一個動作長得不一樣。統一成變灰。 */
+/* ⚠️ **不要在這裡寫 font-size:inherit**。這條規則的選擇器比上面的 .lg 更具體，
+   inherit 會解析成父層（.legend）的 14px、推翻 .lg 自己的 11px —— 每一項因此寬 42 高 20
+   （原本 36×16），五項的圖例從 249 漲到 281，在 1366 的 cs:3 面板頁首放不下 →
+   .legend 換行、高度 20→52，把圖區壓矮。字級交給 .lg，這裡只補 button 缺的繼承。
+   appearance:none 一併關掉 UA 自畫的按鈕盒（padding:0 管不到它）。 */
+.lg[data-lg]{border:0;background:transparent;padding:0;margin:0;
+  appearance:none;-webkit-appearance:none;
+  font-family:inherit;line-height:inherit;cursor:pointer;
+  border-radius:var(--radius-sm);transition:color .12s ease;}
+.lg[data-lg]:hover{color:var(--text-body);}
+.lg[data-lg]:focus-visible{outline:2px solid var(--accent);outline-offset:1px;}
+/* 停用色往卡面混，light/dark 各自得到對的淡度（暗色直接寫死淺灰會刺眼）。
+   停用態的控制項不受 WCAG 1.4.3 對比要求約束，這裡刻意壓到「看得到但退到背景」。 */
+.lg.off{color:color-mix(in srgb,var(--text-muted),var(--paper) 55%);}
+.lg.off i{background:var(--border-2);opacity:1;}
+.lg.off[data-lg]:hover{color:color-mix(in srgb,var(--text-muted),var(--paper) 30%);}
+@media (prefers-reduced-motion:reduce){.lg[data-lg]{transition:none;}}
 
 /* ---- 資料哨兵 ---- */
 .warnbox{margin:0 var(--space-4) var(--space-3);padding:9px var(--space-3);
@@ -923,6 +980,138 @@ main{flex:1;min-height:0;overflow:hidden;
 .fbty-t{font-size:var(--text-small);font-weight:var(--fw-semibold);color:var(--text);}
 .fbty-x{font-size:var(--text-label);line-height:var(--lh-body);color:var(--text-muted);}
 @media (prefers-reduced-motion:reduce){.fbov,.fbmodal{transition:none;}.fbmodal{transform:none;}}
+
+/* ---- Hero 數字卡下鑽：各店櫃明細彈窗 -------------------------------------------
+   置中彈窗 ＋ 全螢幕遮罩（使用者要求；第一版是不壓暗的，已改）。
+   ⚠️ 這**不牴觸**第六次 session 移除抽屜 scrim 的決定。那次移除的理由是「抽屜一開就把
+   整個 Dashboard 鎖住，切分頁／點另一張圖的深入分析／Hero 發問框全都吃不到」——因為抽屜
+   的定位是「對照著圖追問」，本來就不該是 modal。這個彈窗相反：它是「掃一眼就關」的
+   阻斷式視圖，鎖住底層正是意圖，而且只有 ✕／Esc／點遮罩三條出口，不會把人關在裡面。
+   ⚠️ 遮罩色不寫死 rgba（DS 規則 1）：淺色用 --text（#141A33 是 ink）當基底往透明混；
+   暗色**不能沿用**——暗色的 --text 是近白色(#EEF0F8)，混出來會變成「打亮」而不是壓暗，
+   所以暗色改用最深的 --canvas 當基底，並提高不透明度（深色壓深色本來就比較不明顯）。
+   z-index 80：在側欄(66)／帳號選單(70)／抽屜(61) 之上，開場動畫(10000) 之下。
+   ⚠️ 一處 coral 的額度不動它——彈窗內只用 iris ＋語意色，coral 留給紙面既有的那一處。 */
+.dov{position:fixed;inset:0;z-index:80;display:flex;align-items:center;justify-content:center;
+  padding:var(--space-6);background:color-mix(in srgb,var(--text),transparent 68%);
+  opacity:0;pointer-events:none;transition:opacity .18s var(--ease-out);}
+[data-theme="dark"] .dov{background:color-mix(in srgb,var(--canvas),transparent 42%);}
+.dov.open{opacity:1;pointer-events:auto;}
+/* 尺寸：寬固定 640（可視區窄於 704 才縮，而 12 欄下限是 1280 → 桌機碰不到）；
+   高是**上限**不是固定值 —— max-height:100% ＝ 可視區高 − 64（.dov 上下各 space-6）。
+   實測 1366×768 → 704、2560×1440 → 1376；現況 13 列只有 537，裝得下就不捲。
+   overflow:hidden 是給「合計列釘底」用的：表格現在直接貼到彈窗底緣，
+   沒有它的話最後一列的方角會戳出 radius-lg 的圓角外。 */
+.dmodal{position:relative;display:flex;flex-direction:column;overflow:hidden;
+  width:100%;max-width:640px;max-height:100%;
+  background:var(--paper);border:1px solid var(--border);border-radius:var(--radius-lg);
+  box-shadow:var(--shadow-lg);transform:translateY(8px);transition:transform .18s var(--ease-out);}
+.dov.open .dmodal{transform:none;}
+/* 副標（期間／排序說明）與頁腳（哨兵註記）已移除——標題單獨一行，上下內距等距。 */
+.dmhd{flex:none;padding:var(--space-4) var(--space-7) var(--space-4) var(--space-5);
+  border-bottom:1px solid var(--border);}
+.dmt{margin:0;font-family:var(--font-display);
+  font-size:var(--text-body-size);font-weight:var(--fw-semibold);color:var(--text);}
+.dmt em{font-style:normal;color:var(--accent);}
+/* 表身：dmwrap 負責捲動，thead 釘頂、合計列釘底（見下方兩處 sticky）。
+   ⚠️ 水平內距**必須是 0**：給 .dmwrap 左右內距的話，列的底色與框線都停在彈窗內緣前
+   一段距離，釘底的合計列兩側會各留一小塊白角（使用者回報「左右兩側的留白很怪」）。
+   改成「內距 0 ＋ 首末格自己加 space-5」——底色與框線通到彈窗邊，文字仍縮排 24px
+   對齊頁首標題（見下方 :first-child / :last-child）。
+   ⚠️ padding-bottom 歸零：sticky 的偏移基準是 scrollport 的 padding box，留 8px 下內距
+   會在釘住的合計列**下方**留一條 8px 的縫，捲動中的列會從那條縫透出來。
+   ⚠️ scrollbar-width:thin ＋ scrollbar-color 是刻意的：macOS 預設是 overlay 捲軸
+   （實測寬度 0px、只在捲動時淡入），滑鼠使用者少一個「這裡可以捲」的線索。
+   指定 scrollbar-color 會讓 Chromium 換成常駐捲軸，Mac 與 Windows 就一致了。
+   ⚠️ 這**不是** .qchips 那條 scrollbar-width:none —— 那裡是刻意藏、另補三條捲動路徑；
+   這裡是刻意顯，方向相反，不要照抄過去。 */
+.dmwrap{flex:1 1 auto;min-height:0;overflow-y:auto;padding:0;}
+/* 常駐捲軸。⚠️ 兩組屬性**不能同時**寫在同一個規則裡：Chromium 只要看到 scrollbar-width
+   就會忽略整組 ::-webkit-scrollbar，而它自己的 scrollbar-width:thin 在 macOS 仍是
+   overlay（實測佔用寬度 0px）→ 等於兩邊都失效。第一版就是這樣靜默壞掉的。
+   隔離方式：標準屬性關進 @supports not selector(::-webkit-scrollbar) —— Firefox 進得去，
+   Chromium／Safari 進不去，各拿一組、互不干擾。
+   尺寸顏色全走 token（寬 space-2、拇指 border-2、軌道透明）。 */
+.dmwrap::-webkit-scrollbar{width:var(--space-2);}
+.dmwrap::-webkit-scrollbar-track{background:transparent;}
+.dmwrap::-webkit-scrollbar-thumb{background:var(--border-2);border-radius:var(--radius-pill);}
+@supports not selector(::-webkit-scrollbar){
+  .dmwrap{scrollbar-width:thin;scrollbar-color:var(--border-2) transparent;}}
+/* ⚠️ border-collapse **必須是 separate**：collapse 之下 Chromium 不讓 tbody 的 td 做
+   position:sticky（thead 有特殊處理所以照樣釘得住，tbody 沒有）——合計列釘底就是這樣
+   靜默失效的，實測「灌 40 家 → 合計列在頂端與中段都不可見」。
+   border-spacing:0 讓視覺與 collapse 幾乎一致：格子只畫 border-bottom，
+   相鄰格的線本來就接成一條，沒有 collapse 要處理的雙線問題。 */
+.dmt2{width:100%;border-collapse:separate;border-spacing:0;font-variant-numeric:tabular-nums;}
+.dmt2 th,.dmt2 td{padding:var(--space-2) var(--space-3);text-align:right;white-space:nowrap;}
+/* 首末格自己吃掉縮排（space-5 ＝ 頁首標題的左緣），底色與框線因此能通到彈窗邊。
+   ⚠️ 有捲軸時最後一欄距彈窗右緣會多 8px（捲軸寬）——這是所有可捲表格的常態，不修。 */
+.dmt2 th:first-child,.dmt2 td:first-child{text-align:left;padding-left:var(--space-5);}
+.dmt2 th:last-child,.dmt2 td:last-child{padding-right:var(--space-5);}
+/* z-index 2 > 合計列的 1：兩條 sticky 平常不重疊，但列數少到表身幾乎沒有捲動空間時
+   會擦到，表頭要贏（欄名比重複的合計更關鍵）。 */
+.dmt2 thead th{position:sticky;top:0;z-index:2;background:var(--paper);
+  font-family:var(--font-mono);font-size:var(--text-micro);font-weight:var(--fw-medium);
+  letter-spacing:.02em;color:var(--text-muted);border-bottom:1px solid var(--border);}
+.dmt2 tbody td{font-family:var(--font-mono);font-size:var(--text-label);color:var(--text-body);
+  border-bottom:1px solid color-mix(in srgb,var(--border),transparent 45%);}
+.dmt2 tbody td:first-child{font-family:var(--font-body);color:var(--text);}
+/* 被點的那一欄＝這次下鑽的主角：淺灰填充打底、字回到 --text、表頭轉 iris。
+   排序也依它（見 openDrill），所以「高亮」與「第一眼往下讀」講的是同一件事。 */
+.dmt2 th.on{color:var(--accent);background:var(--accent-soft);}
+.dmt2 td.on{color:var(--text);font-weight:var(--fw-semibold);background:var(--surface-2);}
+/* 小計／合計：小計是通路層的橋（對得上「各通路佔比走勢」那張圖），合計對得上 Hero 大數字。
+   ⚠️ 合計列 **sticky 釘底**（比照 thead 釘頂，同一種語彙）：店櫃多到要捲時，
+   「合計 2,887」正是對回 Hero 大數字的錨點，不該被捲出視野。
+   ⚠️ sticky 要下在 **tr**，不是 td —— 下在 td 上實測完全不生效（灌 40 家店時合計列在
+   頂端與中段都不可見），而且是靜默失效、沒有任何報錯。搭配上面的 border-collapse:separate
+   才成立：collapse 之下連 tr 的 sticky 也一起失效。
+   ⚠️ 線下小計**刻意不釘**：兩條 sticky 會把可視區從上下一起夾掉，列數少時幾乎沒得捲。
+   td 背景必須不透明（surface-2 / accent-soft 都是實色），否則捲動中的列會透出來。 */
+.dmt2 tr.sub td{color:var(--text);background:color-mix(in srgb,var(--surface-2),var(--paper) 45%);}
+.dmt2 tr.tot{position:sticky;bottom:0;z-index:1;}
+.dmt2 tr.tot td{color:var(--text);font-weight:var(--fw-semibold);
+  border-top:1px solid var(--border-2);border-bottom:0;background:var(--surface-2);}
+.dmt2 tr.tot td.on{background:var(--accent-soft);color:var(--accent);}
+/* ⚠️ 暗色無障礙修正（實測後才發現，不是預防性的）：iris 直接放在 accent-soft 上，
+   淺色是 5.47:1（過 AA），**暗色只有 2.36:1**（#4F46E5 on #1F2350，不到 AA 4.5）。
+   往 --text 混 45% 提亮一階 → 5.42:1。不新增品牌 hex，用 color-mix 推導（DS 規則 1）。
+   只改暗色：淺色本來就過，混了反而讓高亮欄變淡。 */
+[data-theme="dark"] .dmt2 th.on,
+[data-theme="dark"] .dmt2 tr.tot td.on{color:color-mix(in srgb,var(--accent),var(--text) 45%);}
+/* 資料哨兵註記：南西新光整層櫃位零交易是系統斷層（與 業-C1 的 warn 同一件事）。
+   ⚠️ 頁腳說明文字已依使用者要求移除，這顆小標**刻意留著**——本月 −92% 但累計只 −18%，
+   沒有任何標記的話那個 48 會被當成真的店況拿去檢討。 */
+.dmt2 td .flag{margin-left:var(--space-1);padding:1px 5px;border-radius:var(--radius-pill);
+  font-family:var(--font-mono);font-size:9px;font-weight:var(--fw-medium);
+  background:var(--color-warning-soft);color:var(--color-warning);}
+/* 關閉鈕沿用 .fbx 的樣式（同一種「彈窗右上角關閉」語彙，不另發明一套） */
+@media (prefers-reduced-motion:reduce){.dov,.dmodal{transition:none;}.dmodal{transform:none;}}
+
+/* Hero 數字卡可點（drill）：卡片本身變 <button>，先把瀏覽器預設全部歸零。
+   ⚠️ 主動作是「看明細」→ cursor:pointer 說的是真話（對照 drawer 標頭主動作是拖，才用 grab）。
+   hover 只給極淡的 iris tint：這條卡列本身已經坐在 accent-soft 底上，
+   再深就會跟旁邊的分隔線打架。 */
+.hstat-drill{border:0;background:transparent;font:inherit;color:inherit;text-align:left;
+  cursor:pointer;border-radius:var(--radius-sm);
+  position:relative;isolation:isolate;}
+/* hover 的淺紫底改用 ::before 畫，上下各外擴 space-2（＝比卡片內容高 16px）。
+   ⚠️ **不能用 padding 加高**：hero 的高度是內容驅動的常數 268px，卡片一長高就直接
+   從圖表區扣（1366×768 那台只有 500px 可用）。負 inset 只影響繪製、不影響版位。
+   ⚠️ 也不能改在 .hstat-drill 自己身上加 padding＋負 margin——`.hstat + .hstat` 的
+   iris 分隔線畫在同一個盒子上，會只有業績頁的分隔線變長 16px、四頁不一致。
+   isolation:isolate ＋ z-index:-1 沿用 .hero ambience 那層的既有寫法，
+   保證負 z-index 只退到卡片自己的底層，不會掉到 .hero-gauges 的背景後面。
+   外擴 8px 是上限：.hero-gauges 的垂直內距是 space-4(16px)，再多就貼上它自己的邊框。 */
+.hstat-drill::before{content:"";position:absolute;inset:calc(var(--space-2) * -1) 0;z-index:-1;
+  border-radius:var(--radius-sm);background:transparent;transition:background .12s ease;}
+.hstat-drill:hover::before{background:color-mix(in srgb,var(--accent),transparent 94%);}
+.hstat-drill:focus-visible{outline:2px solid var(--accent);outline-offset:1px;}
+/* 「可以點」的可發現性：標籤後面一個小尺規箭頭，hover 才轉 iris。
+   不用文字（「查看明細」四個字會把 .hl 撐寬，而 hero 卡寬度是內容驅動的）。 */
+.hstat-drill .hl .dchev{margin-left:3px;vertical-align:-1px;width:9px;height:9px;
+  stroke-width:2.6;color:var(--text-muted);transition:color .12s ease;}
+.hstat-drill:hover .hl .dchev{color:var(--accent);}
 /* 追問 chip＝下一步該問什麼。v2 起每句都是完整、可獨立送檢索的 golden 原句
    （不再有「只看信義店」那種需前端組句的參數式片段）。 */
 /* 虛線邊＝「這是一句可以問的話」，hover 才實心。
@@ -1194,6 +1383,16 @@ body.picking .pickhint{opacity:1;transform:translateX(-50%);}
 
 <div class="tip" id="tip" role="status" aria-live="polite"></div>
 <div class="pickhint" id="pickhint" role="status"></div>
+
+<!-- Hero 數字卡下鑽：各店櫃明細。body 層級（不在 drawer 內——它不是對話，是掃一眼就關的臨時視窗）。
+     內容全由 openDrill() 依「被點的是哪一格」重繪，markup 只留殼。 -->
+<div class="dov" id="drillov" aria-hidden="true">
+  <div class="dmodal" role="dialog" aria-modal="true" aria-labelledby="drill-t">
+    <div class="dmhd"><h2 class="dmt" id="drill-t"></h2></div>
+    <div class="dmwrap"><table class="dmt2" id="drill-tb"></table></div>
+    <button class="fbx" id="drill-x" type="button" aria-label="關閉"></button>
+  </div>
+</div>
 <aside class="drawer" id="drawer" aria-hidden="true" aria-label="追問對話">
   <span class="rz rz-n"  data-rz="n"></span><span class="rz rz-s"  data-rz="s"></span>
   <span class="rz rz-w"  data-rz="w"></span><span class="rz rz-e"  data-rz="e"></span>
@@ -1378,6 +1577,18 @@ M["業績"] = { sub:"本月業績狀態盤點",
        換來的 6 格讓熱力圖從 59px 長到 220px。取捨見下方版位說明。
        目標達成率（全店）與下一格的各店櫃達成率（分店）形成下鑽：
        「全店落後 8 個百分點」→「是哪幾家拖的」。 */
+    /* 大數字 42.2% ＝ 年度累計達成率（今年累計 20,382 萬 ÷ 全年目標 48,347.5 萬）。
+       ⚠️ 曾經在這裡補過一條「近六個月月達成率」的小柱（填 2560 上量到的 233px 空白），
+       第十三輪依使用者回報移除，兩個理由都成立、都要記著：
+         ① 小柱看不懂——一張已經在講「離目標多遠」的卡，下半忽然換成「每月各自的
+            達成率」，是第二個坐標系；卡片沒有空間放軸標與說明，看到的人只會問這是什麼。
+         ② 更嚴重的是它逼出三段降級（≥190 兩個都放／120–190 藏進度條／<120 藏小柱），
+            於是**同一張卡在兩台螢幕上長得不一樣**：MacBook（卡高 154）看不到進度條、
+            外接螢幕（223）看得到。使用者兩台對照時第一個發現的就是這件事。
+       教訓：降級是「高度不足時的退路」，不是「塞得下就多塞一個」的許可。
+       2560 的留白改用別的方式處理（版位或呈現），不要再往這張卡裡疊第二個圖形。
+       月達成率的數字仍留在交接文件，需要時可查：月目標取 flpas_bi golden
+       `400QA/業績/Q37.md` 查詢 2 的 `POS_SalePointTargetFeat` 實測值。 */
     {type:"target",k:"目標達成率",dig:"上個月哪個通路業績達成率最高？",v:"42.2",u:"%",d:"落後進度 8 百分點",dc:"d",t:["lo","低於預期"],cs:3,rs:2,
      sent:"目標欄位為 0 時不得顯示 0%——需 assertion 擋下"}],
   charts:[
@@ -1393,23 +1604,153 @@ M["業績"] = { sub:"本月業績狀態盤點",
        想讓熱力圖與走勢圖同時長高，就得砍掉一塊。
 
        商品線留在 59px 是刻意的——100% 堆疊橫條本來就不需要高度，給它 140px 只會多出空白。 */
-    {cs:3,rs:2,type:"hbar",h:"各店櫃達成率",s:"哪幾家店拖累達成率 · 前後各 2 名",unit:"%",
+    /* 副標的 {k} 由 syncSub 在掛載與 resize 後填上實際名次數（2／3／4）。 */
+    {cs:3,rs:2,type:"hbar",h:"各店櫃達成率",s:"哪幾家店拖累達成率 · 前後各 {k} 名",unit:"%",
+     /* ⚠️ 這裡給的是**完整 24 家的排序清單**（達成率由高到低），不是要畫的那幾列。
+        畫幾列由 topN 依實測圖區高決定（見 pickRows），所以清單一定要排好序、且長度
+        大於任何螢幕會顯示的列數，否則大螢幕會沒東西可補。
+        硬約束：EM／SM2 必須是前兩名、中友／南西必須是後兩名（業-C1 與各店櫃明細彈窗
+        對得上，見 STORE_DRILL 註解）；中間 20 家是示意值，接真實資料時整塊換掉。
+        南西 ci:9 ＝ 哨兵警示色，它 13.8% 是整層櫃位零交易的系統斷層不是真的爛。 */
      d:[["EM 左營新光",114.4,0],["SM2 左營新光",109.9,0],
+        ["台南新天地",104.6,0],["高雄漢神",101.2,0],
+        ["台中新光",98.7,0],["台北 A11",95.4,0],
+        ["板橋大遠百",92.8,0],["新竹巨城",90.1,0],
+        ["桃園統領",87.6,0],["高雄夢時代",85.2,0],
+        ["中壢 SOGO",82.9,0],["台北 A8",80.4,0],
+        ["嘉義耐斯",77.8,0],["竹北遠百",75.3,0],
+        ["屏東太平洋",72.6,0],["花蓮遠百",69.9,0],
+        ["台北 A13",67.2,0],["新竹遠百",64.5,0],
+        ["台中大遠百",61.8,0],["高雄 SOGO",58.3,0],
+        ["台南 FE21",54.7,0],["基隆東岸",48.2,0],
         ["中友百貨",31.2,2],["南西新光",13.8,9]],
+     topN:{mode:"headtail", min:4, max:8, pitch:17},
      ref:100, dig:"最近有沒有哪家門市業績異常？",
      warn:"<b>南西新光 13.8% 不是真的差</b>——整層櫃位（EM／SM2／Techichi）同時零交易，是系統斷層。不要據此檢討這家店。"},
-    {cs:3,rs:2,type:"donut",half:true,h:"通路業績佔比",s:"生意有多集中在單一通路 · 本月",unit:"萬",
-     d:[["線下",2408],["官網 EC",245],["電商",167],["其他",66]],
+    /* 這格改過三次，把死路寫在這裡，別再走回去：
+       ① 「通路業績佔比」半圓（單月快照）——答不了自己的提問（快照沒有時間軸），
+          而且線下佔 83%，一片獨大的圓幾乎不傳遞訊息。
+       ② 「線上佔比 ＋ 線下佔比」兩條線——相加恆等於 100%、互為鏡像，而佔比的月變化只有
+          1–3 個百分點。0–100 軸上 3.4 個百分點只有 2.4px，等於畫兩條直線。**尺度問題，加高無效**。
+          同理 **100% 堆疊面積圖也是死路**：邊界移動量 ＝ 3.2pp × 圖區高 ＝ 1.9px（1366），更糟。
+       ③ 「各通路佔比走勢」小倍數走勢表（四列、每列各自縮放 y 軸）——尺度問題解了，
+          但換來三個新問題，使用者回報「看不出這 4 條線的用意」：
+            · 各列自縮放 ⇒ 百貨 −1.8pp 與 第三方 +0.8pp **畫出來一樣陡**，形狀不帶資訊；
+              唯一傳達的是「上或下」4 個 bit，而右欄的 ±pp 與副標已經各講過一次。
+            · 落線收在自己那格的底、升線收在自己那格的頂 ⇒ 四顆末點 y ＝ 11/22/26/37（1366），
+              間距 11/4/11，**中間兩顆只差 4px、點徑 2.4px** ⇒ 黏成一條、線與標籤對不起來。
+            · split hairline 畫在 top0+2×rowH＝24，而「直營門市」11px 字身落在 13→24，
+              **1366 上剛好貼字底、看起來是刪除線**（1470 上 rowH=20 才閃得開，所以開發機看不到）。
+       ⚠️ 三次都撞同一面牆：**佔比的變化量（1–3pp）比佔比本身（5–55%）小一個數量級**。
+          出路只有「改畫變化量本身」或「換掉這個指標」，本輪選後者 → 改畫 YoY。
+
+       改成 YoY 之後結論**跟舊圖相反**，這是重點：
+         線下 20 列  2,408 → 3,380  YoY −28.8%
+         線上  4 列    479 →   580  YoY −17.4%
+         合計       2,887 → 3,960  YoY −27.1%  ← 對得上 Hero
+       **線上也在跌，跌 17%。** 線上佔比從 15.2% 爬到 18.4% 不是因為線上在長，是因為它跌得
+       比較慢——舊副標「線上兩條在進」嚴格說是誤導。
+
+       ⚠️ 四列數字的來源（改資料前先讀）：兩層加總是 STORE_DRILL 的硬約束（見該處註解），
+       線上兩列直接取 drill 的 off 群（EC 245/320；第三方平台 ＝ 蝦皮＋momo＋其他 234/260），
+       線下兩列是**新編的拆分**，但 1,612+796＝2,408、2,196+1,184＝3,380 必須守住。
+       順帶修掉一個既存的頁內矛盾：舊佔比圖說 EC 佔 13.2%，但 drill 的 EC 是 245/2887＝8.5%，
+       兩個數字在同一頁上打架；改成 YoY 之後統一由 drill 當唯一真相來源。 */
+    /* ⚠️ 副標不能寫長：這格沒有 legTop，副標吃整條頁首寬度看似寬鬆，但 cs:3 只有 301px
+       （1366），扣內距約 269px、11.5px 中文字 ≈ 23 字就換行，頁首多 16px 就從圖區扣。
+       副標寫**結論**不寫座標軸說明——「本月 vs 去年同期」那種寫法把讀圖的工作全丟給讀者。 */
+    /* ⚠️ 這張圖的軸是「YoY **跌幅**」，條長取絕對值、往右長。前提是四條全負；
+       若真實資料出現正成長的通路，這個圖型就不成立（正負同方向長會誤導），
+       必須改成真正的分歧軸（0 軸置中）。deltabar 在有正值時會擋下來，見該處註解。 */
+    {cs:3,rs:2,type:"deltabar",h:"各通路業績 YoY",
+     s:"四通路全數衰退 · 線上只是跌得比較慢",
+     ref:27.1, refLab:"全公司 −27.1%", unit:"萬",
+     /* [通路, YoY%, 本月業績萬, 去年同期萬]；依跌幅由小到大排，形狀本身就說「線上跌得少」 */
+     /* 金額欄不可省：第三方平台 −10.0% 看起來最健康，但它只有 234 萬；真正該擔心的是
+        1,612 萬的百貨專櫃。少了這一欄，圖會把讀者引到錯的地方。 */
+     rows:[["第三方平台",-10.0, 234, 260],
+           ["官網 EC",   -23.4, 245, 320],
+           ["百貨專櫃",  -26.6,1612,2196],
+           ["直營門市",  -32.8, 796,1184]],
+     /* dig 沿用改圖前的那句（使用者拍板）。問的是「佔比有沒有在變化」而圖畫的是 YoY，
+        看似對不上，但這張圖恰好答得了它、又不是一眼讀得到：線上跌 17%、線下跌 29%
+        ⇒ 佔比正在往線上移。反而更貼規則 6（圖上直接讀得到答案的句子不當 chip）。 */
      dig:"線上跟線下業績比例有沒有在變化？"},
     /* 商品線移到 KPI 那列（原本在中列 cs:6）——版位需要四塊 cs:3 填滿半列 1-2，
        而 stackbar 是唯一縮到 cs:3 還撐得住的圖型（標籤門檻會依寬度自動換算）。 */
+    /* 第 3、4 欄＝該品類的最熱銷單品與其業績（只出現在懸浮窗，見 stackbar 的 formatter）。
+       ⚠️ 品名與金額是**示意值**，不是 golden 算出來的（golden 只到品類層）。編的時候守兩條：
+       單品業績 ≤ 該類總額的三成（零售的長尾結構下，單一 SKU 撐起半個品類是不合理的），
+       且與整頁「6 月人流崩、客單價反升」的主線不衝突。 */
     {cs:3,rs:2,type:"stackbar",h:"商品線業績貢獻",s:"業績有多依賴單一品類 · 本月佔比",unit:"萬",
-     d:[["服裝",1200],["配件",560],["鞋類",460],["家居雜貨",380],["其他",287]],
+     d:[["服裝",1200,"涼感機能短袖 T",286],["配件",560,"真皮托特包",132],
+        ["鞋類",460,"厚底老爹鞋",108],["家居雜貨",380,"竹纖維涼被",74],
+        ["其他",287,"香氛蠟燭禮盒",46]],
      dig:"最近有沒有哪個商品業績突然驟減？"/* ←改寫自 業績-60　⚠️待實測 top-1 */},
-    {cs:6,rs:4,type:"line",legTop:true,h:"業績走勢",s:"今年比去年好還是壞 · 近 12 個月，本期 vs 去年同期（萬元）",
-     x:["7月","8月","9月","10月","11月","12月","1月","2月","3月","4月","5月","6月"],
-     series:[{n:"本期",c:0,d:[3050,3180,3240,3520,4180,4020,3966,3600,3264,3400,3265,2887]},
-             {n:"去年同期",c:1,d:[3210,3050,2980,3620,4720,4398,5428,2934,3763,3700,3600,3960]}],
+    /* 五年同期對照（原本是「本期 vs 去年同期」兩條線的滾動 12 個月）。
+       x 軸必須從「滾動 7月→6月」改成「日曆 1–12 月」——2025／2024… 是日曆年，
+       滾動窗放不進年份對照。今年只有 1–6 月有值，7–12 月給 null：connectNulls:false
+       讓實線自然收在半路，形狀本身就說「才走到一半」。
+
+       ⚠️ 哪些數字是搬既有的、哪些是新編的（改資料前先看這段）：
+         今年 1–6 月    ＝ 原「本期」線的後六點，同時鎖住 Hero 與 業-C6 combo（筆數×客單價）
+         2025 1–6 月    ＝ 原「去年同期」線的後六點
+         2025 7–12 月   ＝ 原「本期」線的前六點
+         2024 7–12 月   ＝ 原「去年同期」線的前六點
+         2024 1–6 月／2023／2022 全年 ← **新編的示意值**
+       新編的三段照兩條線編：① 逐年下滑（2022 約 5.4 億 → 2025 4.46 億 → 今年上半 2.04 億），
+       ② 保留一致的季節形狀（11 月週年慶峰、夏季谷、春節峰隨農曆在 1 或 2 月移動——
+       2025 春節在 1/29 故 1 月衝 5,428、2 月落 2,934；2024 在 2/10 故峰值移到 2 月）。
+       季節形狀一致，這張圖才有「今年是不是照往年節奏走」的判讀價值。
+
+       明度階梯 100/82/66/54/44% ＋ 虛線由疏到密，兩層冗餘編碼（色盲或低對比螢幕上靠 dash 分）。
+       ⚠️ 對比度實測（--dv-1 對 --paper）：6.29／4.37／3.14／2.48／2.05:1，**後兩階低於
+       WCAG 3:1**。這不是階梯沒調好，是數學上的天花板——iris 在白紙上滿強度就只有 6.29:1，
+       暗色 (#7A6FF0 對 #141A33) 更只有 4.37:1，要在 3.0 與 6.29 之間塞五個「彼此還分得出來」
+       的階根本擺不下。要全部過 3:1 只有兩條路：減到三年，或五年各給一個語意色（palette
+       只有五色且 dv-3 是本頁警示色，會撞）。目前選擇是保留五年、把 2023／2022 當次要參照，
+       並用 dash pattern 補一層不依賴對比的編碼。**要改成三年的話，砍後兩條即可。**
+       smooth 從 0.35 降到 0.2：214px 高、五條線在旺季必然擠在一起，平滑曲線會讓交叉點糊掉。
+       ymin 2500：0 起算時 2,887–5,428 只用掉 42% 圖高，下半部整片空白。
+       ⚠️ **必須是刻度間隔（500）的倍數**。原本寫 2400，於是 ECharts 在自己算出來的
+          2,500／3,000… 之外再補一個 min 刻度「2,400」，兩個標籤只差 14px（字高就 14px），
+          在某些圖區高度下貼成一團——實測 1920 會撞、1366／1440／2560 不會，
+          所以是「看機器才出現」的那種 bug。改成 2500 之後刻度是乾淨的 2500…5500。
+          資料最低點是本期 6 月的 2,887，仍在地板之上，沒有任何一條線被切到。 */
+    /* ⚠️ x 軸是**滾動 12 個月**（c.roll），不是日曆 1–12 月。這推翻了前一輪「改成日曆年」
+       的決定，理由是那個做法在年初會壞掉：1 月時本期線只剩一個點，畫不出趨勢。
+       現在錨在「今年最後一個有資料的月份 +1」＝ 7 月，往前推 12 格 →
+       8月…12月, 1月…7月，本期線滿 11 格、只缺最末那一格（見 rollWindow）。
+
+       ⚠️ **資料仍以日曆年存放**（每條 d 都是 1–12 月），切窗交給程式——這樣資料月份往前走
+       的時候不必回來手改 x 軸與每條線的偏移，那正是上一版最容易改錯的地方。
+
+       ⚠️ 序列名改成相對年（本期／去年／前年／3 年前／4 年前），**不能再寫 2025／2024**：
+       滾動窗跨兩個日曆年，一條含有 2024/8–12 的線標成「2025」是錯的。
+
+       ⚠️ c.tail ＝ 2021 全年，只被最舊那條線（4 年前，i=4）的前 5 格用到——
+       它沒有 series[i+1] 可取。少了 tail，那條線的 8–12 月會整段消失。
+       tail 是**新編的示意值**，照既有兩條規則編：逐年下滑（2021 比 2022 高約 4%）、
+       季節形狀一致（8 月谷、11 月週年慶峰）。
+
+       兩個硬約束仍然成立（改資料前先驗）：
+         本期 1–6 月 ＝ 3966…2887，鎖住 Hero 與 業-C6 combo
+         去年 6 月 ＝ 3960，鎖住 Hero 的「vs. 去年同期 3,960」 */
+    {cs:6,rs:4,type:"line",legTop:true,h:"業績走勢",s:"近 5 年同期對照 · 滾動 12 個月（萬元）",
+     unit:"萬", smooth:0.2, ymin:2500, roll:true,
+     month:["1月","2月","3月","4月","5月","6月","7月","8月","9月","10月","11月","12月"],
+     series:[
+       {n:"本期",c:0,op:1,  w:2.6,             d:[3966,3600,3264,3400,3265,2887,null,null,null,null,null,null]},
+       {n:"去年",c:0,op:.82,w:2,  dash:[7,4],  sym:false,
+        d:[5428,2934,3763,3700,3600,3960,3050,3180,3240,3520,4180,4020]},
+       {n:"前年",c:0,op:.66,w:2,  dash:[4,4],  sym:false,
+        d:[4180,5020,3980,4260,4180,4380,3210,3050,2980,3620,4720,4398]},
+       {n:"3 年前",c:0,op:.54,w:1.8,dash:[2.5,4],sym:false,
+        d:[5380,3420,4180,4320,4260,4480,3680,3820,3900,4180,4820,4560]},
+       {n:"4 年前",c:0,op:.44,w:1.8,dash:[1.5,4],sym:false,
+        d:[5120,4380,4420,4560,4480,4720,3980,4080,4180,4460,5100,4520]}],
+     /* 2021：只有 8–12 月會被畫到，1–7 月給 null（沒有第六條線需要它） */
+     tail:[null,null,null,null,null,null,null,4260,4360,4640,5320,4700],
      dig:"業績最差的那個月是哪個月？為什麼？"},
     {cs:3,rs:4,type:"heatmap",h:"星期 × 時段 業績熱力",s:"人力該加在哪個時段 · 近 3 個月日均（萬元）",unit:"萬",
      x:["一","二","三","四","五","六","日"], xp:"週", vm:"bottom",      /* 軸標籤前綴 → 週一…週日 */
@@ -1431,7 +1772,9 @@ M["業績"] = { sub:"本月業績狀態盤點",
      x:["1月","2月","3月","4月","5月","6月"],
      bar:{n:"交易筆數",c:0,unit:"筆",d:[17319,16071,14972,15455,14929,11190]},
      line:{n:"客單價",c:2,unit:"元",d:[2290,2240,2180,2200,2187,2580]},
-     note:"6 月筆數 −25%、客單價 +18%",
+     /* ⚠️ 這裡原本有 note:"6 月筆數 −25%、客單價 +18%"（圖右上角那行小紅字），
+        依使用者要求移除——目前不需要圖上註解。引擎的 c.note 仍然支援（促銷頁兩張還在用），
+        要恢復就把那一行加回來即可。 */
      /* 圖例改掛頁首：cs:3 的頁腳放不下「深入分析 + 兩個圖例」，會把問句擠成兩行 */
      legTop:true,
      dig:"客單價最近有沒有下降？為什麼？"}]};
@@ -1633,13 +1976,86 @@ M["CRM"] = { sub:"會員黏著度、結構與流失風險",
 /* Hero 頂端摘要列（summary bar）：只放「count metric / 度量值」——直接聚合、不需運算的
    基礎數字（總額、檔數、筆數…）。每格＝大數字＋標籤，同結構、固定 3 格 → 高度一致、
    切換分頁不跳動、不溢出。比率型 KPI（達成率、佔比）改由下方圖表／KPI 卡承擔，不進這條。 */
-/* 業績三格的 MoM 直接鎖到現有圖表（不可亂編，改動要三處同步：Hero／業績走勢／交易筆數圖）：
-   業績 2,887 vs 走勢圖 5 月 3,265（−11.6%）；筆數 11,190 vs combo 5 月 14,929（−25.0%）；
-   客單價 2,580 vs combo 5 月 2,187（+18.0%）。客單價升＝綠：人流崩、少而精，價格沒垮。 */
+/* 業績三格：比較基準 MoM → **YoY（去年同期）**，且 per／vper 兩處期間標注移除（使用者拍板）。
+   業績格鎖現有圖表：業績走勢的「去年同期」線 6 月 ＝ 3,960 → 2,887 vs 3,960 ＝ −27.1%。
+   筆數／客單價的去年同期**無畫面來源**（combo 只畫本期六個月），為示意值但內部自洽：
+     18,000 筆 × 2,200 元 ＝ 3,960 萬；(11,190/18,000) × (2,580/2,200) ＝ 0.7291 ＝ 1 − 27.1% ✓
+   客單價升＝綠：人流掉近四成，靠單價撐回一截，價格沒垮。
+   ⚠️ 目前**只有業績頁改 YoY**，庫存／促銷／CRM 九格仍是 MoM（過渡狀態，其餘模組輪到時跟上）。
+   ⚠️ 這推翻第十節「統計期間慣例 A」的 vs 對象（原為上月同一段日曆）；該節自己寫過
+      「真正扭曲零售 MoM 的是週末組成，那靠 YoY 同期」，所以是往原本認可的方向走。
+   drill:"store" → 卡片可點，開各店櫃明細彈窗；metric 指定表格要高亮／排序哪一欄。 */
 M["業績"].hero = [
-  {t:"stat",v:"2,887",u:"萬",label:"本月業績",arw:"d",tone:"bad",note:"11.6%",per:"6/1–6/30 · 30天",scope:"vs. 上月 3,265",vper:"5/1–5/31 · 31天"},
-  {t:"stat",v:"11,190",u:"筆",label:"本月交易筆數",arw:"d",tone:"bad",note:"25.0%",per:"6/1–6/30 · 30天",scope:"vs. 上月 14,929",vper:"5/1–5/31 · 31天"},
-  {t:"stat",v:"2,580",u:"元",label:"平均客單價",arw:"u",tone:"good",note:"18.0%",per:"6/1–6/30 · 30天",scope:"vs. 上月 2,187",vper:"5/1–5/31 · 31天"}];
+  {t:"stat",v:"2,887",u:"萬",label:"本月業績",arw:"d",tone:"bad",note:"27.1%",scope:"vs. 去年同期 3,960",
+   drill:"store",metric:"amt"},
+  {t:"stat",v:"11,190",u:"筆",label:"本月交易筆數",arw:"d",tone:"bad",note:"37.8%",scope:"vs. 去年同期 18,000",
+   drill:"store",metric:"cnt"},
+  {t:"stat",v:"2,580",u:"元",label:"平均客單價",arw:"u",tone:"good",note:"17.3%",scope:"vs. 去年同期 2,200",
+   drill:"store",metric:"aov"}];
+
+/* ---- Hero 三格點入的各店櫃明細（drill:"store"）-------------------------------
+   ⚠️ 只存四個**原始量**：本月業績（萬）／本月筆數／去年同期業績（萬）／去年同期筆數。
+   客單價與三組 YoY% 一律由程式算，不手寫——手寫衍生值一定會走鐘，現況就有一例：
+   業-C2 通路佔比加總 2,886 vs Hero 2,887（本輪把「其他」66→67 補齊，見該圖註解）。
+
+   三層加總都自洽，且各自對得上畫面上已經存在的數字：
+     線下小計   2,408 萬 → 對得上 業-C2「各通路佔比走勢」的線下兩列
+     合計       2,887 萬 / 11,190 筆 / 2,580 元 → 對得上 Hero 三格大數字
+     去年合計   3,960 萬 / 18,000 筆 / 2,200 元 → 對得上 業-C4 走勢圖的去年同期 6 月
+   店櫃列的達成率前 2／後 2 名也必須與 業-C1 對得上：EM／SM2 在前，中友／南西在後
+   （所以中友本月 −47.4%、南西本月 −93.3%，其餘店櫃跌幅都小於它們）。
+   ⚠️ 店櫃名與各列數字是**示意值**，接真實資料時整塊換掉；唯一不能動的是上面三層加總。 */
+const STORE_DRILL = {
+  /* 每列 10 個原始量（客單價一律由「業績 ÷ 筆數」導出，不存）：
+     [店櫃, 群組,
+      本月業績萬, 本月筆數,          ← 2026/6
+      去年同月業績萬, 去年同月筆數,   ← 2025/6
+      今年累計業績萬, 今年累計筆數,   ← 2026/1–6
+      去年累計業績萬, 去年累計筆數,   ← 2025/1–6
+      哨兵註記?]
+     ⚠️ 這 24 列是**示意資料**，但八個欄位的兩層加總是硬約束，改動時必須維持：
+        線下 20 列  → 2408 / 9110 / 3380 / 15280 / 18090 / 78766 / 20700 / 97561
+        全 24 列    → 2887 / 11190 / 3960 / 18000 / 20382 / 89936 / 23385 / 111600
+     產生方式：先給每列「相對形狀」（大小 × 各欄強弱，衰退故事編碼在形狀裡），
+     再把每一欄等比縮放到上面的合計、最大一列吸收進位殘差 → 合計必然精準。
+     手改單列會破壞加總，要動請整批重算。 */
+  rows:[
+    ["EM 左營新光",       "on", 324, 1131, 375, 1646,  2303,  9403,  2459, 10938],
+    ["SM2 左營新光",      "on", 257,  913, 295, 1326,  1825,  7563,  1958,  8807],
+    ["Techichi 左營新光", "on", 168,  644, 217, 1006,  1238,  5434,  1402,  6667],
+    ["台南新天地",        "on", 158,  596, 197,  906,  1135,  4884,  1278,  5911],
+    ["台中新光三越",       "on", 152,  560, 188,  856,  1087,  4631,  1222,  5614],
+    ["高雄漢神巨蛋",       "on", 144,  528, 177,  802,  1031,  4363,  1153,  5276],
+    /* 中友：本月 −47%、累計 −36%，是全場衰退最重的一家（對得上 業-C1 的後段班） */
+    ["台中中友百貨",       "on", 144,  566, 274, 1212,  1133,  5086,  1770,  8622],
+    ["台北 A11 信義",     "on", 141,  530, 166,  709,  1007,  4333,  1079,  5039],
+    ["板橋大遠百",        "on", 114,  457, 153,  697,   836,  3865,   947,  4749],
+    ["新竹巨城",          "on", 109,  423, 134,  619,   780,  3462,   874,  4206],
+    ["台北 A8 天母",      "on", 101,  385, 124,  565,   724,  3177,   813,  3852],
+    ["桃園統領",          "on",  95,  374, 117,  549,   680,  3051,   769,  3700],
+    ["高雄夢時代",        "on",  98,  379, 125,  583,   709,  3130,   790,  3792],
+    ["中壢 SOGO",         "on",  86,  341, 107,  505,   617,  2806,   701,  3410],
+    ["嘉義耐斯",          "on",  74,  296,  92,  436,   529,  2426,   601,  2944],
+    ["竹北遠百",          "on",  68,  269,  83,  397,   484,  2205,   546,  2670],
+    ["屏東太平洋",        "on",  57,  231,  71,  344,   408,  1897,   468,  2308],
+    ["花蓮遠百",          "on",  48,  195,  59,  291,   342,  1596,   390,  1938],
+    ["台北信義 A13",      "on",  45,  183,  55,  273,   320,  1502,   364,  1826],
+    /* 南西新光：本月 −93% 是整層櫃位零交易的系統斷層（同 業-C1 的 warn），
+       但累計只 −19% —— 斷層是最近才發生的，這兩欄並排剛好把「不是店爛」講清楚。 */
+    ["南西新光",          "on",  25,  109, 371, 1558,   902,  3952,  1116,  5292, "資料斷層"],
+    ["官網 EC",           "off",245, 1120, 320, 1540,  1320,  6670,  1620,  8710],
+    ["蝦皮商城",          "off",100,  420, 118,  545,   470,  2200,   530,  2680],
+    ["momo 購物網",       "off", 67,  280,  77,  355,   310,  1450,   350,  1764],
+    ["其他",              "off", 67,  260,  65,  280,   192,   850,   185,   885]],
+  /* 被點的是哪一格 → 整張表只講那一個指標（四欄都是它），欄名帶單位。
+     idx = 該指標在 rows 裡「業績」與「筆數」的欄位起點；aov 用兩者相除。 */
+  metrics:{
+    amt:{title:"本月業績",     unit:"萬"},
+    cnt:{title:"本月交易筆數", unit:"筆"},
+    aov:{title:"平均客單價",   unit:"元"}},
+  /* 四個資料欄：[欄名, 業績欄索引, 筆數欄索引] —— 兩個索引成對，客單價才算得出來 */
+  cols:[["今年本月",2,3],["去年同期",4,5],["今年合計",6,7],["去年同期合計",8,9]]
+};
 /* 庫存／促銷 MoM 為示意值（無月度時間序列來源），內部自洽（上月值取能算出自然小數者）。
    庫存總額微升＝flat（多囤未必壞，但要盯）。 */
 M["庫存"].hero = [
@@ -1697,6 +2113,48 @@ function dvTokens(){
   };
 }
 
+/* ── 排名圖的「顯示幾列」隨圖區高伸縮 ─────────────────────────────
+   c.topN = { mode, min, max, pitch }：資料給**完整排序清單**，這裡依實測圖區高截出要畫的列。
+     mode:'headtail' → 取前 k ＋ 後 k（頭尾對照，n 必為偶數）；'head' → 純 Top-N。
+     pitch → 每列最少要有幾 px 才讀得下去（含 11px 標籤）。
+
+   ⚠️ **不可以用螢幕寬度（@media）決定列數。** 實測：1440×900 的圖區高 134px，比
+      1470×841 的 115px 還多 19px —— 較窄的螢幕反而放得下更多列，因為它比較高。
+      寬度斷點在這裡會給出相反的答案。唯一可靠的輸入是 buildOption 收到的 H，
+      而且必須是 chart.getHeight()（真實畫布）不是 el.clientHeight（含 padding，多 4px）。
+
+   ⚠️ pitch 的下限是量出來的不是猜的：現況 1366 的 各店櫃達成率 就是 4 列、列距 18.3px，
+      那是已經在出貨的密度。取 17 讓 1440/1600（圖區 134）剛好進到 6 列，實際列距 17.7px，
+      與現行密度同級。調小這個值之前先去 1366 上看字有沒有開始黏。
+
+   實測階梯（gridH = H − grid.top − grid.bottom）：
+     1366×768   H 97  gridH 73  → 4 列（前2後2）
+     1470×841   H 111 gridH 87  → 5→偶數 4 列
+     1440/1600  H 130 gridH 106 → 6 列（前3後3）
+     1920×1080  H 190 gridH 166 → 9→偶數 8，封頂 max=8（前4後4）
+     2560×1440  H 310 gridH 286 → 16，封頂 8
+   ⚠️ max 封在 8 是刻意的：24 家店顯示 14 家已經不是「頭尾對照」，
+      而是一張中間破洞的完整排名，那要改用可捲清單而不是這張圖。 */
+function pickRows(c, H){
+  const tn = c.topN;
+  if(!tn) return { d:c.d, k:null };
+  const gridH = (H||0) - (c.note?26:(c.ref!=null?18:8)) - 6;
+  let n = Math.floor(gridH / (tn.pitch||17));
+  if(tn.mode==='headtail') n -= n % 2;            /* 頭尾對稱 → 只能是偶數 */
+  n = Math.max(tn.min, Math.min(tn.max, n, c.d.length));
+  if(tn.mode!=='headtail') return { d:c.d.slice(0,n), k:null };
+  const k = Math.floor(n/2);
+  /* 列數多到頭尾會重疊時就整份畫出來（避免同一家店出現兩次） */
+  return { d: n>=c.d.length ? c.d : [...c.d.slice(0,k), ...c.d.slice(-k)], k };
+}
+/* 副標裡的 {k} ＝ 目前每邊顯示幾名。列數會隨螢幕變，副標就不能寫死「前後各 2 名」——
+   同一張圖在不同機器顯示不同家數、副標卻說 2 名，會被讀成資料錯了。 */
+function syncSub(el, c, H){
+  if(!c.topN || !/\{k\}/.test(c.s||'')) return;
+  const sub = el.closest('.panel')?.querySelector('.sub');
+  if(sub) sub.textContent = c.s.replace('{k}', pickRows(c, H).k);
+}
+
 /* c = M 裡的原生圖表物件（沿用既有 schema，不另立資料格式）→ ECharts option */
 /* 漏斗流失欄（graphic）：第 2 層起，每個「步階」（層與層之間）標它較上一層的流失 %，
    貼著漏斗右緣、隨漏斗收窄往內移。位置用實際容器寬高 W/H 回推像素——
@@ -1719,8 +2177,12 @@ function funnelDrops(c, tk, H, W){
 }
 
 /* 熱力圖的 grid 基準（buildOption 與 squareHeat 共用一份，避免兩邊的數字走鐘）。 */
+/* 底部色標的預留高度 40（原 26）：26 只夠色標本身，量到的淨空是「離 x 軸標籤 9px、
+   離卡片底緣 7px」——擠在最下面。40 讓色標可以往上擺，兩側都有呼吸空間
+   （實測後變成 離標籤 10px、離底緣 18px）。代價是熱力格少 14px 高，可接受。
+   ⚠️ 只加在 vm==='bottom'（業績的 7×5）。庫存那張色標在右側（vertical），不吃這裡。 */
 const heatGrid = c => ({ left:6, right: c.vm==='bottom'?8:60, top:3,
-  bottom: c.vm==='bottom'?26:3, containLabel:true });
+  bottom: c.vm==='bottom'?40:3, containLabel:true });
 
 /* 把熱力圖的格子校成正方形。
    為什麼要校：格子寬高由「面板寬 ÷ 欄數」與「面板高 ÷ 列數」各自決定，兩者無關。
@@ -1732,6 +2194,20 @@ const heatGrid = c => ({ left:6, right: c.vm==='bottom'?8:60, top:3,
    45% 給上緣（圖與副標之間），55% 給下緣（正好讓「低—高」色標有呼吸空間，
    原本它是貼著 x 軸標籤的）。
 
+   ⚠️ **1:1 已經改成「容忍到 1.15 為止」，slack 上限從 22% 收到 7%。** 原因是實測發現
+      「處處正方」在大螢幕上根本做不到、卻付了很貴的代價：
+        2560×1440 上圖區 599×640，7 欄 × 5 列要正方需要 599×428 —— **212px 沒地方去**。
+        舊設定（上限 22%）挖掉 141px（上 63／下 78），格子仍然是 1.16:1（沒真的方），
+        使用者回報「上下空白間距太大」，紅框正是那兩個洞。
+      根因是面板高度隨螢幕高長得比寬快（Hero 268 與面板開銷 88 是常數，越大的螢幕
+      被扣掉的比例越小）：同一個面板在 1366 是 301×214（1.41，橫）、2560 是 599×640
+      （0.94，直）。**沒有任何固定的格子形狀能同時貼合這兩個比例**，所以只能二選一：
+      要方就得挖洞，不挖洞格子就得長一點。現在選後者。
+      實測結果：1366／1470 本來就接近方（1.12 以內）→ 完全不動作，零留白；
+      2560 挖 45px（上 20／下 25，原本 141），格子 1.40:1。
+      要往回調就改 AR 與那個 .07；兩個方向都會動到「洞的大小」與「格子的方正」，
+      這是一條線上的兩端，沒有兩全的設定。
+
    ⚠️ 必須先把 grid 還原成基準再量：第二次呼叫（resize）時，量到的會是上一次已經
       校正過的格子，不還原就會一路把圖越收越扁。 */
 function squareHeat(chart, c){
@@ -1742,16 +2218,52 @@ function squareHeat(chart, c){
   const b = chart.convertToPixel({gridIndex:0}, [1,1]);
   if(!a || !b) return;
   const cw = Math.abs(b[0]-a[0]), ch = Math.abs(b[1]-a[1]);
-  /* 上限 22%：面板越高、要收的高度越多（1470 螢幕只要收 50px，1920 要收 166px），
-     不設限的話大螢幕上會在圖的上下挖出一個比圖還顯眼的洞。
-     於是「筆電上完全方、大螢幕上接近方」——比「處處正方但處處有洞」好看。 */
-  const slack = Math.min(Math.round((ch - cw) * rows), Math.round(chart.getHeight() * .22));
-  if(slack < 4) return;                       /* 已經夠方，不為 3px 折騰 */
+  /* AR＝容忍到「高是寬的 1.15 倍」為止（不是硬校 1:1），slack 再夾在圖高的 7% 以內。
+     兩道限制的分工：AR 決定「要不要動」，7% 決定「最多挖多大的洞」。理由見上方註解。 */
+  const AR = 1.15, budget = Math.round(chart.getHeight() * .07);
+  const need = Math.round((ch - cw * AR) * rows);
+  if(need < 4) return;                        /* 已經在容忍範圍內，不為 3px 折騰 */
+  /* ⚠️ **全有或全無**：補不到位就一點都不要補。
+     部分校正是最糟的一格——付了洞的代價，卻沒換到方格子。實測 2560：補滿要 97px、
+     預算只有 45px，硬補的結果是挖掉 45px 的洞、格子從 1.51 只變到 1.40（幾乎沒差）。
+     跳過的話洞是 0、格子 1.51 —— 在那個直立比例的面板裡，1.5:1 的格子看起來很自然，
+     141px（舊設定）或 45px 的空洞看起來是版面壞了。
+     於是：筆電（≤1470，本來就差一點點）補到方、大螢幕零留白讓格子長一點。 */
+  if(need > budget) return;
+  const slack = need;
   const g = heatGrid(c), up = Math.round(slack * .45);
   chart.setOption({ grid:{ ...g, top:g.top + up, bottom:g.bottom + (slack - up) } });
 }
 
-function buildOption(c, tk, H, W){
+/* ── 滾動 12 個月的相對 x 軸（c.roll）─────────────────────────────
+   資料仍以**日曆年**存放（每條 series.d 都是 1–12 月），這裡只負責把它切成
+   「今年最後一個有資料的月份 +1，往前推 12 格」的相對窗。
+
+   為什麼要這樣切：日曆 x 軸在年初會讓本期線退化——1 月時只剩**一個點**，
+   一個點畫不出趨勢，整張圖等於空的。滾動窗讓本期線永遠是滿的 12 格，
+   只有最末那一格（尚未發生的當月）是空的，形狀仍然說得出「才走到一半」。
+
+   切法（lastIdx=5／6 月時）：
+     anchor = 6（7 月）→ 窗 = 8月,9月,10月,11月,12月,1月,…,6月,7月
+     每條線在 m<=anchor 的格子取「自己那年」，m>anchor 取「前一年」——
+     所以第 i 條線的前段來自 series[i+1]，最舊那條（i=4）沒有下一條可取，
+     由 c.tail 補（見資料物件）。少了 tail，最舊那條的前 5 格會整段消失。
+   ⚠️ anchor 夾在 11：今年若已滿 12 個月，窗就退回單純的日曆年、不留空格，
+      否則會需要「下一年」的資料而那是不存在的。 */
+function rollWindow(c){
+  const Y = c.series.map(s => s.d);
+  let last = -1; Y[0].forEach((v,i) => { if(v != null) last = i; });
+  const anchor = Math.min(last + 1, 11);
+  const order = []; for(let k = 11; k >= 0; k--) order.push(((anchor - k) % 12 + 12) % 12);
+  const srcOf = (i,m) => m <= anchor ? Y[i] : (Y[i+1] || c.tail);
+  return {
+    x: order.map(m => c.month[m]),
+    series: c.series.map((s,i) => ({ ...s,
+      d: order.map(m => { const a = srcOf(i,m); return a ? (a[m] ?? null) : null; }) }))
+  };
+}
+
+function buildOption(c, tk, H, W, sel){
   const tip = { confine:true, textStyle:{fontSize:11,color:tk.body},
     backgroundColor:tk.paper, borderColor:tk.border, borderWidth:1,
     extraCssText:'border-radius:8px;box-shadow:0 6px 20px rgba(20,26,51,.14);padding:8px 11px;' };
@@ -1759,29 +2271,155 @@ function buildOption(c, tk, H, W){
   const axY = { splitLine:{lineStyle:{color:tk.grid,type:'dashed'}}, axisLine:{show:false},
     axisTick:{show:false}, axisLabel:{color:tk.tick,fontSize:11,formatter:v=>F(v)} };
 
-  /* ── Line：多線；一律實線，以顏色（c 索引 palette）區分序列；缺值斷點不連
-       c.mark（x 軸類別值）→ 垂直虛線標一個轉折點（如折扣甜蜜點）；c.note → 右上註記 ── */
-  if(c.type==='line') return {
+  /* ── Line：多線；缺值斷點不連（今年只到 6 月 → 線自然收在半路，不假裝有資料）。
+       序列可各自宣告：
+         s.c    palette 索引（跨序列用「不同顏色」時用）
+         s.op   明度（0–1）  s.w 線寬  s.dash [實,虛] 虛線 pattern  s.sym:false 不畫點
+       為什麼要 op/dash：五年對照若給五個語意色，等於五個語意在同一張圖裡互搶，
+       而且 dv-3 在本站一直是警示／強調色。改用**同色明度階梯**——年份的「遠近」直接
+       對應「淡濃」，不查圖例也知道哪條是哪年；虛線 pattern 再疊一層冗餘編碼，
+       色盲與低對比螢幕上仍分得出來。色仍出自 --dv-1，沒有新增品牌 hex。
+       z：先宣告的畫在上層 → 今年永遠壓在過去年份之上，不會被淡線蓋掉。
+       c.mark（x 軸類別值）→ 垂直虛線標轉折點；c.ref（y 值）→ 水平基準線（如 0 成長）；
+       c.smooth 覆寫平滑度（多線交纏時要調低，0.35 會讓交叉點糊掉）；c.note → 右上註記 ── */
+  if(c.type==='line'){
+  const R = c.roll ? rollWindow(c) : null;      /* c.roll → 相對 x 軸；否則照 c.x 畫 */
+  const X = R ? R.x : c.x, SER = R ? R.series : c.series;
+  return {
     animation:true,
-    tooltip:{ trigger:'axis', ...tip, valueFormatter:v=> v==null?'—':F(v) },
+    tooltip:{ trigger:'axis', ...tip,
+      valueFormatter:v=> v==null?'—':F(v)+(c.unit||'') },
     legend:{ show:false },                              /* 圖例走面板頁腳，避免重複 */
     grid:{ left:6, right:14, top: c.note?26:12, bottom:0, containLabel:true },
-    xAxis:{ type:'category', data:c.x, boundaryGap:false, ...axX },
-    yAxis:{ type:'value', ...axY },
-    series: c.series.map((s,si)=>({
-      name:s.n, type:'line', data:s.d, smooth:0.35, connectNulls:false,
-      symbol:'circle', symbolSize:5,
-      lineStyle:{ width:2.5, color:tk.dv[s.c], type:'solid' },
-      itemStyle:{ color:tk.dv[s.c], borderColor:tk.paper, borderWidth:1.5 },
-      markLine: (si===0 && c.mark!=null) ? { silent:true, symbol:'none',
-        data:[{ xAxis:c.mark,
-          label:{ show:!!c.markLabel, formatter:c.markLabel, position:'insideEndTop',
-            color:tk.dv[2], fontSize:11, fontWeight:600 },
-          lineStyle:{ color:tk.dv[2], type:'dashed', width:1.5 } }] } : undefined
-    })),
+    xAxis:{ type:'category', data:X, boundaryGap:false, ...axX },
+    /* c.ymin：截斷 y 軸。多年對照比的是「形狀與相對位置」，不是量體——0 起算會把
+       五條線全擠進上半部（實測 214px 的圖裡，2,887–5,428 只用掉 42% 高度，下半部全空）。
+       ⚠️ 只有 line 開放這個參數：柱狀圖截斷基準會誇大量級，那是另一回事（見 miniLineOption 註解）。 */
+    yAxis:{ type:'value', ...(c.ymin!=null?{min:c.ymin}:{}), ...axY },
+    series: SER.map((s,si)=>{
+      const col = tk.dv[s.c], op = s.op ?? 1, ml = [];
+      if(si===0 && c.mark!=null) ml.push({ xAxis:c.mark,
+        label:{ show:!!c.markLabel, formatter:c.markLabel, position:'insideEndTop',
+          color:tk.dv[2], fontSize:11, fontWeight:600 },
+        lineStyle:{ color:tk.dv[2], type:'dashed', width:1.5 } });
+      if(si===0 && c.ref!=null) ml.push({ yAxis:c.ref, label:{show:false},
+        lineStyle:{ color:tk.tick, type:'dashed', width:1 } });
+      return {
+        name:s.n, type:'line', data:s.d, smooth: c.smooth ?? 0.35, connectNulls:false,
+        symbol:'circle', symbolSize:5, showSymbol: s.sym!==false, z: 10-si,
+        lineStyle:{ width:s.w ?? 2.5, color:col, opacity:op, type:s.dash || 'solid' },
+        itemStyle:{ color:col, opacity:op, borderColor:tk.paper, borderWidth:1.5 },
+        markLine: ml.length ? { silent:true, symbol:'none', data:ml } : undefined
+      };
+    }),
     graphic: c.note?[{ type:'text', right:6, top:6,
       style:{ text:c.note, fill:tk.dv[2], font:'600 11px sans-serif', textAlign:'right' } }]:[]
   };
+  }
+
+  /* ── Deltabar：YoY 跌幅橫條表。每一列 ＝ 名稱｜跌幅條｜YoY%｜本月金額。
+     為什麼是這個圖型（前三代的死路寫在 業-C2 的資料物件上方，別重走）：
+     佔比類圖表撞的是「變化量比水位小一個數量級」的尺度天花板，換成畫**變化量本身**之後
+     天花板就消失了——軸是 0–36%，−10% 到 −33% 吃滿整條寬（1366 實測 127px 可畫），
+     對比小倍數走勢表在垂直方向只有 7px 可用。
+
+     三個設計決定，各自解掉一個具體的誤讀：
+     ① **c.ref 參考線（全公司 YoY）**：沒有它就只是四個數字排排站。有了它，四列被切成
+        「比公司平均還糟」與「撐住的」兩群，超過線的那幾條換 danger 色——這條線才是本圖的論點。
+     ② **右側金額欄不可省**：第三方平台 −10.0% 看起來最健康，但它只有 234 萬；
+        真正該擔心的是 1,612 萬的百貨專櫃。少了這一欄，YoY 圖必然把讀者引到錯的地方。
+     ③ **依跌幅排序**（資料物件裡就排好，這裡不再排）：形狀本身說「線上跌得比線下少」，
+        所以不需要分群 hairline——那正是上一代黏字爆版的元兇。
+
+     ⚠️ 軸是「跌幅」：條長取絕對值、一律往右長。**前提是全部為負。**
+     若真實資料出現正成長的通路，正負同方向長會誤導，這個圖型就不成立，必須改成真正的
+     分歧軸（0 軸置中、名稱移到軸外）。下面會在 console 擋一次並把正值標成 success 色＋「＋」號，
+     讓它至少不說謊，但**那是提醒不是解法**。 */
+  if(c.type==='deltabar'){
+    const rows=c.rows, n=rows.length, Hh=H||101, Ww=W||301;
+    const grow=rows.filter(r=>r[1]>0);
+    if(grow.length) console.warn('⚠️ deltabar 收到正成長的列（'+grow.map(r=>r[0]).join('、')
+      +'）——跌幅軸不適用，應改成分歧軸。目前只是把它標成 success 色。');
+    /* ⚠️ pad ＝ 內容左右不貼面板內緣。這格是自己用 graphic 排欄的，**不會自動吃到**
+       hbar／bar 那條 `grid:{left:6,…}` 的約定，第一版寫死 left:0／right:0 → 實測
+       內容左右留白只有 1px（其餘六格是 5–8px），通路名貼左緣、金額貼右緣。
+       用 tools/measure.sh 量「內容左／內容右」可以直接抓到這種問題。 */
+    const pad=6;
+    /* 兩側落地寬度按容器寬按比例讓，但不低於「字寫得完」的下限（同 smallmult 的算法）：
+       名稱最長 5 個中文字（第三方平台）＝ 11px×5 ≈ 55；「−32.8%」≈ 42；「1,612 萬」≈ 50。 */
+    const nameW=pad+Math.max(56, Math.min(84, Ww*0.24)), pctW=46, amtW=56, rightW=pctW+amtW+pad;
+    /* 底部留一條給參考線說明。矮於 72px 時放棄它——列高會掉到 17px 以下，11px 的通路名
+       就會開始貼線（上一代 hairline 壓字的成因，見 業-C2 註解）。 */
+    const refLabH = (c.ref!=null && Hh>=72) ? 15 : 0, top0=4, botPad=refLabH||4;
+    const gridH=Hh-top0-botPad, rowH=gridH/n, plotW=Ww-nameW-rightW;
+    /* 軸上限含 c.ref：參考線若落在最長那條之外會被切掉，圖就少了論點 */
+    const vmax=Math.max(...rows.map(r=>Math.abs(r[1])), c.ref||0)*1.10 || 1;
+    const xOf=v=>nameW+Math.abs(v)/vmax*plotW, midY=i=>top0+(i+0.5)*rowH;
+    /* 條粗綁列高（不寫死 px）：1366 列高 20px → 9px，1920 列高 44px → 16px 封頂 */
+    const barW=Math.max(6, Math.min(16, rowH*0.46));
+    /* 超過公司平均跌幅 ＝ 在拖累整體 → danger；其餘 dv-1。正值（不該出現）走 success。 */
+    const colOf=v=> v>0 ? tk.good : (c.ref!=null && Math.abs(v)>c.ref ? tk.bad : tk.dv[0]);
+    /* ⚠️ 百分比**文字**不跟著條的顏色走，兩個理由：
+       ① 無障礙：暗色的 dv-1（#7A6FF0 對 #141A33）只有 4.37:1，當 11px 小字**過不了 AA 4.5**。
+          條子是圖形物件（門檻 3.0）沒問題，字不行。實測四色對比：
+          淺色 dv-1 6.29／danger 4.93／muted 5.11；暗色 dv-1 4.37❌／danger 5.92／muted 4.71。
+       ② 語意：三個數字上 iris、一個上紅，等於「預設色」也被當成一種色。改成中性色打底、
+          只有超過全公司跌幅那列才上警示色之後，顏色才真的只在說一件事。 */
+    const txtOf=v=> v>0 ? tk.good : (c.ref!=null && Math.abs(v)>c.ref ? tk.bad : tk.text);
+    const sign=v=> (v>0?'+':'−')+Math.abs(v).toFixed(1)+'%';
+    /* ⚠️ graphic 的 top 定位的是元素**邊界框上緣**，`textVerticalAlign:'middle'` 並**不會**
+       把它改成「以 top 為中心」——實測四列名稱整體低了 5.5px（= 半個字高），而長條是
+       ECharts 依格線排的，於是名稱與條穩定錯開半行。所以垂直一律自己扣半個字高，
+       不依賴 textVerticalAlign（水平方向的 right + textAlign:'right' 兩者同向，可以並用）。
+       估寬：CJK 約 1 個字級、半形約 0.55 個字級。 */
+    const estW=(t,px)=>[...t].reduce((w,ch)=>w+(/[　-鿿＀-￯]/.test(ch)?px:px*0.55),0);
+    const topOf=(i,fs)=>midY(i)-fs/2;
+    const g=[];
+    rows.forEach((r,i)=>{
+      const [nm,v,amt]=r;
+      g.push({ type:'text', left:pad, top:topOf(i,11), style:{ text:nm, fill:tk.body,
+        font:'11px sans-serif' } });
+      g.push({ type:'text', right:amtW+pad, top:topOf(i,11), style:{ text:sign(v), fill:txtOf(v),
+        font:'600 11px sans-serif', textAlign:'right' } });
+      /* 金額走 muted＋常規字重：它是「這條有多重要」的上下文，不是主角，
+         給它跟 YoY 一樣的份量會讓兩欄互相打架。 */
+      g.push({ type:'text', right:pad, top:topOf(i,10.5), style:{ text:F(amt)+(c.unit||''),
+        fill:tk.tick, font:'10.5px sans-serif', textAlign:'right' } });
+    });
+    /* ⚠️ 參考線用 graphic 畫，**不要用 markLine**。markLine 靠 ECharts 動畫展開，而
+       ECharts 動畫走 requestAnimationFrame——headless（--virtual-time-budget）下 rAF 不推進，
+       實測那條線在 SVG 裡塌成 0.16px 高（d="M167.5 4L167.5 4.156"），截圖與量測都看不到它。
+       這條線是整張圖的論點，不能掛在動畫上。graphic 是靜態繪製，一次到位。 */
+    if(c.ref!=null){
+      const rx=xOf(c.ref);
+      g.push({ type:'line', shape:{ x1:rx, y1:top0, x2:rx, y2:top0+gridH },
+        style:{ stroke:tk.tick, lineWidth:1, lineDash:[4,2] } });
+    }
+    if(refLabH){ const t=c.refLab||('平均 '+c.ref+'%'), w=estW(t,10);
+      /* 貼著參考線置中，但夾在 [名稱欄右緣, 金額欄左緣] 之內——1366 上這兩者只差 127px，
+         不夾的話標籤會壓到左邊的通路名或右邊的金額。 */
+      const cx=Math.min(Math.max(xOf(c.ref)-w/2, nameW-8), Ww-rightW-w+8);
+      g.push({ type:'text', left:cx, bottom:2,
+        style:{ text:t, fill:tk.tick, font:'10px sans-serif' } });
+    }
+    return {
+      animation:true,
+      tooltip:{ trigger:'item', ...tip, formatter:p=>{ const r=rows[p.dataIndex];
+        return `<b>${r[0]}</b> ${sign(r[1])}<br>${F(r[2])}${c.unit||''} vs. 去年同期 ${F(r[3])}${c.unit||''}`; } },
+      grid:{ left:nameW, right:rightW, top:top0, bottom:botPad },
+      xAxis:{ type:'value', min:0, max:vmax, show:false },
+      /* inverse ＝ rows[0] 排最上（category 軸預設由下往上長）。hbar 是先 reverse 資料，
+         這裡不能那樣做——graphic 的 midY(i) 跟 series 的 i 必須是同一個索引。 */
+      yAxis:{ type:'category', data:rows.map(r=>r[0]), inverse:true, show:false },
+      series:[{
+        type:'bar', barWidth:barW, z:2,
+        data:rows.map(r=>({ value:Math.abs(r[1]),
+          itemStyle:{ color:colOf(r[1]), borderRadius:[0,3,3,0] } }))
+      }],
+      graphic:g   /* ⚠️ 忘了這行，通路名／YoY／金額三欄全部不會畫出來（而且不報錯，只剩四根裸條） */
+    };
+  }
+
 
   /* ── Bar：直柱；c.hl 高亮換色＋值標籤；c.note 右上註記 ────────── */
   if(c.type==='bar'){
@@ -1815,22 +2453,38 @@ function buildOption(c, tk, H, W){
   /* ── Stackbar：單一 100% 堆疊橫條；每段＝一類別，段內標 %、圖例列名稱。
        適合「各部分佔整體幾成」的組成型資料（商品線貢獻/庫別分配）。 */
   if(c.type==='stackbar'){
-    const total=c.d.reduce((s,x)=>s+x[1],0)||1;
+    /* 圖例關掉一段 → **分母跟著扣掉**，剩下的重新正規化撐滿整條（使用者拍板）。
+       原本的行為是壞的：ECharts 只是把那一段藏起來，xAxis.max 仍是原始總額，
+       於是右側留下一塊沒人解釋的空白，而剩下四段的 % 還是照原始總額算——
+       實測關掉「配件」後圖上是 42+16+13+10＝81%，一張自稱「佔比」的圖加不到 100。
+       ⚠️ 所以 total／xAxis.max／段內標籤／懸浮窗四處**必須共用同一個分母**，
+       改任何一處都要四處一起改，否則就會回到「加不到 100」那個狀態。
+       sel 由 legendselectchanged 事件帶進來（見 renderCharts），沒有時＝全選。 */
+    const on = x => !sel || sel[x[0]] !== false;
+    const shown = c.d.filter(on);
+    const total = shown.reduce((s,x)=>s+x[1],0)||1;
     /* 標籤門檻要跟著版位寬度換算：同一個百分比在 cs:3 只有 cs:6 一半的像素。
        用實際可用寬度回推——「名稱 NN%」約需 58px、「NN%」約需 26px。 */
     const plotW=(c.cs||4)/12*1430-40;
     const needName=58/plotW*100, needPct=26/plotW*100;
     return {
       animation:true,
+      /* 懸浮窗第二行＝該品類的**最熱銷單品 ＋ 它的業績**（c.d 第 3、4 欄，可省略）。
+         圖上只畫得出「這一類佔幾成」，但看到「服裝 42%」的下一個問題必然是「是哪一款在撐」。
+         放在懸浮窗而不是圖上：段內標籤在 cs:3 只有 329px，連類別名都要靠門檻換算才塞得下。 */
       tooltip:{ trigger:'item', ...tip,
-        formatter:p=>`<b>${p.seriesName}</b> ${(p.value/total*100).toFixed(1)}% · ${F(p.value)}${c.unit||''}` },
-      legend:{ data:c.d.map(x=>x[0]), bottom:2, left:'center', itemWidth:9, itemHeight:9,
+        formatter:p=>{ const r=c.d[p.seriesIndex]||[];
+          return `<b>${p.seriesName}</b> ${(p.value/total*100).toFixed(1)}% · ${F(p.value)}${c.unit||''}`
+            + (r[2]?`<br><span style="color:${tk.tick}">最熱銷 </span>${r[2]} · ${F(r[3])}${c.unit||''}`:''); } },
+      /* selected 要回寫，否則 setOption(notMerge) 重建後圖例會全部回到選取狀態 */
+      legend:{ data:c.d.map(x=>x[0]), selected: sel||undefined, bottom:2, left:'center',
+        itemWidth:9, itemHeight:9,
         icon:'roundRect', itemGap:12, textStyle:{color:tk.body,fontSize:11} },
       grid:{ left:4, right:4, top:12, bottom:34, containLabel:false },
-      xAxis:{ type:'value', max:total, show:false },
+      xAxis:{ type:'value', max:total, show:false },   /* max ＝ 現行分母 → 剩下的段自動撐滿 */
       yAxis:{ type:'category', data:[''], show:false },
       series: c.d.map((x,i)=>{
-        const pct=x[1]/total*100;
+        const pct=x[1]/total*100;   /* 分母同上；被關掉的段 ECharts 自己不畫，pct 不會用到 */
         return { name:x[0], type:'bar', stack:'total', barWidth:90, data:[x[1]],
           itemStyle:{ color:tk.dv[i%5], borderColor:tk.paper, borderWidth:1.5 },
           label:{ show:true, position:'inside', color:'#fff', fontSize:11, fontWeight:600,
@@ -1842,7 +2496,8 @@ function buildOption(c, tk, H, W){
 
   /* ── Hbar：橫排；ci 配色（ci=9 哨兵警示）；c.ref 參考線；末端值 ── */
   if(c.type==='hbar'){
-    const rows=[...c.d].reverse();                      /* reverse → 第一名排最上 */
+    const src=pickRows(c, H).d;                         /* c.topN 時只取頭尾；沒設就是全份 */
+    const rows=[...src].reverse();                      /* reverse → 第一名排最上 */
     const cc=[tk.dv[0],tk.dv[2],tk.dv[4]];
     const colAt=ci=> ci===9?tk.warn:(cc[ci]||tk.dv[0]);
     return {
@@ -1850,7 +2505,9 @@ function buildOption(c, tk, H, W){
       tooltip:{ trigger:'item', ...tip, formatter:p=>{ const r=rows[p.dataIndex];
         return `<b>${r[0]}</b> ${F(r[1])}${c.unit||''}${r[2]===9?' — 系統斷層，非真實表現':''}`; } },
       grid:{ left:6, right:46, top: c.note?26:(c.ref?18:8), bottom:6, containLabel:true },
-      xAxis:{ type:'value', max: Math.max(...c.d.map(x=>x[1]))*1.06,
+      /* 軸上限用**顯示中的**那幾列算，不是整份清單——否則 1366 只畫 4 列時，
+         軸還被清單裡沒畫出來的那些值撐著，條子會全部縮短。 */
+      xAxis:{ type:'value', max: Math.max(...src.map(x=>x[1]), c.ref||0)*1.06,
         splitLine:{lineStyle:{color:tk.grid,type:'dashed'}}, axisLabel:{show:false},
         axisLine:{show:false}, axisTick:{show:false} },
       yAxis:{ type:'category', data:rows.map(r=>r[0]), axisLine:{show:false},
@@ -1862,7 +2519,14 @@ function buildOption(c, tk, H, W){
           itemStyle:{ color:colAt(r[2]), opacity:r[2]===9?0.85:0.9, borderRadius:[0,4,4,0] } })),
         label:{ show:true, position:'right', color:tk.text, fontSize:11, fontWeight:600,
           formatter:p=>F(rows[p.dataIndex][1])+(c.unit||'') },   /* 千分位：排行的 4,820 萬 */
-        markLine: c.ref?{ silent:true, symbol:'none',
+        /* ⚠️ markLine 必須 animation:false。它靠動畫展開，而動畫走 requestAnimationFrame——
+           兩種情況會讓它停在「塌成一點」的初始狀態，線不見、只剩標籤掉在塌陷處（實測
+           「100%」從圖頂跑到圖底）：
+             ① headless 的 --virtual-time-budget 下 rAF 不推進（deltabar 也踩過，見該處註解）；
+             ② c.topN 的圖進了 _pxlay，每次 resize 都 setOption(notMerge) 整段重建，
+                markLine 因此重跑動畫——真實瀏覽器裡則是每拉一次視窗閃一下。
+           參考線是靜態註記，本來就沒有動畫的必要。 */
+        markLine: c.ref?{ silent:true, symbol:'none', animation:false,
           lineStyle:{ color:tk.tick, type:'dashed', width:1 },
           label:{ show:true, position:'end', color:tk.tick, fontSize:10,
             formatter:c.ref+(c.unit||'') },
@@ -1890,7 +2554,7 @@ function buildOption(c, tk, H, W){
     if(half) data.push({ value:total, name:"", silent:true, label:{show:false},
       labelLine:{show:false}, tooltip:{show:false}, itemStyle:{color:"transparent"},
       emphasis:{scale:false} });
-    /* 半圓位置一律用實際寬高像素算（resize 由 _donuts 帶新 W/H 重算）→ 任何螢幕都對齊、
+    /* 半圓位置一律用實際寬高像素算（resize 由 _pxlay 帶新 W/H 重算）→ 任何螢幕都對齊、
        弧體隨面板高度長大又留邊。cx/cy＝弧心比例；Rout＝外徑 px；sideX＝弧右緣＋間距（圖例/cmp 落點）。 */
     /* 「弧＋右側圖例/數字」整塊水平置中：弧心 x＝W/2 − 半塊寬（塊＝弧直徑＋間距＋圖例約 72px）。 */
     const cy=0.82, Rout=0.75*Math.min(W,H),
@@ -1967,9 +2631,14 @@ function buildOption(c, tk, H, W){
       yAxis:{ type:'category', data:c.y, inverse:true, splitArea:{show:true},
         axisLine:{show:false}, axisTick:{show:false},
         axisLabel:{color:tk.tick,fontSize:11,interval:0} },   /* 五個時段標籤都要顯示 */
+      /* ⚠️ horizontal 的 visualMap，itemHeight 是**長度**、itemWidth 是**厚度**（不是直覺的那樣）。
+         長度隨面板寬走：cs:3 在 1366 是 301px → 126、2560 是 599px → 上限 180。
+         寫死 64 時在寬螢幕上是一小截，讀不出漸層的分段。
+         bottom:12 把整組往上抬離卡片底緣（配合 heatGrid 的 bottom:40）。 */
       visualMap: c.vm==='bottom'
-        ? { min:0, max:maxV, calculable:false, orient:'horizontal', bottom:0, left:'center',
-            itemWidth:9, itemHeight:64, text:['高','低'], textStyle:{color:tk.tick,fontSize:10},
+        ? { min:0, max:maxV, calculable:false, orient:'horizontal', bottom:12, left:'center',
+            itemWidth:9, itemHeight:Math.round(Math.min(180, Math.max(96, (W||300)*0.42))),
+            text:['高','低'], textStyle:{color:tk.tick,fontSize:10},
             inRange:{ color:ramp } }
         : { min:0, max:maxV, calculable:false, orient:'vertical', right:2, top:'center',
             itemWidth:9, itemHeight:70, text:['高','低'], textStyle:{color:tk.tick,fontSize:10},
@@ -2151,7 +2820,8 @@ function kpiGauge(k){
   </div>`;
 }
 
-/* to-target 進度條卡：大數字即達成率本身，分段條顯示離 100% 目標多遠（比 Gauge 更貼「差多少」）。 */
+/* to-target 進度條卡：大數字即達成率本身，分段條顯示離 100% 目標多遠（比 Gauge 更貼「差多少」）。
+   ⚠️ 卡內只有這一個圖形。曾經加過第二個（月達成率小柱），已移除——原因見 CSS .kpi-t 那段。 */
 function kpiTarget(k){
   const pct=Math.max(0,Math.min(100,parseFloat(k.v))), N=24, on=Math.round(pct/100*N);
   const arrow=k.dc==="u"?ic("up","ic sm"):k.dc==="d"?ic("down","ic sm"):ic("dash","ic sm");
@@ -2300,11 +2970,21 @@ function heroStat(s){
   const tri = s.arw==="u"?"triUp":s.arw==="d"?"triDown":null;
   const arrow = tri?`<svg class="tri" viewBox="0 0 24 24" aria-hidden="true">${P[tri]}</svg>`:"";
   const badge = s.note ? `<span class="hbadge ${s.tone||"flat"} num">${arrow}${s.note}</span>` : "";
-  return `<div class="hstat">
-    <span class="hl">${s.label}${s.per?`<span class="hper num">（${s.per}）</span>`:""}${s.partial?`<span class="hpart">進行中</span>`:""}</span>
+  /* drill＝這一格可以點開明細。改成真正的 <button>（不是加 click 的 div）——
+     鍵盤可及性與 screen reader 語意都由原生元素負責，不用手接 role/tabindex/Enter/Space。
+     chevR 是「裡面還有東西」的視覺線索；不用文字，因為 hero 卡寬度是內容驅動的，
+     多四個中文字會把整塊量表區推寬。 */
+  const tag  = s.drill ? "button" : "div";
+  const attr = s.drill
+    ? ` class="hstat hstat-drill" type="button" data-drill="${s.drill}" data-metric="${s.metric}"`
+      + ` aria-label="${s.label} ${s.v}${s.u||""}，查看各店櫃明細"`
+    : ` class="hstat"`;
+  const chev = s.drill ? ic("chevR","ic dchev") : "";
+  return `<${tag}${attr}>
+    <span class="hl">${s.label}${s.per?`<span class="hper num">（${s.per}）</span>`:""}${s.partial?`<span class="hpart">進行中</span>`:""}${chev}</span>
     <div class="hrow"><span class="hv num">${s.v}${s.u?`<small>${s.u}</small>`:""}</span>${badge}</div>
     ${s.scope?`<span class="hscope num">${s.scope}${s.vper?`（${s.vper}）`:""}</span>`:""}
-  </div>`;
+  </${tag}>`;
 }
 /* 頂端混排派發：每項 t=ring→圓環（比率）、t=dual→升降雙值、其餘→數字格（絕對量）。 */
 function heroItem(it){
@@ -2380,27 +3060,73 @@ const stripTags = s => String(s).replace(/<[^>]+>/g, "");
 
 /* 每張圖 = 一個 ECharts 實例，就地填進版位格（.plot flex:1，尺寸由格子決定）。
    重繪／切分頁前先 dispose 舊實例（否則實例累積吃記憶體）；尺寸變動只 resize，不重建。 */
-let _charts = [], _funnels = [], _donuts = [], _heats = [];
+/* _byI：data-i → ECharts 實例。⚠️ 不能用 _charts 的索引代替——_charts 尾端還接著
+   KPI 卡的小柱實例，兩者的序號對不上。可點圖例要靠這張表找到自己那張圖。 */
+let _charts = [], _funnels = [], _pxlay = [], _heats = [], _kmini = [], _byI = {};
 function renderCharts(D){
-  _charts.forEach(ch => ch.dispose()); _charts = []; _funnels = []; _donuts = []; _heats = [];
+  _charts.forEach(ch => ch.dispose()); _charts = []; _funnels = []; _pxlay = []; _heats = []; _kmini = []; _byI = {};
   const tk = dvTokens();
   chEl.querySelectorAll(".plot[data-i]").forEach(el => {
     const c = D.charts[+el.dataset.i];
     if(!c) return;
     const chart = echarts.init(el, null, { renderer:"svg" });
-    chart.setOption(buildOption(c, tk, el.clientHeight, el.clientWidth));   /* 傳實際寬高：漏斗流失欄靠它貼齊各步階右緣 */
-    _charts.push(chart);
+    /* ⚠️ 用 chart.getHeight() 不是 el.clientHeight——`.plot` 有 padding-bottom:4px，
+       clientHeight **含** padding（101）而 ECharts 只畫到 content box（97）。
+       拿 clientHeight 去算像素座標，手繪的 graphic 就會比 ECharts 的格線多 4px 可用高度，
+       表現成「愈往下偏得愈多」的線性錯位（deltabar 實測 1px/列）。寬度同理。 */
+    chart.setOption(buildOption(c, tk, chart.getHeight(), chart.getWidth()));
+    _charts.push(chart); _byI[el.dataset.i] = chart;
     if(c.type==='funnel') _funnels.push({chart, el, c});   /* 漏斗流失欄是像素定位 → resize 要帶新高度重對齊 */
-    if(c.type==='donut')  _donuts.push({chart, el, c});    /* 半圓的圖例/數字也是像素定位 → resize 要用新寬高重算 */
+    /* _pxlay ＝ 版面本身（不只 graphic）是用 W/H 算出來的圖型 → resize 必須整段重建 option，
+       光 ch.resize() 會讓 ECharts 依新尺寸重排格線、但手算的像素座標還停在舊尺寸。
+       deltabar 就是這樣錯位過：掛載時 H=101、實際 115，於是通路名依 rowH 20.5 排、
+       長條依 rowH 24 排，四列愈往下偏得愈多。 */
+    /* c.topN 的圖同樣進 _pxlay：它的**列數**本身是 H 的函數，resize 只 resize 不重建的話，
+       視窗拉高了列數也不會跟著變（而且副標會停在舊的「前後各 N 名」）。 */
+    if(c.type==='donut' || c.type==='deltabar' || c.topN) _pxlay.push({chart, el, c});
+    syncSub(el, c, chart.getHeight());
     if(c.type==='heatmap'){ _heats.push({chart, c}); squareHeat(chart, c); }   /* 格子校正要在算得出像素之後 */
+    /* Stackbar 的圖例＝篩選器，不只是開關顯示：關掉一段就把它移出分母、剩下的重新正規化
+       撐滿整條。ECharts 內建圖例只會隱藏 series（分母不動 → 右側留白 ＋ % 加不到 100），
+       所以要攔下事件、帶著新的 selected 整段重建。
+       ⚠️ notMerge:true 是必要的——series 數量與 xAxis.max 都變了，merge 會留下舊值；
+       但 notMerge 也會清掉圖例的勾選狀態，所以 buildOption 裡要把 selected 回寫（見該處）。
+       ⚠️ 不可以在這裡再 dispatchAction 動圖例，否則會遞迴觸發自己。 */
+    if(c.type==='stackbar'){
+      const applySel = ev => {
+        /* ⚠️ 三個事件都要掛：使用者點圖例走 legendselectchanged，
+           但程式用 dispatchAction 走的是 legendselected／legendunselected——
+           只掛前者的話，手點有效、程式呼叫無效（探針因此量到「完全沒反應」）。
+           事件沒帶 selected 時（部分版本如此）就從 option 讀回來，不要自己記狀態。 */
+        const sel = (ev && ev.selected) || ((chart.getOption().legend || [])[0] || {}).selected;
+        if(!sel) return;
+        chart.setOption(buildOption(c, tk, chart.getHeight(), chart.getWidth(), sel), true);
+        /* 分母變了就要講出來——42% 變 52% 而副標還寫「本月佔比」會被當成資料跳動。 */
+        const off = Object.values(sel).filter(v => v === false).length;
+        const sub = el.closest('.panel')?.querySelector('.sub');
+        if(sub) sub.textContent = c.s + (off ? `（已排除 ${off} 項）` : '');
+      };
+      ['legendselectchanged','legendselected','legendunselected'].forEach(e => chart.on(e, applySel));
+    }
   });
-  /* KPI 卡內的 mini 長條（連帶率 UPT 等）也走 ECharts → 有正式懸浮窗 */
+  /* KPI 卡內的 mini 長條（連帶率 UPT 等）也走 ECharts → 有正式懸浮窗。 */
+  _kmini = [];
   chEl.querySelectorAll(".plot.kmini[data-ki]").forEach(el => {
     const k = (D.kpi || [])[+el.dataset.ki];
     if(!k || !k.bars) return;
-    const chart = echarts.init(el, null, { renderer:"svg" });
-    chart.setOption(k.type === "miniline" ? miniLineOption(k, tk) : miniBarOption(k, tk));
-    _charts.push(chart);
+    _kmini.push({ el, k, chart:null });
+  });
+  mountKMini(tk);
+}
+
+/* 容器高度為 0 時 init 會拿到 0×0（ECharts 會警告且畫不出來）→ 跳過，等有高度了再補建。
+   已建好的交給 resize()。 */
+function mountKMini(tk){
+  _kmini.forEach(m => {
+    if(m.chart || !m.el.clientHeight) return;
+    m.chart = echarts.init(m.el, null, { renderer:"svg" });
+    m.chart.setOption(m.k.type === "miniline" ? miniLineOption(m.k, tk) : miniBarOption(m.k, tk));
+    _charts.push(m.chart);
   });
 }
 
@@ -2417,7 +3143,20 @@ chEl.addEventListener("click", e => {
   /* 〔深入分析〕＝開「選角度」開場：先讓使用者挑這張圖要看哪個角度，選了才成為第一則問句。
      第一個角度＝ c.dig／k.dig，其餘兩句由 DIG_MORE 補上，三句都是 golden 原句或其標記過的變體。 */
   const b = e.target.closest(".dig");
-  if(b) openDig(page, b.dataset.c, [b.dataset.q, ...(DIG_MORE[b.dataset.c] || [])]);
+  if(b){ openDig(page, b.dataset.c, [b.dataset.q, ...(DIG_MORE[b.dataset.c] || [])]); return; }
+  /* 可點圖例：點一下暫時隱藏／顯示那條序列（line／combo 的圖例走面板頁首頁腳的手刻 HTML，
+     ECharts 內建圖例是 show:false）。⚠️ show:false 的 legend **元件仍然存在**，
+     legendToggleSelect 照樣生效——這正是「圖例外置、行為內建」能成立的原因，
+     不必自己去改 series.data。挑圖模式下停用：此刻整張面板是一個可點的目標。 */
+  const lg = e.target.closest(".lg[data-lg]");
+  if(lg && !document.body.classList.contains("picking")){
+    const panel = lg.closest(".panel"), plot = panel && panel.querySelector(".plot[data-i]");
+    const chart = plot && _byI[plot.dataset.i];
+    if(!chart) return;
+    const off = lg.classList.toggle("off");
+    lg.setAttribute("aria-pressed", off ? "false" : "true");
+    chart.dispatchAction({ type:"legendToggleSelect", name:lg.dataset.lg });
+  }
 });
 
 /* 視窗/格子尺寸變動 → 只叫 ECharts resize（rAF 去抖，避免縮放時狂重算）。
@@ -2426,12 +3165,14 @@ let _raf;
 new ResizeObserver(() => {
   cancelAnimationFrame(_raf);
   _raf = requestAnimationFrame(() => {
+    mountKMini(dvTokens());                     /* 補建先前因容器 0 高而跳過的小柱 */
     _charts.forEach(ch => ch.resize());
     _heats.forEach(h => squareHeat(h.chart, h.c));   /* 格子比例隨面板寬高變 → 每次都要重校 */
-    if(_funnels.length || _donuts.length){ const tk = dvTokens();
-      _funnels.forEach(f => f.chart.setOption({ graphic: funnelDrops(f.c, tk, f.el.clientHeight, f.el.clientWidth) }));
-      /* 半圓：用新寬高整段重算（圖例位置＋中央數字＋弧半徑都依 W/H） */
-      _donuts.forEach(f => f.chart.setOption(buildOption(f.c, tk, f.el.clientHeight, f.el.clientWidth), true)); }
+    if(_funnels.length || _pxlay.length){ const tk = dvTokens();
+      _funnels.forEach(f => f.chart.setOption({ graphic: funnelDrops(f.c, tk, f.chart.getHeight(), f.chart.getWidth()) }));
+      /* 半圓／deltabar：用新寬高整段重算（圖例位置、中央數字、弧半徑、欄寬、列高都依 W/H） */
+      _pxlay.forEach(f => { f.chart.setOption(buildOption(f.c, tk, f.chart.getHeight(), f.chart.getWidth()), true);
+        syncSub(f.el, f.c, f.chart.getHeight()); }); }
   });
 }).observe(chEl);
 
@@ -2579,8 +3320,13 @@ function draw(){
   const chartHTML = D.charts.map((c,i) => {
     const inner = c.type === "list" ? chList(c) : `<div class="plot" data-i="${i}"></div>`;
     /* 多序列圖的圖例統一走面板頁腳（ECharts 內建圖例關掉）→ 圖區高度全給資料 */
+    /* 色塊要跟著序列的明度走——五年階梯若圖例一律滿色，圖上分得出來、圖例卻分不出來 */
+    /* data-lg ＝ 該序列名稱，點下去切換顯示（見 chEl 的 click 委派）。名稱必須與
+       series.name 一字不差——legendToggleSelect 是靠 name 對上的。 */
     const lgOf = arr => `<span class="legend">` + arr.map(s =>
-      `<span class="lg"><i style="background:${DV[s.c]}"></i>${s.n}</span>`).join("") + `</span>`;
+      `<button class="lg" type="button" data-lg="${attr(s.n)}" aria-pressed="true"
+        ><i style="--sw:${DV[s.c]}${s.op!=null?`;--swo:${s.op}`:""}"></i>${s.n}</button>`)
+      .join("") + `</span>`;
     const leg  = c.type === "line"  ? lgOf(c.series)
                : c.type === "combo" ? lgOf([{n:c.bar.n, c:c.bar.c ?? 0}, {n:c.line.n, c:c.line.c ?? 2}])
                : "";
@@ -2621,7 +3367,40 @@ function draw(){
   chEl.style.gridTemplateRows = placeRows(layoutItems).join(" ");
 
   renderCharts(D);
+  assertNoClip();
 }
+
+/* 爆版守門（開發期）：?dev 才跑。
+   .panel／.kpi 都是 overflow:hidden——內容超出時「沒有捲軸、沒有 console error」，
+   在開發機的單一尺寸上完全看不出來。第十一輪就是這樣讓三張卡的漲跌數字在
+   1366／1280／1512×700 上被裁掉而沒人發現。這個斷言把靜默失效變成有聲失效。
+   用 setTimeout 不用 requestAnimationFrame：headless（--virtual-time-budget）下
+   rAF 不推進，斷言會整個不執行（交接第十六節）。 */
+function assertNoClip(){
+  if(!/(\?|&)dev\b/.test(location.search)) return;
+  setTimeout(() => {
+    const bad = [];
+    document.querySelectorAll(".panel,.kpi").forEach(el => {
+      const dv = el.scrollHeight - el.clientHeight, dh = el.scrollWidth - el.clientWidth;
+      if(dv > 1 || dh > 1) bad.push({
+        版位: (el.querySelector("h3,.k") || {}).textContent?.trim() || "?",
+        縱向超出: dv > 1 ? dv + "px" : "",
+        橫向超出: dh > 1 ? dh + "px" : "",
+        卡片尺寸: Math.round(el.getBoundingClientRect().width) + "×"
+                + Math.round(el.getBoundingClientRect().height)
+      });
+    });
+    if(bad.length){
+      console.warn(`⚠️ 爆版 ${bad.length} 處 @ ${page} ${innerWidth}×${innerHeight}`
+        + "（overflow:hidden 已把它裁掉，畫面上看不到）");
+      console.table(bad);
+    }
+  }, 0);
+}
+/* 拖窗即時複檢——爆版是「某些高度才會發生」，靜態掛載一次抓不到臨界點。
+   節流 150ms：拖曳過程每一像素都跑 querySelectorAll 會拖慢畫面。 */
+let _clipT;
+addEventListener("resize", () => { clearTimeout(_clipT); _clipT = setTimeout(assertNoClip, 150); });
 
 /* ============================================================
    抽屜 — 答案落在這裡，Dashboard 上的圖完全不動。
@@ -3156,7 +3935,16 @@ const DIG_MORE = {
   /* 業績 */
   "目標達成率":["上個季度業績有沒有按照計畫走？","今年業績達成率整體怎麼樣？"],
   "各店櫃達成率":["街邊店最近業績表現怎麼樣？有沒有哪幾家掉比較多？"/* ←改寫自 業績-8 */,"這個月哪個門市業績成長最快？"/* ←改寫自 業績-80 */],
-  "通路業績佔比":["最近有沒有哪個通路業績異常暴增或銳減？"/* ←改寫自 業績-40 */,"最近有沒有哪個通路的客單價下降很多？"],
+  /* ⚠️ key 必須等於圖表的 h（dig 按鈕的 data-c 就是它）。這格改過四次名字
+     （通路業績佔比 → 線上 vs 線下 成長率 → 各通路佔比走勢 → 各通路業績 YoY），
+     第一次改名時忘了同步這裡，於是「深入分析」只給得出一個角度而不是三個——而且不會報錯。
+     改圖表標題時記得回頭改這裡。 */
+  /* 三句沿用改圖前的組合（使用者拍板，改圖時不動 chip）：
+       第 1 句 業績-49（S7，在圖表 c.dig）· 第 2 句 改寫自 業績-40 · 第 3 句 業績-82（S9）。
+     ⚠️ 第 2 句是**改寫**不是原句（原文只有「暴增」，這裡加了「或銳減」），屬於
+        chips_golden_mapping.xlsx「工程待辦」分頁裡要實測 cosine 的 31 句之一，別當成免驗證。 */
+  "各通路業績 YoY":["最近有沒有哪個通路業績異常暴增或銳減？"/* ←改寫自 業績-40 */,
+                    "最近有沒有哪個通路的客單價下降很多？"/* 業績-82 */],
   "商品線業績貢獻":["最近有沒有哪個品項業績貢獻忽然爆衝？","新品上市之後業績怎麼樣？有沒有帶動整體？"/* ←改寫自 業績-83 */],
   "業績走勢":["上週業績跟上上週比差多少？","最近半年跟前一個半年比，差多少？"/* ←改寫自 業績-38 */],
   "星期 × 時段 業績熱力":["週一到週五跟假日業績差多少？","哪個時段退貨最多？有沒有影響當日業績？"],
@@ -3485,9 +4273,76 @@ renderHist();
   el.addEventListener("mouseleave", hideTip);
 });
 
+/* ============================================================
+   Hero 數字卡下鑽：各店櫃明細彈窗
+   ============================================================ */
+const drillov = document.getElementById("drillov"),
+      drillTb = document.getElementById("drill-tb");
+document.getElementById("drill-x").innerHTML = ic("x");
+let _drillFrom = null;                       /* 開啟前的焦點，關閉時還回去 */
+
+const drillOpen = () => drillov.classList.contains("open");
+/* 客單價由業績與筆數導出（業績單位是萬 → ×10000 才是元）。單一來源，全檔共用。 */
+const _aov = (amt, cnt) => Math.round(amt * 10000 / cnt);
+
+function openDrill(metric){
+  const M_ = STORE_DRILL.metrics[metric], C = STORE_DRILL.cols;
+  /* 一格的值＝把該欄的「業績、筆數」兩個原始量餵進被點的指標。
+     amt 直接讀業績欄、cnt 直接讀筆數欄、aov 兩者相除——三種指標同一條路徑。 */
+  const val = (r, col) => {
+    const amt = r[col[1]], cnt = r[col[2]];
+    return metric === "amt" ? amt : metric === "cnt" ? cnt : _aov(amt, cnt);
+  };
+  /* 小計／合計：先把原始量逐欄加總、再套指標——不是把各列的值平均
+     （客單價的加權不同，平均起來會對不上 Hero 的 2,580）。 */
+  const aggRow = (pick, label) => {
+    const s = STORE_DRILL.rows.filter(pick);
+    const row = [label, ""];
+    for(let i = 2; i <= 9; i++) row[i] = s.reduce((a,r) => a + r[i], 0);
+    return row;
+  };
+  const by  = (a,b) => val(b, C[0]) - val(a, C[0]);   /* 一律依「今年本月」由高到低 */
+  const on  = STORE_DRILL.rows.filter(r => r[1] === "on").sort(by),
+        off = STORE_DRILL.rows.filter(r => r[1] === "off").sort(by);
+
+  /* 第一欄（今年本月）＝這張卡的 Hero 大數字本身，給它高亮當視線起點 */
+  const tr = (r, cls) => `<tr class="${cls||""}">`
+    + `<td>${r[0]}${r[10]?`<span class="flag">${r[10]}</span>`:""}</td>`
+    + C.map((c,i) => `<td class="${i===0?"on":""}">${F(val(r,c))}</td>`).join("")
+    + `</tr>`;
+  drillTb.innerHTML = `<thead><tr><th>店櫃／通路</th>`
+    + C.map((c,i) => `<th class="${i===0?"on":""}">${c[0]}（${M_.unit}）</th>`).join("")
+    + `</tr></thead><tbody>`
+    + on.map(r => tr(r)).join("") + tr(aggRow(r => r[1] === "on", "線下小計"), "sub")
+    + off.map(r => tr(r)).join("") + tr(aggRow(() => true, "合計"), "tot")
+    + `</tbody>`;
+
+  document.getElementById("drill-t").innerHTML = `各店櫃明細 · <em>${M_.title}</em>`;
+
+  _drillFrom = document.activeElement;
+  drillov.classList.add("open");
+  drillov.setAttribute("aria-hidden","false");
+  document.getElementById("drill-x").focus();
+}
+function closeDrill(){
+  if(!drillOpen()) return;
+  drillov.classList.remove("open");
+  drillov.setAttribute("aria-hidden","true");
+  if(_drillFrom && _drillFrom.isConnected) _drillFrom.focus();
+  _drillFrom = null;
+}
+/* 事件委派掛在 hero-gauges 上——卡片每次切分頁都重繪，掛在卡片本身會掉。 */
+gaugesEl.addEventListener("click", e => {
+  const b = e.target.closest("[data-drill]");
+  if(b) openDrill(b.dataset.metric);
+});
+document.getElementById("drill-x").addEventListener("click", closeDrill);
+drillov.addEventListener("click", e => { if(e.target === drillov) closeDrill(); });  /* 點外面關 */
+
 /* Esc：挑圖模式優先——只取消挑圖，不要順手把抽屜也關掉 */
 addEventListener("keydown", e => {
   if(e.key !== "Escape") return;
+  if(drillOpen()){ closeDrill(); return; }  /* 明細彈窗是最上層：Esc 只關它 */
   if(fbOpen()){ closeFb(); return; }        /* 倒讚彈窗開著：Esc 只關彈窗，不關抽屜 */
   if(picking()){ closePick(); return; }
   close_(); closeSide(); closeProfile();
