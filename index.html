@@ -787,6 +787,13 @@ main{flex:1;min-height:0;overflow:hidden;
 .r .nm em{font-style:normal;display:block;font-size:11px;color:var(--text-muted);}
 .r .val{font-family:var(--font-display);font-size:15px;font-weight:var(--fw-semibold);
   color:var(--text);font-variant-numeric:tabular-nums;flex:none;}
+/* 首列（＝目前排序下的最高值）用語意警示色標數字。只在 c.warnTop 的清單出現——
+   CRM「高價值休眠喚回清單」的第一名是最值得撈回來的貴客，染紅會把好事讀成壞事。
+   ⚠️ 用 --color-danger（語意色）不是 --accent-2（品牌 coral）：設計系統規定紙面
+      只有一處 coral，那個額度留給品牌重點，警示走語意色不佔用它。
+   ⚠️ 顏色不是唯一的編碼——清單本來就是排序的，位置已經講了「這是最高的」，
+      色只是加強。所以色盲或單色列印下不會丟失資訊。 */
+.r.hi .val{color:var(--color-danger);}
 
 /* 清單的分段切換（排序依據／期間）。放頁腳而非頁首：cs:3 的頁首已經有標題＋副標兩行，
    再塞兩組控制會擠成三行、把清單壓矮。頁腳是整條寬度，兩組並排剛好。
@@ -1880,6 +1887,9 @@ M["業績"] = { sub:"本月業績狀態盤點",
           ⚠️ 綜合成本率那一欄的數值是 demo 示意值，沒有跟著重算；接真實資料時三項要一起加總。 */
     {cs:3,rs:4,type:"list",h:"百貨抽成成本",
      s:"哪幾家在吃錢 · 抽成＋刷卡費＋紙袋 · 近 12 個月 · 前 5 家",   /* 初始文案；掛載後由 renderLists 覆寫 */
+     /* 首列（目前排序下最高的那家）數字染警示色。這張清單的「最高」＝吃最多錢＝該處理，
+        所以警示色讀起來是對的；CRM 喚回清單不掛這個旗標，那裡的第一名是好事。 */
+     warnTop:true,
      /* 兩組分段切換（見 .pseg）。key 會寫進 c._sg，切換只重排這一張清單、不重畫整頁。 */
      seg:[{k:"sort", def:"fee", o:[["fee","金額"],["rate","成本率"]]},
           {k:"per",  def:"12",  o:[["1","上月"],["3","3月"],["6","6月"],["12","12月"]]}],
@@ -3780,8 +3790,15 @@ function fillList(box, c){
     const H = box.clientHeight || 0;
     n = Math.max(tn.min, Math.min(tn.max, all.length, Math.floor(H / (tn.pitch||44))));
   }
+  /* c.warnTop：最高值的那幾列，數字染語意警示色。清單已經排序，所以「最高」靠位置就講得
+     清楚，色是加強不是唯一編碼（見 .r.hi 的 CSS 註解）。
+     ⚠️ 綁值不綁索引 0，因為**會並列**：實測「排序＝成本率」時 YCVC 忠孝SOGO／EM 台中新光／
+        EM 南西新光 三家都是 28.5%，只標第一家會讀成「它最高」，那是假的。比對顯示字串
+        （已格式化到小數一位）而不是原始數字——畫面上看起來一樣的兩列就該標一樣。
+     ⚠️ 也不能綁店櫃名：兩組排序（金額／成本率）切換時最高的那家會換人。 */
+  const top = c.warnTop && all.length ? all[0][2] : null;
   const paint = k => { box.innerHTML = all.slice(0, k).map(([a,b,v]) =>
-    `<div class="r"><span class="nm">${a}${b?`<em>${b}</em>`:""}</span>
+    `<div class="r${top !== null && v === top ? " hi" : ""}"><span class="nm">${a}${b?`<em>${b}</em>`:""}</span>
      <span class="val num">${v}</span></div>`).join(""); };
   paint(n);
   if(tn) while(n > tn.min && box.scrollHeight > box.clientHeight + 1) paint(--n);
