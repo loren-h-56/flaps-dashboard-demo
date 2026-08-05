@@ -640,9 +640,21 @@ main{flex:1;min-height:0;overflow:hidden;
   color:var(--color-warning);}
 /* 佔比對照卡（kpi-sh）：兩列 100% 分段條。段子沿用 .kpi-t 的 .kt-bar，色票不另立。 */
 .kpi-sh .v{margin-top:0;}
-.kpi-sh .sh-list{flex:1;min-height:0;display:flex;flex-direction:column;margin-top:var(--space-2);}
-.kpi-sh .sh-row{flex:1;min-height:0;display:flex;align-items:center;gap:var(--space-2);
-  border-top:1px solid var(--border);font-size:11px;color:var(--text-body);}
+/* ⚠️ 2026-08-05：**兩列之間不畫分隔線**（使用者要求），而且這條線本來就在拆自己的台。
+   這張卡當初就是為了修「兩個並排半圓被讀成兩個獨立儀表」才換掉 halfdonut 的——
+   當月與去年同期是**同一個指標的兩個時點**，中間畫一條線等於又把它們切開一次。
+   分隔線只留在 .sh-list 上緣（隔開大數字那一區與條區），那條是分「層級」不是分「項目」。
+   ⚠️ 連帶把兩列收成一組：`flex:1` 讓兩列各自吃掉半個卡高，2560 上兩根條相距 139px，
+      光是那個距離就會讓它們讀成兩件事。改成 max-height 封頂 ＋ 整組垂直置中，
+      1280（列高 25）行為不變，大螢幕上兩根條貼在一起、留白收到上下兩端。 */
+.kpi-sh .sh-list{flex:1;min-height:0;display:flex;flex-direction:column;
+  justify-content:center;border-top:1px solid var(--border);
+  margin-top:var(--space-2);padding-top:var(--space-2);}
+/* max-height 38 ≒ 兩倍條高。實測 52 時兩根條在 1920 相距 53px，中間那塊白比條本身
+   還厚，線拿掉了但「兩件事」的觀感還在；38 收成一組，1280（列高 25）不受影響。 */
+.kpi-sh .sh-row{flex:1 1 auto;min-height:0;max-height:38px;
+  display:flex;align-items:center;gap:var(--space-2);
+  font-size:11px;color:var(--text-body);}
 /* 標籤欄寬度寫死：「當月」兩字、「去年同期」四字，不定寬的話兩列的條左緣參差
    （與 .kpi-bd .bd-p 那條同一個理由，只是方向相反）。 */
 .kpi-sh .sh-row .sh-k{flex:none;width:4.6em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
@@ -857,14 +869,27 @@ main{flex:1;min-height:0;overflow:hidden;
   font-weight:var(--fw-semibold);box-shadow:var(--shadow-xs);}
 .sgb:focus-visible{outline:2px solid var(--accent);outline-offset:1px;}
 
-/* ---- tooltip ---- */
-.tip{position:fixed;z-index:50;pointer-events:none;background:var(--text);color:var(--canvas);
-  border-radius:var(--radius-sm);padding:7px 10px;font-size:11.5px;line-height:1.5;
-  box-shadow:var(--shadow-md);opacity:0;transition:opacity .1s;white-space:nowrap;
+/* ---- tooltip ----
+   ⚠️ 2026-08-05：由**深底反白**改成**白底細框**，與 ECharts 的懸浮窗同一套（使用者要求）。
+   數值必須與 chartOption 裡的 `tip` 物件一致，兩邊是同一個視覺元件的兩套實作：
+     背景 --paper／框 1px --border／圓角 8／內距 8 11／字 11px --text-body
+     陰影 0 6px 20px rgba(20,26,51,.14)
+   改哪一邊都要**同步改另一邊**，否則同一頁上會出現兩種懸浮窗——而使用者反映的正是這件事
+   （庫存「滯銷金額排行」的商品懸浮窗是深色的，同頁其他圖都是白的）。
+   ⚠️ 這個元件有兩個使用者：`chEl` 的 data-tip 委派（圖表清單）＋ 側欄收合時的 icon 標籤。
+      改成白底之後**兩個都變白**。側欄那個原本是「深色標籤」的常見做法，但一個 app 裡
+      並存兩種懸浮窗更奇怪；要拆回來就多開一個 modifier class，不要改這裡。
+   ⚠️ `b` 不再是「小號 mono 的 kicker」：白底上 opacity:.65 的小字會糊掉，而且 ECharts 那邊
+      的 <b> 就是「正常字級的粗體品名」。兩邊對齊之後 skuMeta 的欄位排版才會一致。 */
+.tip{position:fixed;z-index:50;pointer-events:none;
+  background:var(--paper);color:var(--text-body);
+  border:1px solid var(--border);border-radius:8px;padding:8px 11px;
+  font-size:11px;line-height:1.5;
+  box-shadow:0 6px 20px rgba(20,26,51,.14);
+  opacity:0;transition:opacity .1s;white-space:nowrap;
   font-variant-numeric:tabular-nums;}
 .tip.on{opacity:1;}
-.tip b{display:block;font-size:var(--text-micro);opacity:.65;font-family:var(--font-mono);
-  letter-spacing:.05em;margin-bottom:2px;}
+.tip b{font-weight:var(--fw-semibold);color:var(--text);}
 
 /* ---- drawer：對話的答案落在這裡，Dashboard 上的圖完全不動 ----
    **浮卡式、不壓暗**：會話式 BI 的價值就是「對照著圖追問」，把圖壓暗跟這個定位牴觸。
@@ -2423,11 +2448,13 @@ M["庫存"] = { sub:"庫存壓力與風險盤點",
       （見引擎註解）。只有四格的平面 treemap 不值得換——那等於把堆疊橫條折成方形。
 
    ── 2026-08-05：形式重複降到 0（使用者反映「太多 BAR」）────────────────────────
-     combo（三序列直柱）／hbar（效率排行）／funnel／**rings**（去化）／**deltabar**（機制）
+     combo（三序列直柱）／hbar（效率排行）／funnel／**waffle**（去化）／**deltabar**（機制）
    兩塊同時換掉，改後**五塊五種形式、零重複**（全站四頁只有促銷與 CRM 做到）：
      · 機制 hbar → deltabar：與效率排行同構（都是 hbar 排行 ＋ 基準線 ＋ 低於線染 coral），
        而且原本的編碼把 11.8pp 的毛利率差畫成看不見。理由見該格。
-     · 去化 treemap → rings：treemap 只承載四個百分比、沒有對照組。理由見該格。
+     · 去化 treemap → rings → **waffle**（同日再換一次）：treemap 只承載四個百分比、
+       沒有對照組；rings 換上去之後使用者兩輪反映「擠的地方擠、空的地方空」，追下去發現
+       是**圓填不滿矩形**的先天問題（對角四塊空洞），不是參數。理由見該格與 waffle 引擎。
    ⚠️ **treemap 引擎又回到「全站沒有任何一塊在用」的狀態**（上一次是第十八次之前）。
       引擎與第二層／tint 的修正都保留，下一個要用的人不必重做；但**四格的平面 treemap
       不要再挑它**，那等於把堆疊橫條折成方形，這條理由兩輪都成立。
@@ -2590,10 +2617,23 @@ M["促銷"] = { sub:"檔期效益與折扣結構", kpiAfter:0,
          · 母親節 −18 最難看，後衰退只有 −3 ＝ **純蠶食、沒借未來**（兩種壞法修法不同）
          · GP 換季 −24 ＋ −16 ＝ 雙輸，與它 ROI 0.48 墊底一致（換季出清拿毛利換現金）
        ⚠️ 檔期名與排行圖／CAMP_ROWS 同名是刻意的跨圖橋，**只改數字不改名字**。
-       ⚠️ 標籤加了月份 → x 軸文字從 7 字長到 10 字。cs:6 @1280 六個標籤約 62px/個，
-          實測不重疊；再加字就會開始傾斜，要加先量。 */
-    {cs:6,rs:3,type:"combo",legTop:true,h:"檔期增量 vs 蠶食",s:"促銷是多賣還是賤賣正價 · 近六檔",
-     x:["EM26SS 3月","EM 0401 4月","母親節 4月","SM2 春夏 5月","YCVC 週慶 6月","GP 換季 7月"],
+       ── 2026-08-05（同日稍晚）：x 軸標籤的月份拿掉，期間退到懸浮窗（使用者指出）──────
+       ⚠️ **標成「EM26SS 3月」是錯的，不只是冗長。** 檔期會跨月，對照排行圖 r[3] 的期間欄：
+            EM26SS  3/20–4/30（42 天，跨 3–4 月）　母親節 4/25–5/12（18 天，跨 4–5 月）
+          一個檔期標一個月份等於在軸上印假資訊，而且是**看起來很精確的假資訊**。
+          （順帶：六檔的期間是重疊的——EM26SS 這種品牌長檔本來就會跨在節慶檔上面，
+            零售常態。軸上塞月份也表達不了這件事。）
+       ⚠️ 拿掉月份之後「這條軸是時間」由**副標的「依開檔日」**交代，不是靠標籤。
+          完整期間走 `c.xd` → 只在懸浮窗出現（見 combo 引擎）。
+       ⚠️ 副標多了「· 依開檔日」共 20 字。cs:6 @1280 面板 572px，扣標題與三個圖例項後
+          副標約放得下 26 字，實測仍單行——但這格已經被 legTop 吃掉一次寬度，
+          **再加字前先量**（第十八次就是在這裡踩過，圖區一次掉 16px）。 */
+    {cs:6,rs:3,type:"combo",legTop:true,h:"檔期增量 vs 蠶食",
+     s:"促銷是多賣還是賤賣正價 · 近六檔 · 依開檔日",
+     x:["EM26SS","EM 0401","母親節","SM2 春夏","YCVC 週慶","GP 換季"],
+     /* 期間（順序同 x）＝ 排行圖 r[3] 的「期間」欄，同一批檔期兩處要一致 */
+     xd:["3/20–4/30 · 42 天","4/01–4/21 · 21 天","4/25–5/12 · 18 天",
+         "5/02–5/26 · 25 天","6/10–6/30 · 21 天","7/01–7/31 · 31 天"],
      bar:{n:"檔期業績",c:0,unit:"萬",d:[98,240,148,125,183,76]},
      line:{n:"淨增量佔比",c:2,unit:"%",ref:0,d:[26,38,-18,4,-11,-24]},
      line2:{n:"檔期後衰退",c:1,unit:"%",d:[-19,-22,-3,-11,-6,-16]},
@@ -2793,15 +2833,20 @@ M["促銷"] = { sub:"檔期效益與折扣結構", kpiAfter:0,
        ⚠️ 90–180 那桶改前留著一個「針織」（既不是大類也不是款式層），是這張圖最後一處
           品類不一致——本輪重配資料時一併改成「上衣」，四桶現在全站在七大類上。
        ⚠️ 為什麼不是條：使用者明確要求「不要又是 BAR」。改後同頁已有 combo 的直柱、
-          排行的橫條、機制的發散條，第四塊再放條整頁會塌成一片條紋。rings 的形式取捨、
-          以及它為什麼不受「弧長讀不出小百分比」那條反對意見拘束，記在引擎註解裡。 */
+          排行的橫條、機制的發散條，第四塊再放條整頁會塌成一片條紋。
+       ── 2026-08-05（同日第三版）：rings → waffle ────────────────────────────────
+       ⚠️ 形式再換一次。rings 上線後使用者兩輪反映「擠的地方很擠、空的地方很空」；
+          第一輪我當成調參數（拿掉環徑封頂、字級綁 R），改完他回**「看起來一模一樣」**
+          ——因為那個封頂在他的尺寸上只卡住 4px。**病灶是圓不鋪滿矩形**（四塊對角空洞
+          ＋ 字只能貼在圓底下），調參數治不好。方格會鋪滿方格。
+          方陣尺寸、走過的兩條死路（1×4 橫排、半圓儀表）都記在 waffle 引擎的註解裡。 */
     /* ⚠️ 分桶標籤用 `<30／30–90／90–180／180+`，**與庫存頁熱力圖的 c.x 一字不差**。
        兩個理由，第二個是實測：
        ① 「同一把尺」本來只寫在註解裡，用同一組字串之後畫面上就看得到。
        ② 原本寫「30 天內／30–90 天／90–180 天／180 天+」，1280 上 treemap 的格子放不下：
           「90–180 天」被截成「90–1…」，而「180 天+」那格連第二行的百分比都掉了。
           單位「天」移到副標，格子裡只留數字區間。 */
-    {cs:3,rs:3,type:"rings",h:"折讓去化貨齡",
+    {cs:3,rs:3,type:"waffle",h:"折讓去化貨齡",
      s:"越老的貨清得越少 · 折讓清掉 ÷ 該貨齡庫存",unit:"萬",
      cols:2, lab:["清","壓"], tint:[0,4,1,2],
      /* [貨齡桶, 折讓清掉萬, 該貨齡庫存萬（＝庫存頁熱力圖欄和）, warn?, [[品類, 萬], …]]
@@ -3050,20 +3095,25 @@ const STORE_DRILL = {
      可售金額   4,517 萬 ＝ 庫齡 90 天以內（1420+3097）
      滯銷金額   2,474 萬 ＝ 庫齡 91 天以上（1913+561）
      ⚠️ 後兩格相加＝6,991 ＝ 庫齡分佈四段加總 ＝ 熱力圖 12 格加總，分母不必再單獨佔一格。
-   ⚠️ **scope 只寫「vs. 去年同期 X」，不掛任何附註**（使用者 2026-07-31 明確要求）。
-      「均價 1,400 元」「佔庫存金額 65%／35%」都寫過又拿掉了——那一列只做一件事：
-      給大數字一個比較基準。要放衍生資訊請另找版位，不要再塞回這裡。
-   去年同期三格各自的基準：件數 49935/46200 ＝ +8.1%、可售 4517/4654 ＝ −2.9%、
-   滯銷 2474/2180 ＝ +13.5%。三個一起讀才是重點：**件數漲 8%、金額只漲 2.3%**
-   （6991/6834），代表均價從 1,479 掉到 1,400（−5.3%）——貨變多、變便宜、而且更賣不動。
-   這正是第 1 格改成件數才講得出來的事；原本三格都是金額時，這條線索是看不見的。 */
+   ── 2026-08-05：**三格的去年同期比較整組移除**（使用者要求）──────────────────
+   拿掉的是每格的 `arw`／`tone`／`note`／`scope` 四個欄位，也就是箭頭、漲跌徽章與
+   「vs. 去年同期 X」那一行；三格現在只剩「標籤 ＋ 大數字 ＋ 可點開的 chevron」。
+   ⚠️ **heroStat 對這四個欄位本來就是條件式渲染**（`s.note ?` 與 `s.scope ?`），
+      所以只要把欄位刪掉即可，引擎一行都不用改；業績／促銷／CRM 三頁不受影響。
+   ⚠️ 明細彈窗的「去年同期」欄同步移除（見 INV_DRILL 的 cols），兩處要一起改——
+      卡上不比、點開來卻有一欄在比，是更糟的不一致。
+   ⚠️ 移除之後**下面這條敘事在畫面上就消失了**，記在這裡免得有人以為是資料掉了：
+        件數 49935/46200 ＝ +8.1%、可售 4517/4654 ＝ −2.9%、滯銷 2474/2180 ＝ +13.5%
+        三個一起讀是「件數漲 8%、金額只漲 2.3%（6991/6834）→ 均價從 1,479 掉到 1,400
+        （−5.3%）——貨變多、變便宜、而且更賣不動」。
+      去年同期的原始數字仍然留在 INV_DRILL 的第 8–10 欄（見該處），要恢復不必重編資料。
+   ⚠️ 舊規則保留備查：scope 那一列曾經只准寫「vs. 去年同期 X」、不掛任何附註
+      （使用者 2026-07-31 要求）。「均價 1,400 元」「佔庫存金額 65%／35%」都寫過又拿掉。
+      要是哪天把 scope 加回來，那條限制仍然成立。 */
 M["庫存"].hero = [
-  {t:"stat",v:"49,935",u:"件",label:"現有總庫存",arw:"u",tone:"bad",note:"8.1%",scope:"vs. 去年同期 46,200",
-   drill:"wh",metric:"qty"},
-  {t:"stat",v:"4,517",u:"萬",label:"可售金額",arw:"d",tone:"bad",note:"2.9%",scope:"vs. 去年同期 4,654",
-   drill:"wh",metric:"sell"},
-  {t:"stat",v:"2,474",u:"萬",label:"滯銷金額",arw:"u",tone:"bad",note:"13.5%",scope:"vs. 去年同期 2,180",
-   drill:"wh",metric:"slow"}];
+  {t:"stat",v:"49,935",u:"件",label:"現有總庫存",drill:"wh",metric:"qty"},
+  {t:"stat",v:"4,517",u:"萬",label:"可售金額",  drill:"wh",metric:"sell"},
+  {t:"stat",v:"2,474",u:"萬",label:"滯銷金額",  drill:"wh",metric:"slow"}];
 
 /* ---- 庫存 Hero 三格點入的各店櫃庫存明細（drill:"wh"）------------------------
    結構與 STORE_DRILL 對稱（同一個彈窗、同一套算式），差別只有兩點：
@@ -3118,13 +3168,32 @@ const INV_DRILL = {
     ["官網倉",            "off",13913, 1600,  850, 13617, 1566,  812, 12520, 1540,  700],
     ["蝦皮倉",            "off", 8326,  791,  254,  8211,  780,  243,  7470,  762,  210]],
   nums:[2,10], flag:11,
+  /* ── 2026-08-05：欄位由「時間點」改成「指標」（使用者要求）─────────────────────
+     ⚠️ **三張數字卡現在點開的是同一張表**，所以 metrics 三個鍵的 title 也刻意寫成同一句
+        ——`openDrill` 用 `S.metrics[metric]` 決定彈窗副標，三個鍵給不同的字會變成
+        「三個不同的標題、同一份內容」，比不分還糟。三個鍵仍要留著：引擎用
+        `if(!S.metrics[metric]) return` 當守門，刪掉任何一個那張卡就點不開了（靜默失效）。
+     ⚠️ 這是**兩次改動的第二步**。第一步先拿掉「去年同期」欄（與 Hero 三格拿掉 YoY 比較
+        同一件事）；這一步把剩下的「目前／上月」整組換成「庫存／可售金額」，
+        於是**時間比較在這張表上完全消失**，改成同一個時間點的兩個指標並列。
+     ⚠️ **第 5–10 欄的原始資料刻意留著不刪**（上月與去年同期的件數／總額／滯銷萬）：
+        ① 那六欄有硬加總約束（線下 20 列 27272/4534/1337 · 26210/4532/1270；
+           全 22 列 49100/6880/2392 · 46200/6834/2180），刪掉等於把約束一起刪掉。
+        ② `nums:[2,10]` 與 `flag:11` 的索引維持不動，少一次改錯欄位的機會。
+        要恢復時間欄，把 `["上月",5,6,7]`／`["去年同期",8,9,10]` 加回 cols 就好。
+     ⚠️ 排序鍵跟著換了：`by` 一律依 C[0] 由高到低，改前是「目前 × 被點的指標」，
+        現在固定是**庫存件數**。三張卡看到的列序因此完全相同（本來就是同一張表）。
+     欄形狀改成 CAMP_DRILL 那一套「[欄名, …索引]」：長度 2 ＝ 直接取值，
+     長度 3 ＝ 兩個索引相減（可售 ＝ 總額 − 滯銷，衍生值一律不手寫）。
+     ⚠️ 單位走 `units` 陣列、**不可塞進 cols[i][3]** —— 那個位置是索引，撞上去會靜默算錯
+        （引擎的 val 只看 c.length）。 */
   metrics:{
-    qty: {title:"現有總庫存", unit:"件"},
-    sell:{title:"可售金額",   unit:"萬"},
-    slow:{title:"滯銷金額",   unit:"萬"}},
-  /* 三個時間點：[欄名, 件數欄, 總額欄, 滯銷欄] —— 後兩個索引成對，可售才算得出來 */
-  cols:[["目前",2,3,4],["上月",5,6,7],["去年同期",8,9,10]],
-  val:(r,c,m) => m === "qty" ? r[c[1]] : m === "slow" ? r[c[3]] : r[c[2]] - r[c[3]]
+    qty: {title:"庫存與可售金額", unit:"件"},
+    sell:{title:"庫存與可售金額", unit:"件"},
+    slow:{title:"庫存與可售金額", unit:"件"}},
+  cols:[["庫存",2],["可售金額",3,4]],
+  units:["件","萬"],
+  val:(r,c) => c.length > 2 ? r[c[1]] - r[c[2]] : r[c[1]]
 };
 /* 促銷「進行中檔數」汰換成「帶動新客」——總折讓 vs 帶動業績已是「錢」的 ROI 對照，
    帶動新客補上「客」這條軸（促銷有沒有在拉人），純 count、決策相關。
@@ -4011,6 +4080,10 @@ function buildOption(c, tk, H, W, sel){
   }
 
   /* ── Rings：一組小圓環，每環畫一個「分子 ÷ 分母」的比率（2026-08-05 新增）───────
+       ⚠️ **同日稍晚被 waffle 取代，目前全站沒有任何一塊在用**（同 treemap／donut／
+          kpiGauge 的處境）。引擎與收斂迭代的排版數學都保留，下一個要用的人不必重做，
+          但**先讀 waffle 引擎那段再決定要不要用它**：圓在寬扁的格子裡填不滿，那是
+          這個元件被換掉的原因，換個資料不會自己消失。
        c.d    = [[名稱, 分子, 分母, warn?, [[細分名, 值], …]?], …]
        c.lab  = [分子的詞, 分母的詞]（環下那行的用字，例 ["清","壓"]）
        c.cols = 每列幾個環（預設 2）　c.tint = 逐環的 dv 索引（同 treemap 的 tint）
@@ -4029,20 +4102,36 @@ function buildOption(c, tk, H, W, sel){
         （同 donut／deltabar），否則 resize 後環的位置不會重算。 */
   if(c.type==='rings'){
     const d=c.d, n=d.length, cols=c.cols||2, rowsN=Math.ceil(n/cols);
-    const Ww=W||300, Hh=H||200, cellW=Ww/cols, cellH=Hh/rowsN;
-    /* 環下兩行字（名稱 11 ＋ 明細 10 ＋ 行距）固定吃 28px；環吃剩下的一半並封頂 46——
-       不封頂的話 2560 的 cs:3 rs:3（圖區 502px）會把單環長到 120px 以上，
-       環與環之間的白比環還大，讀起來像四張沒排完的小卡。 */
-    /* ⚠️ padY 不能省。沒有它的時候實測 1280–1600 四個尺寸，**最上緣的環貼著圖區 y=0、
-       最下面那行字的底剛好落在圖區最後 1px**——沒有爆版（探針 0），但上下都是零留白，
-       看起來像被面板夾住。3px 兩端各留一點，代價是 1280 的環徑從 26 掉到 23。 */
-    const textH=28, padY=3, ringH=(cellH-textH-padY*2)/2;
-    const R=Math.max(13, Math.min(46, ringH, cellW*0.30));
+    const Ww=W||300, Hh=H||200, cellW=Ww/cols, cellH=Hh/rowsN, padY=3;
+    /* ── 環徑：拿掉封頂，改成收斂迭代（2026-08-05 第二版，使用者反映「擠的地方很擠、
+       空的地方很空」）─────────────────────────────────────────────────────
+       ⚠️ 第一版寫 `Math.min(46, …)`。那個封頂是為了防「環與環之間的白比環還大」加的，
+          **結果它就是元凶**：格子在 1920 是 219×161、2560 是 299×251，環卻永遠停在 46，
+          於是環縮在格子正中、兩行字擠在環底下，剩下的全是白——正好是它想防的那件事。
+       ⚠️ 也不能只把封頂拉大：字級與行距若不跟著環走，大螢幕上就變成「大環配小字」，
+          而字距不變的兩行在 96px 的環底下看起來像黏上去的貼紙。所以字級、環厚、
+          環到字的間距**全部綁 R**，再回頭用它們夾住 R。
+       ⚠️ 這是一組互相依賴的式子（R 決定 textH，textH 又決定 R 的上界），直接一次算會
+          算過頭——第一版就是這樣讓 1920 的第二列文字掉出圖區。三次迭代已經收斂到 <0.2px：
+            1280  R 39.5 → 20.5 → 21.4 → 21.4      2560  R 101.7 → 95.8 → 98.1 → 98.0
+       ⚠️ 環厚另外封頂 28：R 到 98 時 0.34R ＝ 33px 的環壁會粗到像實心圓餅，
+          而這張圖的重點是「填了多少」，環壁太厚會把空的那段擠成一條縫。
+          封頂值實測調過一次：22 在 2560 上環壁只佔直徑 11%（1280／1920 是 17%），
+          細成一圈鐵絲、與小螢幕上的同一張圖不像同一個元件。28 → 14%，三個尺寸同級。 */
+    const tHOf=r=>Math.max(3,r*0.12)                       /* 環 ↔ 桶名 */
+                 + Math.max(11,Math.min(15,r*0.26))*1.25   /* 桶名行 */
+                 + Math.max(10,Math.min(13,r*0.22))*1.35;  /* 金額行 */
+    let R=Math.min(cellW*0.34, cellH/2);
+    for(let it=0; it<3; it++)
+      R=Math.max(13, Math.min(cellW*0.34, (cellH-tHOf(R))/2-padY));
+    const THICK=Math.max(7, Math.min(28, R*0.34));
+    const gap=Math.max(3,R*0.12),
+          f1=Math.max(11,Math.min(15,R*0.26)),
+          f2=Math.max(10,Math.min(13,R*0.22)),
+          textH=tHOf(R), blockH=2*R+textH;
     const cxOf=i=>Math.round((i%cols+0.5)*cellW);
-    /* ⚠️ 環徑封頂 46 之後，「環＋兩行字」這一塊在大螢幕會**比格子矮**——直接貼格子上緣的話
-       1920/2560 上四個環全擠在上半，下面空 40／130px。所以把整塊在格子裡垂直置中。
-       小螢幕上 R 是被格高夾住的，置中量自動趨近 padY，兩端行為連續。 */
-    const blockH=2*R+textH;
+    /* 「環＋兩行字」整塊在格子裡垂直置中：R 被格寬夾住時（寬格矮環）blockH 會比格子矮，
+       貼上緣的話大螢幕四個環會全擠在上半（第一版實測 1920 下面空 40px、2560 空 130px）。 */
     const cyOf=i=>Math.round(Math.floor(i/cols)*cellH+Math.max(padY,(cellH-blockH)/2)+R);
     const pct=r=> r[2] ? r[1]/r[2]*100 : 0;
     /* warn 那環吃 danger：在這張圖裡「紅」說的是**這一桶的比率最低＝該處理**，
@@ -4056,19 +4145,19 @@ function buildOption(c, tk, H, W, sel){
     const g=[];
     d.forEach((r,i)=>{
       const cx=cxOf(i), cy=cyOf(i), p=pct(r);
-      const fs=Math.max(11, Math.min(17, R*0.42));
+      const fs=Math.max(11, Math.min(30, R*0.46));
       const mid=p.toFixed(0)+'%';
       g.push({ type:'text', left:cx-estW(mid,fs)/2, top:cy-fs*0.62,
         style:{ text:mid, fill:tk.text, font:`600 ${fs}px sans-serif` } });
-      g.push({ type:'text', left:cx-estW(r[0],11)/2, top:cy+R+3,
-        style:{ text:r[0], fill:tk.body, font:'11px sans-serif' } });
+      g.push({ type:'text', left:cx-estW(r[0],f1)/2, top:cy+R+gap,
+        style:{ text:r[0], fill:tk.body, font:`${f1}px sans-serif` } });
       /* 第二行給絕對量——環只編碼比率，少了它這格又退回「只有四個百分比」，
          那正是改前 treemap 被換掉的第一條理由。 */
       /* 單位只印一次收在行尾（「清 1,050 / 壓 1,570 萬」）——兩個數字各掛一次
          在 1280 的 125px 格寬會溢出，而且讀起來像兩個不同單位的量。 */
       const t2=`${c.lab[0]} ${F(r[1])} / ${c.lab[1]} ${F(r[2])}${c.unit||''}`;
-      g.push({ type:'text', left:cx-estW(t2,10)/2, top:cy+R+16,
-        style:{ text:t2, fill:tk.tick, font:'10px sans-serif' } });
+      g.push({ type:'text', left:cx-estW(t2,f2)/2, top:cy+R+gap+f1*1.25,
+        style:{ text:t2, fill:tk.tick, font:`${f2}px sans-serif` } });
     });
     return {
       animation:true,
@@ -4079,13 +4168,108 @@ function buildOption(c, tk, H, W, sel){
         return `<b>${r[0]}</b> ${(pct(r)).toFixed(1)}%<br>${c.lab[0]} ${F(r[1])}${c.unit||''}`
              + ` · ${c.lab[1]} ${F(r[2])}${c.unit||''}${sub}`; } },
       series:d.map((r,i)=>({
-        type:'pie', center:[cxOf(i), cyOf(i)], radius:[Math.round(R*0.60), Math.round(R)],
+        type:'pie', center:[cxOf(i), cyOf(i)], radius:[Math.round(R-THICK), Math.round(R)],
         startAngle:90, avoidLabelOverlap:false, label:{show:false}, labelLine:{show:false},
         itemStyle:{ borderWidth:0 }, emphasis:{ scale:false },
         data:[{ value:Math.min(pct(r),100), name:r[0], itemStyle:{color:colOf(i)} },
               { value:Math.max(0,100-pct(r)), name:'', silent:true,
                 tooltip:{show:false}, itemStyle:{color:tk.soft} }]
       })),
+      graphic:g
+    };
+  }
+
+  /* ── Waffle：一組 10×5 的方格，每格 2%，由下往上填成「水位」（2026-08-05 新增）──
+       c.d    = [[名稱, 分子, 分母, warn?, [[細分名, 值], …]?], …]
+       c.lab  = [分子的詞, 分母的詞]　c.cols = 每列幾個方陣（預設 2）
+       c.tint = 逐個的 dv 索引　c.unit = 分子／分母的單位
+
+     ⚠️ **這塊是從 rings 換過來的，換的理由不是偏好，是圓的先天性質。**
+        使用者兩輪反映「擠的地方很擠、空的地方很空」，第一輪我當成調參數的問題
+        （拿掉環徑封頂 46、字級綁 R），改完他回「看起來一模一樣」——因為在他的尺寸上
+        那個封頂本來只卡住 4px。真正的原因是：
+        **四個圓排進矩形，必然在對角線留下四塊空洞**，而字只能貼在圓下面，
+        所以永遠是「圓周圍空、圓底下擠」。那不是參數，是圓不鋪滿方格。
+        方格會鋪滿方格 → 換成華夫格。
+
+     ⚠️ **為什麼是 10×5＝50 格而不是 10×10＝100 格**（實測，別退回去）：
+        cs:3 的圖區永遠寬大於高（1280 是 279×158、2560 是 599×502），2×2 切完的格子
+        也是寬大於高，而正方形的 10×10 方陣被格高夾住 → 每格邊長：
+          10×10   1280 **2.5px**　1366 **3.5px**　1440 5.6　1920 9.3　2560 16.6
+          10×5    1280 **6.4px**　1366   8　　　 1440 10.7　1920 14.8　2560 20
+        兩個地板螢幕在 10×10 下退化成一片模糊的點陣。10×5 的方陣是寬扁的，
+        形狀配得上版位，所有尺寸都讀得到。
+        代價：精度從 1% 變成 2% 一階（67% 畫成 34 格）。**這個代價是划算的——
+        確切數字就印在方陣下面，方格是量表不是計數器。**
+     ⚠️ 兩條走過的死路，別再試：
+        · **1×4 橫排**：格子能放大到 4.7px，但 1280 的格寬只有 70px，而
+          「清 1,050 / 壓 1,570萬」要 93px → 四組標籤直接互相輾過去（探針截圖確認）。
+        · **半圓儀表**：文字疊在弧上，而且下半圈整片是空的，沒解決任何事。
+
+     ⚠️ 由**下**往上填是刻意的（`(GY-1-rr)*GX+cc < on`）：這張圖講的是「清掉多少」，
+        水位由下往上長才符合直覺；由上往下填會被讀成「剩下多少沒清」。
+     ⚠️ warn 那個方陣吃 danger。語意與同頁排行圖／機制圖的紅同向（這一項表現差）。
+        改前 treemap 的 coral 是發給「格子面積」的，語意是「這格太小了」——同一個顏色
+        一個說「這項壞」一個說「這項不夠大」，180+ 拉高（好事）時會變成「越紅越好」。
+     ⚠️ **懸浮窗要靠 scatter 撐住。** graphic 元素不會觸發 tooltip，所以方格本身給不了
+        懸浮窗；解法是鋪一層透明的 rect scatter 當命中區，座標系用
+        `xAxis 0..W / yAxis 0..H（inverse）＋ grid 四邊 0`，讓資料座標 ＝ 像素座標，
+        算式與 graphic 完全共用。少了這一層不會報錯，只是滑上去什麼都沒有。
+     ⚠️ 這格是用實際 W/H 像素排的 → renderCharts 必須把它登記進 _pxlay（同 donut／
+        deltabar／rings），否則 resize 後方陣位置不會重算。 */
+  if(c.type==='waffle'){
+    const d=c.d, n=d.length, cols=c.cols||2, rowsN=Math.ceil(n/cols);
+    const Ww=W||300, Hh=H||200, cellW=Ww/cols, cellH=Hh/rowsN;
+    const GX=10, GY=5, N=GX*GY, STEP=100/N, padY=4;
+    const pct=r=> r[2] ? r[1]/r[2]*100 : 0;
+    const colOf=i=> d[i][3] ? tk.bad : tk.dv[(c.tint&&c.tint[i]!=null?c.tint[i]:i)%5];
+    /* 字級綁格寬（不是綁螢幕）：同一塊在 cs:3 與未來可能的 cs:6 都要成立。 */
+    const f1=Math.max(11,Math.min(14,cellW*0.062)), f2=Math.max(9.5,Math.min(12,cellW*0.052));
+    const fp=f1*1.5, textH=7+fp*1.15+f2*1.5;
+    const cell=Math.max(3.4, Math.min((cellW*0.84)/GX, (cellH-textH-padY*2)/GY));
+    const gapC=Math.max(1.2, cell*0.16), sq=cell-gapC;
+    const wfW=GX*cell-gapC, wfH=GY*cell-gapC;
+    const x0=i=>Math.round((i%cols)*cellW+(cellW-wfW)/2);
+    const y0=i=>Math.round(Math.floor(i/cols)*cellH+Math.max(padY,(cellH-wfH-textH)/2));
+    const g=[];
+    d.forEach((r,i)=>{
+      const on=Math.round(pct(r)/STEP), col=colOf(i), X=x0(i), Y=y0(i);
+      for(let k=0;k<N;k++){
+        const rr=Math.floor(k/GX), cc=k%GX;
+        g.push({ type:'rect', shape:{ x:X+cc*cell, y:Y+rr*cell, width:sq, height:sq,
+          r:Math.min(2.6, sq*0.24) },
+          style:{ fill: ((GY-1-rr)*GX+cc)<on ? col : tk.soft }, z:2 });
+      }
+      /* ⚠️ estW 低估粗體數字（「67%」實寬約估值的 1.2 倍）——不補這個係數，
+         百分比與桶名會黏成「67%<30」（前兩版原型都踩過）。 */
+      const pt=Math.round(pct(r))+'%', nm=r[0];
+      const wp=estW(pt,fp)*1.2, GP=10, w1=wp+GP+estW(nm,f1);
+      const bx=X+wfW/2-w1/2, by=Y+wfH+8;
+      g.push({ type:'text', left:bx, top:by,
+        style:{ text:pt, fill:col, font:`600 ${fp}px sans-serif` } });
+      g.push({ type:'text', left:bx+wp+GP, top:by+(fp-f1)*0.72,
+        style:{ text:nm, fill:tk.body, font:`${f1}px sans-serif` } });
+      /* 第二行給絕對量——方格只編碼比率，少了它這格又退回「只有四個百分比」，
+         那正是改前 treemap 被換掉的第一條理由。 */
+      const t2=`${c.lab[0]} ${F(r[1])} / ${c.lab[1]} ${F(r[2])}${c.unit||''}`;
+      g.push({ type:'text', left:X+wfW/2-estW(t2,f2)/2, top:by+fp*1.15,
+        style:{ text:t2, fill:tk.tick, font:`${f2}px sans-serif` } });
+    });
+    return {
+      animation:false,          /* 方陣是 graphic，動畫推不動它；scatter 是透明的 */
+      tooltip:{ trigger:'item', ...tip, formatter:p=>{
+        const r=d[p.dataIndex];
+        const sub=r[4]&&r[4].length ? '<br>' + r[4].map(x=>`${x[0]} ${F(x[1])}${c.unit||''}`).join('\u3000') : '';
+        return `<b>${r[0]}</b> ${pct(r).toFixed(1)}%<br>${c.lab[0]} ${F(r[1])}${c.unit||''}`
+             + ` · ${c.lab[1]} ${F(r[2])}${c.unit||''}${sub}`; } },
+      grid:{ left:0, right:0, top:0, bottom:0 },
+      xAxis:{ type:'value', min:0, max:Ww, show:false },
+      /* inverse → y 往下長，與 graphic 的座標同向；兩者共用 x0()／y0() 的算式 */
+      yAxis:{ type:'value', min:0, max:Hh, inverse:true, show:false },
+      series:[{ type:'scatter', symbol:'rect', z:1,
+        itemStyle:{ color:'transparent' }, emphasis:{ disabled:true },
+        data:d.map((r,i)=>({ value:[x0(i)+wfW/2, y0(i)+wfH/2],
+          symbolSize:[Math.round(wfW), Math.round(wfH+textH)] })) }],
       graphic:g
     };
   }
@@ -4307,10 +4491,18 @@ function buildOption(c, tk, H, W, sel){
     });
     return {
       animation:true,
+      /* ⚠️ `c.xd` ＝ 逐點的期間字串（選用，順序同 c.x），只在懸浮窗出現。
+         2026-08-05 加：x 軸標籤原本寫成「EM26SS 3月」想讓時間序讀得出來，**但那是錯的**
+         ——檔期會跨月（EM26SS 是 3/20–4/30、母親節是 4/25–5/12），一個檔期標一個月份
+         等於給了假資訊。期間退到懸浮窗、軸上只留檔期名；「這條軸是時間」改由副標
+         的「依開檔日」交代。 */
       tooltip:{ trigger:'axis', axisPointer:{type:'shadow'}, ...tip,
-        formatter:p=>`<b>${p[0].axisValue}</b><br>` + p.map(s=>
-          `${s.marker}${s.seriesName} <b>${F(s.value)}</b>${U[s.seriesIndex]||''}`
-        ).join('<br>') },
+        formatter:p=>{ const i=p[0].dataIndex;
+          return `<b>${p[0].axisValue}</b>`
+            + (c.xd&&c.xd[i] ? `<span style="color:${tk.tick}">　${c.xd[i]}</span>` : '')
+            + '<br>' + p.map(s=>
+              `${s.marker}${s.seriesName} <b>${F(s.value)}</b>${U[s.seriesIndex]||''}`
+            ).join('<br>'); } },
       legend:{ show:false },                            /* 圖例走面板頁腳 */
       grid:{ left:6, right:6, top: c.note?26:14, bottom:0, containLabel:true },
       xAxis:{ type:'category', data:c.x, ...axX,
@@ -4853,7 +5045,8 @@ function renderCharts(D){
        長條依 rowH 24 排，四列愈往下偏得愈多。 */
     /* c.topN 的圖同樣進 _pxlay：它的**列數**本身是 H 的函數，resize 只 resize 不重建的話，
        視窗拉高了列數也不會跟著變（而且副標會停在舊的「前後各 N 名」）。 */
-    if(c.type==='donut' || c.type==='deltabar' || c.type==='rings' || c.topN) _pxlay.push({chart, el, c});
+    if(c.type==='donut' || c.type==='deltabar' || c.type==='rings'
+       || c.type==='waffle' || c.topN) _pxlay.push({chart, el, c});
     syncSub(el, c, chart.getHeight());
     if(c.type==='heatmap'){ _heats.push({chart, c}); squareHeat(chart, c); }   /* 格子校正要在算得出像素之後 */
     /* Stackbar 的圖例＝篩選器，不只是開關顯示：關掉一段就把它移出分母、剩下的重新正規化
