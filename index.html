@@ -759,6 +759,18 @@ main{flex:1;min-height:0;overflow:hidden;
 /* 標題與 ⚠ 哨兵同一行 → ⚠ 貼著名稱（左上），不隨副標長度飄到右邊 */
 .ph-t{display:flex;align-items:center;gap:var(--space-2);}
 .phd .sub{font-size:11.5px;color:var(--text-muted);margin:2px 0 0;line-height:1.4;}
+/* 面板頁首的大數字（c.big）。給「同一列有 KPI 卡並排」的圖表面板用——KPI 卡都是
+   「大數字＋底下一個視覺」，中間插一張只有標題的面板，那一格就沒有著陸點、讀起來偏輕。
+   ⚠️ 字級／字重／small 全部沿用 `.kpi .v`（29px），**不另立一套**：它要跟同列的
+      28.6／22.4／62.4 對齊成同一條視線，差一階就變成第五種大小。
+   ⚠️ 擺在副標**下面**而不是頁首右側。右側試過（渲染比較），1280 時大數字會吃掉
+      橫向空間、把副標擠成兩行，而且那個位置在 KPI 卡上放的是小徽章，會撞位。
+      放下面會把整列撐高，但網格吸收得掉——五尺寸實測 7 塊／爆版 0／可捲 0。 */
+.pbig{display:flex;align-items:baseline;gap:6px;margin-top:6px;}
+.pbig .v{font-family:var(--font-display);font-size:29px;font-weight:var(--fw-semibold);
+  color:var(--text);line-height:var(--lh-tight);font-variant-numeric:tabular-nums;}
+.pbig .v small{font-size:.48em;font-weight:var(--fw-regular);color:var(--text-muted);margin-left:2px;}
+.pbig-l{font-size:11.5px;color:var(--text-muted);}
 /* 哨兵改成頁首圖示：固定高度下不能讓警示條吃掉垂直空間，
    但哨兵不能消失——點/hover 看全文（DS：哨兵是一等公民）。 */
 .warnbtn{flex:none;border:0;background:transparent;cursor:pointer;
@@ -2733,7 +2745,15 @@ M["促銷"] = { sub:"檔期效益與折扣結構", kpiAfter:0,
           「· 近 12 個月」再掛上去會折行（折行 ＝ 圖區少 16px）。把期間併進主問句
           之後全句 21 字，而且「近 12 個月拉來的新客」本來就比「折扣拉來的新客」精確。
           對照組那段同步縮成「vs. 同期正價」——「新客」在前半句已經講過。 */
+    /* ⚠️ 2026-08-07：`wscale:"logstep"`（見 funnelW）。改前實測側邊斜角是
+       38° / **12° / 4° / 6°**——**收斂全部發生在第 1 層**，後三層近乎垂直，
+       讀起來是「一個漏斗口銲在一根直管上」。這是線性映射在 10.9 倍跨距上的老毛病。
+       ⚠️ **單獨把 FUNNEL_MIN 降到 0.10 救不了這張**：線性 ＋ 地板 0.10 算出來是
+          [1, .397, .234, .183]，步階 60/16/5，收斂還是全塞在第 1 層。兩件事要一起改。
+       改後 33° / 28° / 24° / 0°（末層＝頸部），每一層都看得到還在收。
+       ⚠️ 這張有 `cmp` 對照行（寬約 62px），funnelGeom 會自己多留白，不必手動調。 */
     {cs:3,rs:4,type:"funnel",h:"促銷新客留存漏斗",s:"近 12 個月拉來的新客留得住嗎 · vs. 同期正價",
+     wscale:"logstep",
      d:[["促銷期新客",12480],["30 天內回訪",4120],["二次購買",1860],["半年後仍活躍",1150]],
      cmp:{n:"正價", d:[8600,4130,2400,1720]},
      dig:"哪個活動帶進來的新客，後來回購率最高？"},
@@ -3064,8 +3084,11 @@ M["CRM"] = { sub:"會員黏著度、結構與流失風險",
      rows:[["當月",22.4],["去年同期",26.1]]},
     /* 流失率走 miniline 而非 minibars：截斷基準的長條會誇大量級（壓過基準後末柱
        是首柱數倍，讀成「翻倍」）。線編碼斜率——月間有起伏但整體往上惡化，那條
-       上行的鋸齒線才是訊息本身，也不跟左邊的半圓撞形式。末點 62.4 對齊大數字。 */
-    {type:"miniline",k:"年度流失率",dig:"哪個年齡層的流失率最高？",v:"62.4",u:"%",d:"7.3 百分點 較去年同期",dc:"d",
+       上行的鋸齒線才是訊息本身，也不跟左邊的半圓撞形式。末點 62.4 對齊大數字。
+       ⚠️ **`da:"u"` 不可省。** 57.6 → 62.4 是**往上走、而且是壞消息**（流失加劇），
+       箭頭要跟線同向、顏色跟徽章同調（`dc:"d"` ＝ 紅）。少了它畫面會出現
+       「↓ 7.3 百分點」配一條上行線配「高於預期」的三方互斥。 */
+    {type:"miniline",k:"年度流失率",dig:"哪個年齡層的流失率最高？",v:"62.4",u:"%",d:"7.3 百分點 較去年同期",dc:"d",da:"u",
      t:["lo","高於預期"],cs:3,rs:2,
      bars:[57.6,56.9,59.8,58.9,60.7,62.4],bx:["1月","2月","3月","4月","5月","6月"]}],
   /* Hero 漲跌章：MoM（較上月）。CRM 三格無月度時間序列來源，MoM 為示意值、內部自洽
@@ -3104,23 +3127,63 @@ M["CRM"] = { sub:"會員黏著度、結構與流失風險",
        100% 堆疊橫條不需要高度，59px 剛好；三段互斥（非會員／會員新客／會員回購客），
        加起來就是全部營收，不會有重疊定義的爭議。
        cs:6→cs:3 比照業績頁的商品線：cs:3(~340px) 下最小的「會員新客 14%」約 41px，
-       照寬度門檻只顯示「14%」不顯示名稱（可接受，商品線的小段同理）。 */
+       照寬度門檻只顯示「14%」不顯示名稱（可接受，商品線的小段同理）。
+       ⚠️ 2026-08-07 加 `big`（見 CSS .pbig）。兩個問題一起修：
+         ① 這是同列四格裡唯一沒有大數字的一格——左邊三張都是「大數字＋底下一個視覺」，
+            這一格只有標題就直接進圖，眼睛沒有著陸點 ＝ 使用者說的「視覺重量偏輕」。
+         ② **副標問「營收有多依賴既有會員」，而那個答案（64＋14＝78%）卡上並不存在**，
+            讀者得自己心算兩段相加。78% 才是這張卡在回答的數字。
+       ⚠️ `big` 是面板層級的通用選項，但**目前只有這一張在用**——其他面板要嘛本身就是
+          大數字卡，要嘛主圖自己帶著數字。不要為了「一致」到處掛。
+       78% 的漲跌沒有來源（近 12 個月佔比，沒有上一期），所以只有數字沒有 delta；
+       這也是它跟真正的 KPI 卡（都有 d／t）刻意留的差別。 */
     {cs:3,rs:2,type:"stackbar",h:"業績來自誰",s:"營收有多依賴既有會員 · 近 12 個月佔比",unit:"%",
+     big:["78","%","營收來自會員"],
      /* 順序照「會員程度」遞減排，讀起來才是一條連續的光譜：回購客 → 新客 → 非會員 */
      d:[["會員回購客",64],["會員新客",14],["非會員",22]],
      dig:"百貨專櫃的新客，最後有多少人申辦會員？"},
     /* 主角（cs:3 rs:4）：五層漏斗需要高度才讀得出「斷在哪一層」——
        94.5 萬會員裡本月真正掏錢的只有 3,718 人，最大的斷層在「有消費 → 近一年活躍」。 */
+    /* ⚠️ 2026-08-07：`wscale:"logstep"`（見 funnelW）。這組數字跨 254 倍，線性寬度下
+       底三層是 37.3／34.9／34.3 ＝ 看起來一樣寬，但它們實際差 12.6 倍。
+       換掉之後四個步階的收窄幅度是 11.1／23.3／15.8／15.8，跟 ↓38%／↓92%／↓72%／↓72%
+       同序，兩刀 72% 寬度完全相同。sqrt 系已渲染比較過並否決（38% 的階會比 72% 還寬）。
+       ⚠️ 同日第二輪：logstep 只修好「哪一階收得多」，**沒有修好「整體有沒有在收」**——
+          側邊變成 32°/33°/33° 的等斜率直邊楔形，而底邊仍被地板釘在 33.9%。
+          真正解掉的是 FUNNEL_MIN 0.34→0.10（見那裡的說明），底邊 33.9%→9.9%、
+          斜角 19°/43°/38°/38°/16°。**兩件事都要，缺一張圖就還是不收斂。** */
     {cs:3,rs:4,type:"funnel",h:"會員生命週期漏斗",s:"會員斷在哪一層 · 從全體到本月實際購物",
+     wscale:"logstep",
      /* 第三元素 [女, 男]，加總＝該層人數，供 tooltip 拆分（示意值，接真實資料要換）。 */
      /* ⚠️ 2026-08-06 第 2、3 層改名（使用者裁示，見 Hero 上方的說明）：
           「有消費紀錄」→「歷來曾消費」（590,400 本來就是累計，不是近 12 個月）
           「近一年活躍」→「近一年有消費」（47,000 ＝ Hero 第 2 格，同名同數才不會漂）
-        第 4、5 層維持「活躍／購物」的舊用詞——**這是已知的用詞不一致，留待下一輪**
-        （改名會動到層標籤寬度，cs:3 的漏斗要重量）。 */
+        第 4、5 層維持「活躍／購物」的舊用詞。
+        ⚠️ **2026-08-07 已裁示：四層用詞維持現況，不統一。不要再提第三次。**
+           提案是四層動詞統一（`歷來曾消費／近一年有消費／近三月有消費／本月有消費`），
+           理由是這個 ERP 只有交易資料 →「活躍」與「購物」能指的**就只有「有消費」**，
+           同一個動作換三個名字會讀成「每一層在量不同的東西」，其實只有時間窗在收。
+           渲染過三套（現況／統一「有消費」／統一「消費」），1280 最緊的尺寸也不截字，
+           `近三月活躍` 與 `本月購物` 全檔各只出現一次都在這裡、改名不牽動別處。
+           **使用者仍選維持現況。** → 這條不再列為待辦。
+        （另記：短版「近一年消費」會打掉與 Hero 第 2 格的同名同數，且讀起來像金額，
+          真要統一也不該走那套。） */
      d:[["全體有效會員",945408,[529400,416008]],["歷來曾消費",590400,[336500,253900]],
         ["近一年有消費",47000,[27800,19200]],["近三月活躍",13298,[8100,5198]],
         ["本月購物",3718,[2380,1338]]],
+     /* ⚠️ 2026-08-07 補上對照世代（使用者裁示）。加這個是為了回答 funnelDrops 註解
+        自己提出的那個缺口：「單一漏斗給得出『掉了 92%』，卻給不出『92% 算好還是壞』」。
+        改前這張是 CRM 整頁**唯一沒有對照基準**的元件——兩張回購率卡的第二條、
+        年度流失率的「較去年同期」都在跟去年比，只有它孤零零一條灰色的 ↓%。
+        ⚠️ **紅色是條件式警示，不是樣式。** `worse = d > cdp`（見 funnelDrops），
+           所以第 1 階 ↓38% 對去年 ↓40% ＝ 今年比較好 → **維持灰色**，後三階才是紅的。
+           使用者是看了促銷那張三階全紅才提的，那個「全紅」是資料巧合（三刀都比正價兇），
+           不要當成這個元件的預設長相。
+        ⚠️ 五個數是示意值，但方向跟本頁敘事一致：**基數在長、轉成消費的能力在退**
+           （去年全體 921,000 < 今年 945,408；去年近一年有消費 52,000 > 今年 47,000）。
+        ⚠️ 代價：對照行比主行寬，funnelGeom 會多留白 → 漏斗畫窄 → 1280 時會多一層
+           標籤外移（五層裡三層在形狀外，改前是兩層）。實測餘裕仍 ≥4px，不截字。 */
+     cmp:{n:"去年", d:[921000,552600,52000,15600,4450]},
      /* dig 要短：cs:3 的頁腳一行約 18 個中文字，原本「近三月只剩 1.4% 在買，主要斷在哪一層？」
         會折成兩行，把圖區從 220 壓到 203px。 */
      dig:"會員平均購買幾次才會流失？"},
@@ -3206,9 +3269,14 @@ M["CRM"] = { sub:"會員黏著度、結構與流失風險",
           這正是 fillList 註解那條規則：「主值欄必須跟著排序依據走——排序鍵若沒當主值
           顯示，使用者會看到『明明在排序卻沒有那一欄』」。
           ⚠️ 代價是「最值得撈的排最前面」這個設計意圖沒了，現在排最前的只是人最多的。
-             更好的解法是**值欄改成「機會金額」（人數 × 人均曾貢獻）**——它本身就是
-             優先序的代理、遞減排列名正言順，而且會補上 CRM 整頁唯一缺的那條**錢軸**
-             （Hero 是人、四張 KPI 都是率、漏斗與 sankey 都是人）。尚未做，待裁示。
+             ⚠️ **2026-08-07 已裁示：值欄維持人數，不改機會金額。不要再提第三次。**
+             提案是值欄改「機會金額」（人數 × 人均曾貢獻），它是優先序的代理、遞減排列
+             名正言順，還會補上 CRM 整頁唯一缺的**錢軸**（Hero 是人、四張 KPI 都是率、
+             漏斗與 sankey 都是人）。渲染過三套實圖給使用者選（值欄金額 ＋ 副註放
+             「人數 · 到期」／「人數 · 人均」／維持現況），1280 與 1366 實測都不截字，
+             排序也真的會變（「90 天內將降等」147 人但人均 21.3 萬 → 第 7 名升到第 4）。
+             **使用者仍選維持現況。** → 排序失真與「CRM 沒有錢軸」兩件事**留著不修**，
+             要動的話得換別的解法（例如錢軸改由另一個元件承擔），不要再回頭改這一欄。
        ⚠️ **九群的規則全部待需求方確認。** 這不是從這個租戶的 ERP 查出來的——
           `工程師文件/` 只有業績模組那一份，**會員分群的欄位規格在 repo 裡不存在**
           （`後端錯誤與安全邊界情境表.md` 也沒有）。這一套依賴六張周邊表：點數與到期
@@ -3919,9 +3987,13 @@ function syncSub(el, c, H){
 /* 漏斗流失欄（graphic）：第 2 層起，每個「步階」（層與層之間）標它較上一層的流失 %，
    貼著漏斗右緣、隨漏斗收窄往內移。位置用實際容器寬高 W/H 回推像素——
    · 垂直：步階＝下層頂邊（兩段間的縫）中心
-   · 水平：ECharts 漏斗寬度映射 wf(v)=minSize+(1-minSize)·v/maxV（min=0、maxSize=100%、
-     funnelAlign 置中、左右各留 6%），算出該步階右緣 x，再往外 8px 貼齊。
-   不寫死尺寸；resize 後由 renderCharts 帶新 W/H 重呼叫。文字走設計規範 muted 色票、克制字重。 */
+   · 水平：寬度佔比由 funnelW 算（見下），算出該步階右緣 x，再往外 8px 貼齊。
+   不寫死尺寸；resize 後由 renderCharts 帶新 W/H 重呼叫。文字走設計規範 muted 色票、克制字重。
+   ⚠️ **左右留白不是固定 6%，是反解出來的**（見 funnelGeom）。起點是 `edgeX+8`，
+      而「↓ 38%」12px 約量到 36px 寬；實測圖區只有 1280→279px（1366→301、1470→327、
+      1920→439、2560→599），步階一寬（wscale 加寬後第 2 階到 0.889）標籤就會被推出面板。
+      ⚠️ **試過改夾 `edgeX` 上限，那是錯的**——夾完標籤會退到漏斗身上、變成疊字，
+         因為擋路的是漏斗本身不是面板邊界。要讓出空間只能把漏斗畫窄一點。 */
 /* ⚠️ c.cmp ＝ 對照世代（選用），`{n:"正價", d:[逐層值]}`。只用來算**逐層流失率**，
    不畫第二個漏斗——漏斗的形狀已經被主世代佔滿，疊第二個只會互相遮蔽。
    為什麼要有它：單一漏斗給得出「掉了 67%」，卻給不出「67% 算好還是壞」。
@@ -3931,16 +4003,108 @@ function syncSub(el, c, H){
       會直接溢出面板。改成上下兩行：主行 12px、對照行 10px，寬度 ~62px，最窄的 1280 也放得下。
    ⚠️ 對照行低於主行 ＝ 促銷世代流失得更兇，這一層上 danger 色。**只有主行變色**，
       對照行永遠是 tick——顏色在這裡只說一件事：「這一層比正價掉得更快」。 */
+/* ── 漏斗寬度映射（`c.wscale`）─────────────────────────────────────────────
+   不寫 ＝ `"lin"` ＝ ECharts 原生的線性寬度。**全站兩張漏斗現在都走 `"logstep"`**，
+   lin 只剩「不寫時的預設」這個身分，沒有元件在用。
+
+   ⚠️ 為什麼要有這個：**線性映射在跨距大的資料上會失效**，而且兩端各壞一種：
+   · CRM 生命週期漏斗跨 254 倍（945,408 → 3,718）→ **底端糊掉**：底三層算出來是
+     37.3／34.9／34.3，差 3 個百分點、1920 只差 12px ＝ 一樣寬，但它們實際差 12.6 倍。
+   · 促銷新客留存漏斗跨 10.9 倍 → **收斂全擠在第 1 層**：實測側邊斜角 38°/12°/4°/6°，
+     第 2 層之後近乎垂直，讀起來是一個漏斗口銲在直管上。
+   兩者的共同地板（FUNNEL_MIN，見下）當時是 0.34，把下半段的解析度整個吃掉。
+
+   `"logstep"` ＝ **對數與等距各半**。單獨用都不行，兩個缺點剛好互補：
+   · 純 log：寬度差**就是**流失率本身（log 空間的差＝比值的對數），最忠實；但第一階
+     ↓38% 只換到 5.6 個百分點，畫面上看不見。
+   · 純等距（rank）：四階都 16.5，最好讀，但寬度不帶量級——↓38% 與 ↓92% 長得一樣寬，
+     **形狀在否定旁邊的 ↓% 標籤**。
+   各取一半 → 11.1／23.3／15.8／15.8：每一階都 ≥11 個百分點（看得出一階一階），
+   而且順序與量級都對——兩刀 72% 的寬度**完全相同**，92% 最寬、38% 最窄。
+   ⚠️ sqrt 系（純 sqrt 與 sqrt 折衷）在這一點上是錯的：它給 38% 的階比 72% 還寬
+      （15.2 vs 11.7／10.1），因為 sqrt 的差不隨比值走。**渲染比較過，已否決。**
+   ⚠️ mn<=0 或 n<2 時 log 會炸（除以 0／log(0)），退回 lin。 */
+
+/* 漏斗底邊的地板（最窄那一層佔滿版寬多少）。
+   ⚠️ **這個數字曾經是 0.34，而 0.34 不是視覺選擇——是被標籤反推出來的。**
+      舊版標籤一律畫在形狀內，最底層要裝得下「層名／數字」兩行，1280 時促銷的
+      「半年後仍活躍」6 個字約 69px，於是底寬不能低於約 98px ＝ 34%。
+      後果：**兩張漏斗的底邊都被釘在頂邊的 33.9%／34.1%，不管資料是多少**——
+      CRM 末層真實佔比 0.4%、促銷 9.2%，畫面上都畫成 34%。收斂到最後那一段，
+      畫的是地板不是資料。實測側邊斜角（1920）也證實了：
+        CRM  14°/32°/33°/33°/16°   促銷  38°/**12°/4°/6°** ← 後三層近乎垂直
+   → 2026-08-07 反轉因果：**寬度裝不下的層，標籤移到形狀外側**（見下面的 label），
+      地板才降得下來。降到 0.10 之後：
+        CRM  底 33.9%→9.9%，斜角 19°/43°/38°/38°/16°
+        促銷 底 34.1%→9.9%，斜角 33°/28°/24°/0°（末層＝頸部）
+      促銷的 10% 幾乎就是它的真實佔比 9.2%，那張圖等於恢復誠實；CRM 真實 0.4%
+      會細成 1px，10% 是實務地板。
+   ⚠️ 想再往下調之前先看：地板同時是**頸部的寬度**，太細會讓末層變成一條線、
+      失去「這裡還有 3,718 個人」的存在感。 */
+const FUNNEL_MIN = 0.10;
+function funnelW(c){
+  const v=c.d.map(x=>x[1]), n=v.length, mx=Math.max(...v), mn=Math.min(...v);
+  const S=FUNNEL_MIN, K=1-S;
+  if(c.wscale!=="logstep" || n<2 || mn<=0) return v.map(x=> S+K*x/mx);
+  const lg=v.map(x=> S+K*(Math.log(x/mn)/Math.log(mx/mn)));
+  return lg.map((w,i)=> 0.5*w + 0.5*(S+K*(1-i/(n-1))));
+}
+/* 目標寬度 → 餵給 ECharts 的代理值。ECharts 的漏斗只認 value（寬度＝S+K·value/max，
+   min 鎖 0），沒有自訂映射的鉤子，所以只能把寬度反解成假的值餵進去。
+   ⚠️ **代理值一進 series，`p.value` 就是假的**——label 與 tooltip 兩處都必須回頭讀
+      `c.d[p.dataIndex][1]`。忘了改的話畫面會印出 3,718 以外的怪數字（而且不報錯）。
+   lin 時 mx·(S+K·x/mx−S)/K ＝ x ＝ 原值，所以是嚴格的 no-op。 */
+const funnelProxy = c => { const mx=Math.max(...c.d.map(x=>x[1]));
+  return funnelW(c).map(w => mx*(w-FUNNEL_MIN)/(1-FUNNEL_MIN)); };
+
+/* 量文字實寬。共用一個離屏 canvas（建一次就好，measureText 沒有副作用）。
+   ⚠️ 字體字串要跟畫上去的那組**逐項對上**：graphic 的 style 只給 fontSize／fontWeight，
+      沒給 fontFamily → ECharts 用預設的 sans-serif，所以這裡也寫 sans-serif。 */
+const _mcx = (() => { let x; return () => (x ||= document.createElement("canvas").getContext("2d")); })();
+function textW(t, font){ const x=_mcx(); x.font=font; return x.measureText(t).width; }
+const FN_DROP_F = "500 12px sans-serif", FN_CMP_F = "400 10px sans-serif";
+
+/* 漏斗的左右留白。**不是固定 6%**：流失標籤貼在下一層右緣外 8px，留白太小就會被
+   漏斗擠出去。反解出「讓最緊的那個步階剛好放得下」的留白，再與 6% 取大——
+     需求：cx + wfr[i]·band/2 + need ≤ Ww，band=(1−2mg)·Ww，cx=Ww/2
+     解得：mg ≥ (1 − (1 − 2·need/Ww)/wfr[i]) / 2
+   ⚠️ **文字寬度一定要實測，不能估。** 第一版把「↓ 38%」寫死 36px，實測是 42.3px——
+      而上面那條公式解的是**等號**（標籤剛好抵到邊界、餘裕 0），所以少估多少就截多少。
+      實測餘裕：CRM ＠1280–1720 全是 −6.3 ～ −1.2px，畫面上是「%」被切掉半個字；
+      1920 之後才因為 mg 被 6% 的下限接住而轉正。
+      ⚠️ **`allsweep` 驗不出這種截字**——它量的是 DOM 的 scrollWidth，而 graphic 是畫在
+         canvas 上、超出就被 canvas 裁掉，**不會產生 DOM 溢出**。那張表會全 0 騙過你。
+         漏斗的標籤只能用這裡的餘裕數字或截圖驗。
+   ⚠️ **逐個步階都算，不要只算第 1 個。** wfr 遞減所以第 1 階位置最外，但文字寬度是
+      跟著數字跑的（「↓ 100%」比「↓ 38%」寬），最緊的不一定是同一階。
+   ⚠️ 留白隨容器寬變 → **resize 時 series 的 left/right 也要跟著重設**，
+      只重畫 graphic 會出現「標籤動了、漏斗沒動」。見 ResizeObserver 那段。 */
+function funnelGeom(c, W){
+  const Ww=W||330, n=c.d.length, w=funnelW(c);
+  const cd = c.cmp&&c.cmp.d&&c.cmp.d.length===n ? c.cmp.d : null;
+  const PAD=8, SAFE=4;                       /* SAFE：不解到等號，留 4px 給字體度量的誤差 */
+  let mg=0.06;
+  for(let i=1;i<n;i++){
+    const d=Math.round((c.d[i-1][1]-c.d[i][1])/c.d[i-1][1]*100);
+    let t=textW("↓ "+d+"%", FN_DROP_F);
+    if(cd){ const cdp=Math.round((cd[i-1]-cd[i])/cd[i-1]*100);
+      t=Math.max(t, textW((c.cmp.n||"對照")+" ↓"+cdp+"%", FN_CMP_F)); }
+    const req = w[i]>0 ? (1-(1-2*(PAD+t+SAFE)/Ww)/w[i])/2 : 0;
+    if(req>mg) mg=req;
+  }
+  return { mg, band:(1-2*mg)*Ww, cx:0.5*Ww };
+}
+
 function funnelDrops(c, tk, H, W){
   const n=c.d.length, Hh=H||220, Ww=W||330, pad=8, gpx=3;
-  const seg=(Hh-2*pad-(n-1)*gpx)/n, maxV=c.d[0][1], minSize=0.34, band=0.88*Ww, cx=0.5*Ww;
-  const wf=v=> minSize+(1-minSize)*v/maxV, g=[];
+  const seg=(Hh-2*pad-(n-1)*gpx)/n, {band,cx}=funnelGeom(c,Ww);
+  const wfr=funnelW(c), g=[];
   const cd=c.cmp&&c.cmp.d&&c.cmp.d.length===n?c.cmp.d:null;
   for(let i=1;i<n;i++){
     const d=Math.round((c.d[i-1][1]-c.d[i][1])/c.d[i-1][1]*100);
     const cdp=cd?Math.round((cd[i-1]-cd[i])/cd[i-1]*100):null;
     const worse=cdp!=null&&d>cdp;
-    const stepY=pad+i*seg+(i-1)*gpx+gpx/2, edgeX=cx+wf(c.d[i][1])*band/2;
+    const stepY=pad+i*seg+(i-1)*gpx+gpx/2, edgeX=cx+wfr[i]*band/2;
     /* 有對照行時主行往上讓 7px，兩行合起來仍以 stepY 為中心 */
     g.push({ type:'text', left:edgeX+8, top:cdp!=null?stepY-7:stepY,
       style:{ text:'↓ '+d+'%', fill:worse?tk.bad:tk.tick, fontSize:12, fontWeight:500,
@@ -4824,9 +4988,28 @@ function buildOption(c, tk, H, W, sel){
 
   /* ── Funnel：降序；iris 越往下越深。格子內只留「層名／人數」兩行（白字＋深色陰影
        確保壓在淺色頂層也讀得清）；逐層流失率移到兩側夾層當註記——內文不再擠第三個數字。
-       tooltip 帶男女拆分（c.d 第三元素 [女,男]）。minSize 34%：底層容得下兩行標籤。 */
+       tooltip 帶男女拆分（c.d 第三元素 [女,男]）。
+       ⚠️ **series 吃的是 funnelProxy 的代理值，不是人數**（見 funnelW 的說明）——
+          label 與 tooltip 一律改讀 `c.d[p.dataIndex][1]`，`p.value` 在這裡不可信。
+
+       ⚠️ **標籤裝不下就移到形狀左外側**（2026-08-07）。這條是 FUNNEL_MIN 從 0.34
+          降到 0.10 的前提：地板本來就是被「最底層要裝得下兩行字」反推出來的，
+          不先鬆開標籤，地板降不下去（見 FUNNEL_MIN 的說明）。
+          · 走左側不走右側：右側整條被流失率欄佔著（funnelDrops）。
+          · 外移的標籤改 `tk.text` 並關掉陰影——白字＋陰影是為了壓在色塊上，
+            移到白底之後那組設定會變成白底白字，**這是實作時真的踩到的**。
+       ⚠️ **門檻要用該層「垂直中央」的寬度，不能用上緣。** 標籤畫在層的垂直中央，
+          而梯形在那裡已經收窄了。第一版拿上緣去比，CRM＠1280 的「近三月活躍」
+          上緣 71px 過關、中央只有 47px → 白字整個溢出到形狀外，白底白字讀不到。
+          中央寬 ≈ (w[i]+w[i+1])/2；末層沒有下一層，取自己。 */
   if(c.type==='funnel'){
-    const n=c.d.length;
+    const n=c.d.length, pv=funnelProxy(c), fw=funnelW(c), fg=funnelGeom(c,W);
+    const mgp=(fg.mg*100).toFixed(2)+'%';
+    const labOut = i => {
+      const need = Math.max(textW(String(c.d[i][0]), "400 11.5px sans-serif"),
+                            textW(F(c.d[i][1]),      "400 11.5px sans-serif")) + 12;
+      return ((fw[i] + (fw[i+1] ?? fw[i]))/2) * fg.band < need;
+    };
     const drop=i=> i===0?null:Math.round((c.d[i-1][1]-c.d[i][1])/c.d[i-1][1]*100);
     const gn=i=> c.d[i][2];   /* [女, 男]，選配 */
     return {
@@ -4834,17 +5017,40 @@ function buildOption(c, tk, H, W, sel){
       tooltip:{ trigger:'item', ...tip, formatter:p=>{ const d=drop(p.dataIndex), g=gn(p.dataIndex);
         const cd=c.cmp&&c.cmp.d&&c.cmp.d.length===n?c.cmp.d:null, i=p.dataIndex;
         const cdp=(cd&&i>0)?Math.round((cd[i-1]-cd[i])/cd[i-1]*100):null;
-        return `<b>${p.name}</b> ${F(p.value)} 人`
+        return `<b>${p.name}</b> ${F(c.d[i][1])} 人`
           + (g?`<br>女 ${F(g[0])} 人・男 ${F(g[1])} 人`:'')
           + (d===null?'':`<br>較上一層流失 ${d}%`)
           + (cdp===null?'':`　（${c.cmp.n||'對照'} ${cdp}%・${F(cd[i])} 人）`); } },
-      series:[{ type:'funnel', left:'6%', right:'6%', top:8, bottom:8, minSize:'34%',
+      /* min 鎖 0：代理值的下界就是 0（＝minSize），交給 ECharts 自己推會取資料最小值，
+         那樣底層永遠貼滿 minSize、映射整條偏掉。lin 時 ECharts 的預設本來就是 0。 */
+      series:[{ type:'funnel', left:mgp, right:mgp, top:8, bottom:8,
+        minSize:(FUNNEL_MIN*100)+'%', min:0,
         sort:'descending', gap:3,
+        /* 形狀內：白字＋深色陰影，兩行同級——階層感由色塊本身承擔，不需要字級差。
+           形狀外（見下）：白底上沒有色塊可靠，改用 rich 分兩級。 */
         label:{ show:true, position:'inside', color:'#fff', fontSize:11.5, lineHeight:15,
           textShadowColor:'rgba(16,19,48,.32)', textShadowBlur:3,
-          formatter:p=> p.name+'\n'+F(p.value) },
+          formatter:p=> p.name+'\n'+F(c.d[p.dataIndex][1]) },
         labelLine:{show:false},
-        data:c.d.map((x,i)=>({ name:x[0], value:x[1],
+        data:c.d.map((x,i)=>({ name:x[0], value:pv[i],
+          /* ⚠️ 外移的標籤**不能只是把顏色換深**。第一版就是這樣，結果它跟右邊的
+                「↓ 72%」變成同一種東西：同樣是白底、同樣的字級、同樣的字重，
+                讀者分不出哪個是層名哪個是流失率（使用者回報）。
+             解法兩件一起做：
+             ① rich 分兩級——層名 10.5px muted、數字 13px semibold 深色。
+                「小標＋大數字」是整站 KPI 卡的既有句法，一眼就跟單行的灰色
+                「↓ 72%」分開了，而且它自己內部也有了主從。
+             ② 補一條 12px 的引線接回形狀。標籤離開色塊之後就沒有東西宣告它屬於
+                哪一層，而漏斗這裡層與層只隔 3px——引線是唯一的歸屬證據。 */
+          label: labOut(i) ? { position:'left', align:'right', textShadowBlur:0,
+                               formatter:'{n|'+x[0]+'}\n{v|'+F(x[1])+'}',
+                               rich:{ n:{ fontSize:10.5, color:tk.tick, lineHeight:14,
+                                          align:'right' },
+                                      v:{ fontSize:13, fontWeight:600, color:tk.text,
+                                          lineHeight:17, align:'right' } } } : {},
+          labelLine: labOut(i) ? { show:true, length:12,
+                                   lineStyle:{ color:tk.tick, width:1, opacity:.45 } }
+                               : { show:false },
           itemStyle:{ color:tk.dv[0], opacity: n>1?(0.58+i*0.4/(n-1)):0.9 } })) }],
       graphic: funnelDrops(c, tk, H, W)
     };
@@ -5583,7 +5789,12 @@ new ResizeObserver(() => {
     _charts.forEach(ch => ch.resize());
     _heats.forEach(h => squareHeat(h.chart, h.c));   /* 格子比例隨面板寬高變 → 每次都要重校 */
     if(_funnels.length || _pxlay.length){ const tk = dvTokens();
-      _funnels.forEach(f => f.chart.setOption({ graphic: funnelDrops(f.c, tk, f.chart.getHeight(), f.chart.getWidth()) }));
+      /* ⚠️ 左右留白是容器寬的函數（見 funnelGeom）→ **series 要跟 graphic 一起重設**。
+         只重畫 graphic 的話，窄視窗拉寬時標籤會往內收、漏斗還停在舊的窄留白上。 */
+      _funnels.forEach(f => { const W=f.chart.getWidth(), H=f.chart.getHeight();
+        f.chart.setOption({ series:[{ left:(funnelGeom(f.c,W).mg*100).toFixed(2)+'%',
+                                      right:(funnelGeom(f.c,W).mg*100).toFixed(2)+'%' }],
+                            graphic: funnelDrops(f.c, tk, H, W) }); });
       /* 半圓／deltabar：用新寬高整段重算（圖例位置、中央數字、弧半徑、欄寬、列高都依 W/H） */
       _pxlay.forEach(f => { f.chart.setOption(buildOption(f.c, tk, f.chart.getHeight(), f.chart.getWidth()), true);
         syncSub(f.el, f.c, f.chart.getHeight()); }); }
@@ -5767,6 +5978,8 @@ function draw(){
           <div class="ph-t"><h3>${c.h}</h3>${c.warn ? `<button class="warnbtn" type="button" aria-label="資料哨兵"
             title="${attr(stripTags(c.warn))}">${ic("alert","ic sm")}</button>` : ""}</div>
           <p class="sub">${c.s}</p>
+          ${c.big ? `<div class="pbig"><span class="v num">${c.big[0]}<small>${c.big[1]||""}</small></span
+            ><span class="pbig-l">${c.big[2]||""}</span></div>` : ""}
         </div>
         ${c.legTop ? leg : ""}
         ${c.blocked ? `<span class="blocked">上線前阻斷</span>` : ""}
