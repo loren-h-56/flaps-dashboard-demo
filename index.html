@@ -134,19 +134,48 @@ button{font-family:inherit;}
    預設收起成 56px icon rail；展開是 overlay，不推擠主區——
    因為「總覽一屏不捲」是硬約束，一推就破功。
    ============================================================ */
-/* 收起時 rail 就是畫布的一部分（同底色、無邊界）；展開才變成一張紙浮起來 */
+/* 收起與展開是**同一個平面**：兩態都用 --canvas，展開只是變寬。
+   ⚠️ 2026-08-07 改（使用者回報「側欄割裂感很重」，渲染 A/B/C/D 四版後選 C）。
+      舊版是 `.side` canvas → `.side.open` **paper ＋ shadow-lg ＋ 主區壓暗**，
+      四件事同時發生。真正的成因不是任何一件單獨太重，是**展開的瞬間換了一個平面**：
+      收合軌明明是「畫布的一部分」，一展開卻變成一張浮在畫布上的紙。
+   → 底色維持 canvas（不換平面）；「這是開著的一層」改由兩個極輕的訊號承擔：
+      hairline 右邊界 ＋ shadow-sm。渲染比對過完全不要陰影——
+      太平了，蓋住圖表時看不出是被蓋住還是圖本來就沒畫到那裡。
+
+   ⚠️ 2026-08-07 再改（使用者回報「收合軌看起來很突兀」，做成可 hover 的
+      三方案對照頁後選 B，見 tools/mockups/側欄收合軌對照.html）。
+      使用者的觀察：「顏色跟背景相似會有很怪的留白，但太深色也很怪。」
+      診斷：**問題不在顏色，在於那條 56px 的帶子有 540px 是空的**——
+      兩邊都不對，是因為在替一片空白挑顏色。
+   → 選 B：底色一個字都不動（兩態都 canvas），只在右緣補一條 hairline
+      **把邊界圈出來**。那片空白於是從「頁面的怪留白」變成「軌自己的空間」。
+      ⚠️ border-right 下在 `.side` 而不是 `.side.open`：收合軌正是需要它的那一態。
+      否決 C（兩態改 surface-2）的理由是連動——側欄裡約 10 條 hover 都吃
+      `--surface-2`，底色一旦佔用，`.hist:hover` 那些會**全部消失**（對照頁上
+      可以把修正關掉直接看到）。B 完全沒有這個成本。 */
 .side{position:fixed;left:0;top:0;bottom:0;width:var(--rail);z-index:66;
-  background:var(--canvas);
+  background:var(--canvas);border-right:1px solid var(--border);
   display:flex;flex-direction:column;overflow:hidden;
   transition:width .22s var(--ease-out);}
-.side.open{width:var(--side);background:var(--paper);
-  border-right:1px solid var(--border);box-shadow:var(--shadow-lg);}
-/* 側欄壓暗：保留但只留極輕一層。抽屜完全不壓暗（要對照著圖追問），側欄是切換情境的
-   導覽、不需要對照，所以留一層來分前後——兩者是同一條光譜上的兩點，不是兩套規則。
+.side.open{width:var(--side);box-shadow:var(--shadow-sm);}
+/* 側欄壓暗：**保留，但只留極輕一層**（實效 ≈ 5.6% 的 ink）。
+   ⚠️ 2026-08-07 走過一趟 0 又調回來，過程值得留著：
+      選 C（側欄改同畫布底）那一輪把壓暗一起歸零了，理由是「壓暗是割裂感最大的來源」。
+      歸零之後使用者立刻問「遮罩怎麼不見了」——**兩件事其實可以拆開**：
+      割裂感來自那一層「重」，不是來自它「存在」。渲染 0／.35／.6／1 四級比較後定 .35。
+   ⚠️ 濃度是**兩層相乘**：底色本身已是 color-mix(--text, transparent 84%)＝16% ink，
+      再乘 opacity .35 → 實效約 5.6%。要調的是 .on 的 opacity，不要動底色那一層，
+      否則 transition 會從「淡入淡出」變成「換色」。
+   ⚠️ 這一層同時是**「點這片可以關掉」的可見提示**：pointer-events:auto 一直都在
+      （出口三條裡最常用的一條），但 opacity 0 時等於一塊看不見的點擊區——
+      機制在、線索不在。.35 把線索補回來。
+   ⚠️ 抽屜完全不壓暗（要對照著圖追問），側欄是切換情境的導覽——
+      兩者是同一條光譜上的兩點，不是兩套規則。
    從 --text 推導而非手刻 rgba（DS 規則 1：紙面不出現臨時 hex）。 */
 .sscrim{position:fixed;inset:0;background:color-mix(in srgb,var(--text),transparent 84%);
   z-index:65;opacity:0;pointer-events:none;transition:opacity .2s;}
-.sscrim.on{opacity:1;pointer-events:auto;}
+.sscrim.on{opacity:.35;pointer-events:auto;}
 
 .shd{display:flex;align-items:center;gap:var(--space-2);height:56px;padding:0 var(--space-3);flex:none;}
 .side:not(.open) .shd{justify-content:center;padding:0;}
@@ -193,15 +222,114 @@ button{font-family:inherit;}
 .sbtn .ic{color:var(--text-muted);}
 .sbtn:hover .ic{color:var(--text);}
 .sdiv{height:1px;background:var(--border);margin:var(--space-2) var(--space-3);flex:none;}
+/* ⚠️ 收合軌**不畫任何分隔線**（2026-08-07 使用者截圖圈出）。
+   軌的定位是「畫布的一部分：同底色、無邊界」（見 .side 註解）——在一片無邊界的
+   56px 窄帶上放一條 32px 的短線與一條滿版線，兩條寬度還不一樣，讀起來像兩塊
+   浮在半空的碎片，而不是分區。展開態有 260px 的紙面撐著，線才有意義。
+   （index.html 的 `.sidebar.collapsed .sidebar-divider{display:none}` 是同一個判斷。） */
+.side:not(.open) .sdiv{display:none;}
+.side:not(.open) .sft{border-top:0;}
 .sbody{flex:1;min-height:0;overflow-y:auto;padding:0 var(--space-3) var(--space-3);}
 .side:not(.open) .sbody{visibility:hidden;}
-.slbl{font-family:var(--font-mono);font-size:var(--text-micro);letter-spacing:var(--ls-eyebrow);
-  text-transform:uppercase;color:var(--text-muted);padding:var(--space-3) var(--space-2) var(--space-2);
-  display:block;white-space:nowrap;}
+/* .sbody 的常駐捲軸。⚠️ 這是全檔**第三處**用同一組寫法（前兩處：.rows、.dmwrap），
+   兩組屬性不能寫在同一規則裡的理由見 .dmwrap 那段長註解，不再重複。
+   側欄一定要顯捲軸：對話清單是「不知道有多長」的內容，macOS 的 overlay 捲軸
+   （實測佔用寬度 0px、只在捲動時淡入）會讓人以為清單就這幾則。 */
+.sbody::-webkit-scrollbar{width:var(--space-2);}
+.sbody::-webkit-scrollbar-track{background:transparent;}
+.sbody::-webkit-scrollbar-thumb{background:var(--border-2);border-radius:var(--radius-pill);}
+@supports not selector(::-webkit-scrollbar){
+  .sbody{scrollbar-width:thin;scrollbar-color:var(--border-2) transparent;}}
+
+/* ---- 側欄分區（釘選／專案／近期對話）----
+   標頭沿用整站 eyebrow 句法（mono ＋ 大寫 ＋ --ls-eyebrow），不是 index.html 那組
+   `font-weight:700;letter-spacing:0.7px` 的無襯線小標——那會在側欄裡多開一種標題語彙。
+   ⚠️ 只有「專案」的標頭可以收合＋帶 ＋ 鈕；釘選與近期對話沒有 chevron，
+      因為它們是**自動成立**的分區（有釘選的才出現、剩下的都落到近期），
+      收合一個自動分區只會製造「東西不見了」的錯覺。 */
+.ssec{flex:none;}
+.ssech{display:flex;align-items:center;gap:var(--space-1);width:100%;
+  padding:var(--space-3) var(--space-2) var(--space-2);
+  font-family:var(--font-mono);font-size:var(--text-micro);letter-spacing:var(--ls-eyebrow);
+  text-transform:uppercase;color:var(--text-muted);white-space:nowrap;}
+.slbl{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;text-align:left;}
+/* 專案標頭整條是收合鈕 → 用 button 承載，hover 才透出可點的底 */
+button.ssech{border:0;background:transparent;cursor:pointer;border-radius:var(--radius-sm);
+  font-family:var(--font-mono);}
+button.ssech:hover{background:var(--surface-2);color:var(--text-body);}
+.ssech .ic{color:var(--text-muted);transition:transform .18s var(--ease-out);}
+.ssec.shut .ssech .ic.tw{transform:rotate(-90deg);}
+/* （時間分組 .tgrp 已於 2026-08-07 移除——見 renderSide 裡那段註解，不要加回來） */
+.ssec.shut .ssecbd{display:none;}
+/* ＋（新增專案）：獨立 button，不能塞在 .ssech 這顆 button 裡（button 不可巢狀）→
+   放在標頭外層的 .ssecrow 上，跟標頭並排。 */
+.ssecrow{display:flex;align-items:center;}
+.ssecadd{flex:none;border:0;background:transparent;cursor:pointer;color:var(--text-muted);
+  padding:var(--space-1);margin-right:var(--space-2);border-radius:var(--radius-sm);
+  display:inline-flex;}
+.ssecadd:hover{background:var(--surface-2);color:var(--text);}
+
+/* ---- 對話列：圖示 ＋（標題／時間）＋ ⋯ ----
+   ⚠️ 從單行純文字改成兩行是為了塞進時間。標題仍單行 ellipsis，
+      **另外掛 title 屬性**（舊版沒有，截字之後看不到全文）。 */
 .hist{border:0;background:transparent;cursor:pointer;text-align:left;width:100%;
-  padding:var(--space-2);border-radius:var(--radius-sm);font-size:var(--text-small);color:var(--text-body);
+  display:flex;align-items:flex-start;gap:var(--space-2);position:relative;
+  padding:var(--space-2);border-radius:var(--radius-sm);font-family:var(--font-body);}
+.hist:hover{background:var(--surface-2);}
+.hist>.ic{flex:none;color:var(--text-muted);margin-top:2px;}
+.histb{flex:1;min-width:0;display:flex;flex-direction:column;line-height:var(--lh-tight);gap:3px;}
+.histn{font-size:var(--text-small);color:var(--text-body);
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.hist:hover{background:var(--surface-2);color:var(--text);}
+.histt{font-family:var(--font-mono);font-size:var(--text-micro);color:var(--text-muted);}
+.hist:hover .histn{color:var(--text);}
+/* 當前開著的那一則：iris tint 底 ＋ iris 字（＝分頁 .tab.on 的同一種語彙）。
+   舊版完全沒有這個態——關掉抽屜再開側欄，看不出剛才在看哪一則。 */
+.hist.on{background:var(--accent-soft);}
+.hist.on .histn{color:var(--accent);font-weight:var(--fw-medium);}
+.hist.on .histt{color:var(--accent);opacity:.7;}
+.hist.on>.ic{color:var(--accent);}
+/* 釘選點：釘選的對話在原本分區裡也留一個記號，不然「它同時在兩個地方」會像 bug */
+.pindot{flex:none;width:5px;height:5px;border-radius:var(--radius-pill);
+  background:var(--accent);opacity:.75;align-self:center;}
+.histn.wdot{display:flex;align-items:center;gap:var(--space-1);}
+.histn.wdot>span{overflow:hidden;text-overflow:ellipsis;}
+
+/* ⋯ 更多動作：平常透明，hover 該列或選單開著時才現身 */
+.moreb{flex:none;border:0;background:transparent;cursor:pointer;color:var(--text-muted);
+  padding:2px var(--space-1);border-radius:var(--radius-sm);display:inline-flex;
+  opacity:0;transition:opacity .12s;}
+.hist:hover .moreb,.pfh:hover .moreb,.moreb.on,.moreb:focus-visible{opacity:1;}
+.moreb:hover{background:var(--border-2);color:var(--text);}
+/* 選單開著時標記母列——不然浮在旁邊的選單看不出屬於哪一則 */
+.hist.ctxon,.pfh.ctxon{background:var(--surface-2);}
+
+/* ---- 專案資料夾 ---- */
+.pf{margin-bottom:2px;}
+.pfh{display:flex;align-items:center;gap:var(--space-2);width:100%;
+  padding:var(--space-2);border-radius:var(--radius-sm);color:var(--text-body);
+  font-size:var(--text-small);user-select:none;}
+.pfh:hover{background:var(--surface-2);color:var(--text);}
+.pfn{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  cursor:pointer;border:0;background:transparent;text-align:left;
+  font:inherit;color:inherit;padding:0;}
+.pfh>.ic{flex:none;color:var(--text-muted);}
+.pfbd{display:none;padding-left:var(--space-3);}
+.pf.open .pfbd{display:block;}
+/* 拖放：專案為落點時整個資料夾打 iris tint；近期對話區為落點時整區打底 */
+.pf.dragover>.pfh{background:var(--accent-soft);color:var(--accent);}
+.pf.dragover>.pfh>.ic{color:var(--accent);}
+.hist.dragging{opacity:.35;}
+.dropzone{background:var(--accent-soft);border-radius:var(--radius-sm);}
+/* 就地改名的輸入框（專案名與對話標題共用） */
+.rnin{flex:1;min-width:0;width:100%;box-sizing:border-box;
+  background:var(--accent-soft);color:var(--accent);border:0;outline:0;
+  border-radius:var(--radius-sm);font:inherit;padding:1px var(--space-1);}
+.showmore{border:0;background:transparent;cursor:pointer;color:var(--accent);
+  font-family:var(--font-body);font-size:var(--text-label);
+  padding:var(--space-1) var(--space-2);text-align:left;width:100%;
+  border-radius:var(--radius-sm);}
+.showmore:hover{background:var(--surface-2);}
+
 .sempty{font-size:var(--text-label);color:var(--text-muted);padding:var(--space-2);
   line-height:var(--lh-body);margin:0;}
 /* 側欄底部＝帳號入口（原本是啞標籤，現在掛上下拉選單，取代 Hero 右上角那個） */
@@ -399,10 +527,143 @@ body.picking .qcnav{opacity:0;pointer-events:none;}
 /* icon 不設色 → 跟隨 tab 文字色（currentColor），文字與 icon 永遠同色 */
 .tab .ic{width:16px;height:16px;}
 /* 資料截取時間：分頁旁的 mono 小膠囊 */
+/* 右上角那一列：帳務模式 ＋ 資料截取膠囊。
+   ⚠️ .heroright 是 column（上：這一列／下：達成率圓環），所以「前／後」要另外包一層
+      橫向容器才成立——直接塞進 .heroright 會變成上下疊，不是左右。
+   ⚠️ flex-wrap:wrap ＋ justify-content:flex-end：1280 時兩顆放得下（實測 322px），
+      但字級或文案一變就可能擠不下，折行時仍靠右、不會歪到左邊。 */
+.hrtop{display:flex;align-items:center;gap:var(--space-2);
+  flex-wrap:wrap;justify-content:flex-end;}
+/* 帳務模式切換。沿用分頁列（.tabs／.tab）的分段語彙——同一頁上「在幾個互斥選項之間切」
+   只該有一種長相，不另發明第二套。
+   ⚠️ **溝槽必須是 0**（.tabs 那邊是 padding:4px，這裡刻意不同）。
+      第一版照抄 .tabs 給了 3px 內距，於是灰軌 30px（＝ .datchip ✓）但**選中的白 pill
+      只有 24px**，比旁邊 8px 外的膠囊矮一截，使用者回報「高度不一樣」。
+      ⚠️ 我當時的測試斷言比錯對象——量的是「灰軌 vs 膠囊」，那組本來就相等所以測試過了。
+         **眼睛比的是兩塊白色**：灰軌在淺底上對比極低，高對比的是白 pill 與白膠囊。
+         → 這類「看起來不一樣」的回報，要量的是**視覺上最高對比的那個面**，
+           不是元件的外框。
+      → padding 歸零 ＋ 按鈕自己 30px：灰軌 30 ＝ 白 pill 30 ＝ .datchip 30，三者齊高。
+        分段感由按鈕之間的 gap:2px（透出灰軌）承擔，夠了。 */
+.bmode{display:flex;gap:2px;padding:0;flex:none;
+  background:var(--surface-2);border-radius:var(--radius-pill);}
+.bmode button{border:0;background:transparent;cursor:pointer;color:var(--text-muted);
+  font-family:var(--font-body);font-size:var(--text-label);white-space:nowrap;
+  height:30px;padding:0 var(--space-3);border-radius:var(--radius-pill);}
+.bmode button[aria-pressed="true"]{background:var(--paper);color:var(--accent);
+  font-weight:var(--fw-medium);box-shadow:var(--shadow-xs);}
+.bmode button:hover:not([aria-pressed="true"]){color:var(--text-body);}
+.bmode button:focus-visible{outline:2px solid var(--accent);outline-offset:1px;}
 .datchip{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 var(--space-3);
   border-radius:var(--radius-pill);background:var(--paper);border:1px solid var(--border);
   font-family:var(--font-mono);font-size:11.5px;color:var(--text-body);white-space:nowrap;}
 .datchip .di{display:inline-flex;color:var(--text-muted);}
+
+/* ── 品牌選擇器（2026-08-10）──────────────────────────────────────────────
+   版位：hrtop 最左，讀成「EM ＋2 → 依銷售日 → 資料截至 7/07」（比稿頁 A 版，使用者選）。
+   延續帳務模式那條因果語序：**範圍先收窄** → 再決定用哪個日期欄 → 最後才是資料到哪一天。
+
+   ⚠️ 尺寸與 .datchip／.bmode 同一組（height:30px、pill、--text-label）。
+      第三十三節的教訓：這一排比的是**視覺上最高對比的那個面**——三顆都是白底 pill
+      落在同一條基線上，任何一顆高度不同都會被一眼看出來。
+
+   ⚠️ **不用 coral**（DS 規則 4：每個紙面視圖只有一處 coral，Hero 那一處已經記在
+      問候語漸變上）。「有篩選在作用」走 iris ＋ --accent-soft，是品牌主色不是亮點色。
+
+   ⚠️ 作用中的狀態必須在**關著的時候**就看得出來。全域篩選器最大的風險是使用者忘記
+      自己還在篩，把一個品牌的數字讀成全店的。所以 .bsel.act 換底色，不只是改標籤文字。 */
+.bsel{position:relative;flex:none;}
+.bselb{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 10px 0 var(--space-3);
+  border-radius:var(--radius-pill);background:var(--paper);border:1px solid var(--border);
+  color:var(--text-body);font-family:var(--font-body);font-size:var(--text-label);
+  white-space:nowrap;cursor:pointer;box-shadow:var(--shadow-xs);
+  transition:background .16s var(--ease-out),border-color .16s var(--ease-out);}
+.bselb:hover{border-color:var(--border-2);}
+.bselb:focus-visible{outline:2px solid var(--accent);outline-offset:1px;}
+.bselb .bl{color:var(--text-muted);}
+.bselb .bv{font-weight:var(--fw-medium);color:var(--text);}
+.bsel.act .bselb{background:var(--accent-soft);
+  border-color:color-mix(in srgb,var(--accent),transparent 72%);}
+.bsel.act .bselb .bl,.bsel.act .bselb .bv{color:var(--accent);}
+.bselb .ic{width:14px;height:14px;flex:none;transition:transform .16s var(--ease-out);}
+.bsel.open .bselb .ic{transform:rotate(180deg);}
+@media (prefers-reduced-motion:reduce){.bselb,.bselb .ic{transition:none;}}
+
+/* 下拉本體。
+   ⚠️ **必須是 position:fixed，不能用 absolute。** `.hero` 有 `overflow:hidden`
+      （ambience 的 ::before/::after 是 200%×220% 放射漸層，靠它裁邊），absolute 的選單
+      會被連同裁掉——實測第一版在 1440 只露出四列半，第五個品牌被切一半。
+      這與收合軌那顆 `.side:not(.open) .pmenu` 是**同一個坑同一個解**：脫離裁切框，
+      改用視窗座標，由 JS 依按鈕的 rect 定位（見 openBsel）。
+   ⚠️ **靠右對齊**：這顆在 hero 右上角，靠左開會往視窗外長。
+   z-index 72：在側欄(66)與帳號選單(70)之上、三個彈窗(80)之下——側欄展開時
+   hero 仍在下面，但這顆是 hero 自己的浮層，被側欄蓋住是對的（側欄是 overlay）。
+   ⚠️ visibility 與 .pmenu 同一套（關閉時延後 .16s 生效）：只靠 opacity 的話
+      收起的選項仍在 tab 順序裡。這是同一天在 .pmenu 修掉的坑，不要再犯。 */
+.bmenu{position:fixed;z-index:72;min-width:236px;
+  background:var(--paper);border:1px solid var(--border);border-radius:var(--radius-md);
+  box-shadow:var(--shadow-lg);padding:var(--space-1);
+  opacity:0;transform:translateY(-4px);pointer-events:none;visibility:hidden;
+  transition:opacity .16s var(--ease-out),transform .16s var(--ease-out),visibility 0s linear .16s;}
+.bsel.open .bmenu{opacity:1;transform:none;pointer-events:auto;visibility:visible;transition-delay:0s;}
+@media (prefers-reduced-motion:reduce){.bmenu{transition:none;}}
+/* 項目沿用 .pmi 的骨架（padding／radius／hover），只多一個方框與右側筆數。
+   ⚠️ 不重寫一套：帳號選單、⋯ 選單、這裡都是「一疊 icon＋標籤的動作」，
+      dashboard.html 已經為此把 .ctxm 的項目併回 .pmi，這裡照同一個判斷。 */
+.bmi{display:flex;align-items:center;gap:var(--space-2);width:100%;border:0;background:transparent;
+  cursor:pointer;padding:var(--space-2);border-radius:var(--radius-sm);
+  font-family:var(--font-body);font-size:var(--text-small);color:var(--text-body);text-align:left;}
+.bmi:hover{background:var(--surface-2);color:var(--text);}
+.bmi:focus-visible{outline:2px solid var(--accent);outline-offset:-2px;}
+.bmi .bx{flex:none;width:16px;height:16px;border-radius:var(--radius-sm);
+  border:1.5px solid var(--border-2);display:inline-flex;align-items:center;justify-content:center;
+  color:var(--text-on-accent);}
+.bmi[aria-checked="true"] .bx{background:var(--accent);border-color:var(--accent);}
+.bmi .bx .ic{width:11px;height:11px;opacity:0;}
+.bmi[aria-checked="true"] .bx .ic{opacity:1;}
+.bmi .bn{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.bmi .bc{font-family:var(--font-mono);font-size:var(--text-micro);color:var(--text-muted);flex:none;}
+.bmdiv{border:0;border-top:1px solid var(--border);margin:var(--space-1);}
+
+/* 「這張卡篩不動」的 mono 小標（使用者選：mono 小標）。
+   ⚠️ 走 --color-warning（語意色）**不是 coral** —— 與 .warnbtn／.warnbox 同一個判斷
+      （見 .kpi.sent 附近那條註解）：紙面只有一處 coral，警示走語意色不佔用那個額度。
+   ⚠️ **只在真的有品牌篩選在作用時出現**（body.bfilt）。沒篩的時候「此數字不分品牌」
+      是廢話，每張卡都掛一枚只會把警示變成背景噪音；篩下去的那一刻才是它有用的時候。
+      → 這也是它不需要重繪的原因：標籤永遠在 DOM 裡，顯不顯示由 CSS 一個 class 決定，
+        切品牌不必重跑 draw()／重建 ECharts。 */
+.nbrand{display:none;flex:none;font-family:var(--font-mono);font-size:var(--text-micro);
+  letter-spacing:.06em;color:var(--color-warning);background:var(--color-warning-soft);
+  padding:1px 5px;border-radius:var(--radius-sm);white-space:nowrap;cursor:help;}
+body.bfilt .nbrand{display:inline-block;}
+/* ⚠️ .kh／.ph-t 是 flex ＋ gap，間距自己有；.hstat .hl 是純文字流，要自己補一個字距。 */
+.hstat .hl .nbrand{margin-left:4px;}
+
+/* ── 抽屜裡的品牌標籤（2026-08-10）──────────────────────────────────────
+   ⚠️ **沿用「引用圖表」現成的生命週期，不多發明一種**：
+        送出前 → 掛在輸入框上方（iris-soft，比照 .att）＝「下一句會用這個範圍」
+        送出後 → 跟著那一輪沉進對話（灰底 hairline，比照 .ctx）＝「這一句是這樣算的」
+      抽屜的 .dhd 註解早就立了這條判斷：「來自圖表」不放標頭，因為它是**某一則訊息的
+      引用、不是整串的屬性**。品牌篩選性質完全相同——使用者隨時能在右上角改品牌再追問，
+      舊答案是用舊範圍算的，不該被新標籤改寫。所以這顆**不進標頭**。
+   ⚠️ 只在真的有篩選在作用時存在（BSEL 非空），與卡片小標同一個判斷。 */
+.bchip{display:inline-flex;align-items:center;gap:5px;max-width:100%;min-width:0;
+  font-size:var(--text-label);line-height:var(--lh-tight);
+  border-radius:var(--radius-pill);padding:var(--space-1) var(--space-3);
+  cursor:help;white-space:nowrap;}
+.bchip .ic{opacity:.75;}
+.bchip .bn{min-width:0;overflow:hidden;text-overflow:ellipsis;}
+.bchip .bp{font-family:var(--font-mono);font-weight:var(--fw-semibold);}
+.bchip:focus-visible{outline:2px solid var(--accent);outline-offset:1px;}
+.bchip.pend{background:var(--accent-soft);color:var(--accent);
+  border:1px solid color-mix(in srgb,var(--accent),transparent 80%);}
+.bchip.done{background:var(--surface-2);color:var(--text-body);border:1px solid var(--border);}
+.bchip.done .bp{color:var(--text);}
+/* 已送出那一輪：品牌標籤與「來自圖表」並排置中（.ctx 本來就是 align-self:center）。
+   兩者都可能不存在，所以包一層自己會置中的列，而不是各自 align-self。 */
+.ctxrow{align-self:center;max-width:100%;display:flex;flex-wrap:wrap;justify-content:center;
+  align-items:center;gap:var(--space-2);}
+.ctxrow .ctx{align-self:auto;}
 
 /* ---- 右欄：資料截取膠囊（上，靠右）→ metric 條（下，橫排）。帳號已移到左側欄底部 ---- */
 .heroright{display:flex;flex-direction:column;justify-content:space-between;align-items:flex-end;
@@ -419,8 +680,13 @@ body.picking .qcnav{opacity:0;pointer-events:none;}
   background:var(--paper);border:1px solid var(--border);border-radius:var(--radius-md);
   box-shadow:var(--shadow-lg);padding:var(--space-1);z-index:70;
   opacity:0;transform:translateY(6px) scale(.98);transform-origin:bottom left;pointer-events:none;
-  transition:opacity .16s var(--ease-out),transform .16s var(--ease-out);}
-.profile.open .pmenu{opacity:1;transform:none;pointer-events:auto;}
+  transition:opacity .16s var(--ease-out),transform .16s var(--ease-out),visibility 0s linear .16s;
+  /* ⚠️ visibility 不是為了看不見（opacity 已經做到了），是為了**把六顆 .pmi 移出 tab 順序**。
+     只靠 opacity:0 ＋ pointer-events:none 的話它們仍然是可聚焦的 button，
+     選單關著時 Tab 會一路走進一疊看不見的選項。
+     關閉時 visibility 延後 .16s 生效，讓淡出跑完；開啟時不延後（下一行）。 */
+  visibility:hidden;}
+.profile.open .pmenu{opacity:1;transform:none;pointer-events:auto;visibility:visible;transition-delay:0s;}
 /* 收合軌（側欄只剩頭像）：選單往右飛出。側欄有 overflow:hidden 會裁掉，
    故改 position:fixed 用視窗座標脫離裁切，定在軌（--rail）右側、貼底。 */
 .side:not(.open) .pmenu{position:fixed;left:calc(var(--rail) + var(--space-2));bottom:var(--space-2);
@@ -435,6 +701,16 @@ body.picking .qcnav{opacity:0;pointer-events:none;}
 .pmi.danger .ic{color:var(--color-danger);}
 .pmi.danger:hover{background:var(--color-danger-soft);color:var(--color-danger);}
 .pmdiv{border:0;border-top:1px solid var(--border);margin:var(--space-2) var(--space-1);}
+
+/* 對話／專案的 ⋯ 選單。⚠️ **只寫容器，項目直接重用 .pmi／.pmdiv** ——
+   它跟帳號選單是同一種東西（一疊 icon＋標籤的動作），index.html 那邊是 .ctx-menu-item
+   與 .ud-item 兩套各寫一遍、連 padding 都差 1px。這裡不重蹈。
+   差別只有定位：帳號選單錨在自己的 .profile 上（absolute），這個是 JS 依 ⋯ 鈕的
+   視窗座標定位（fixed），因為它的母列在 .sbody 裡、會跟著捲動。
+   z-index 90 > .dov(80)：從搜尋結果也叫得出 ⋯ 選單。 */
+.ctxm{position:fixed;z-index:90;min-width:168px;
+  background:var(--paper);border:1px solid var(--border);border-radius:var(--radius-md);
+  box-shadow:var(--shadow-lg);padding:var(--space-1);}
 
 /* 頂端 vital-sign 列：圓環（比率）在左、數字（絕對量）在右，混排在「單一不換行列」。
    固定單排 → 每個模組高度恆定，切換分頁不會撐爆 hero、不會裁掉左側分頁。
@@ -755,7 +1031,13 @@ main{flex:1;min-height:0;overflow:hidden;
 .phd{padding:var(--space-3) var(--space-4) 6px;   /* 收窄頁首下緣 → 標題與圖之間不留大空隙 */
   display:flex;align-items:flex-start;gap:var(--space-3);}
 .phd h3{margin:0;font-size:var(--text-small);color:var(--text);font-weight:var(--fw-semibold);
-  font-family:var(--font-body);line-height:1.4;}
+  font-family:var(--font-body);line-height:1.4;
+  /* ⚠️ 2026-08-10 加 nowrap。.phd 裡「標題區」與「頂部圖例」都是可縮的 flex item，
+     所以誰的內容變寬另一邊就被擠。加了品牌小標之後，`交易筆數 vs 客單價`（唯一同時
+     有 legTop 與小標的面板）在 ≤1440 被擠成「交易筆數 vs 客單／價」。
+     **該讓的是圖例**：標題是一個不可分割的標籤，圖例是一串本來就寫了 flex-wrap:wrap
+     的項目，擠窄時自己換行、資訊一點都不損失。 */
+  white-space:nowrap;}
 /* 標題與 ⚠ 哨兵同一行 → ⚠ 貼著名稱（左上），不隨副標長度飄到右邊 */
 .ph-t{display:flex;align-items:center;gap:var(--space-2);}
 .phd .sub{font-size:11.5px;color:var(--text-muted);margin:2px 0 0;line-height:1.4;}
@@ -933,7 +1215,30 @@ main{flex:1;min-height:0;overflow:hidden;
       並存兩種懸浮窗更奇怪；要拆回來就多開一個 modifier class，不要改這裡。
    ⚠️ `b` 不再是「小號 mono 的 kicker」：白底上 opacity:.65 的小字會糊掉，而且 ECharts 那邊
       的 <b> 就是「正常字級的粗體品名」。兩邊對齊之後 skuMeta 的欄位排版才會一致。 */
-.tip{position:fixed;z-index:50;pointer-events:none;
+/* ⚠️ z-index 95：tooltip 必須在**所有**它會標註的東西之上。原本是 50，
+   而側欄是 66 → 收合軌的三顆 icon 一 hover，泡泡就被自己的側欄與 hero 壓在後面
+   （2026-08-07 使用者截圖回報）。95 在 ctxm(90) 之上、開場動畫(10000) 之下。 */
+/* `.anchored` ＝ 錨在元件右側那一支（showTipAt，收合軌的 icon 標籤）。
+   ⚠️ 泡泡離開元件之後，**箭頭是「這顆屬於誰」的唯一證據**——收合軌三顆 icon 只隔
+      幾 px，沒有箭頭時泡泡貼在右邊會分不出是哪一顆的。
+      （這跟漏斗標籤外移時要補引線是同一個判斷，見 funnelGeom 那段。）
+   ⚠️ 箭頭的 y 走 `--arrow-y`（JS 現算），不是 50%：泡泡碰到視窗上下緣會被 clamp，
+      寫死置中的話箭頭就不指著元件了。
+   旋轉 45° 的方塊只留左下兩條邊，接回泡泡的白底與細框，看起來就是一個尖角。 */
+.tip.anchored::before{content:"";position:absolute;left:-5px;top:var(--arrow-y,50%);
+  width:8px;height:8px;transform:translateY(-50%) rotate(45deg);
+  background:var(--paper);border-left:1px solid var(--border);border-bottom:1px solid var(--border);}
+/* 翻到左邊時尖角改在右緣（收合軌碰不到，但這支之後可能掛到別處） */
+.tip.anchored.flip::before{left:auto;right:-5px;
+  border-left:0;border-bottom:0;border-right:1px solid var(--border);border-top:1px solid var(--border);}
+/* `.wrap` ＝ 會折行的長句版（給「全品牌」小標那句解釋用）。
+   ⚠️ 預設的 nowrap 是為了資料點泡泡（「11/03　2,847 萬」這種短標，折行只會更難讀），
+      但一整句說明用 nowrap 會拉出一條橫跨半個螢幕的泡泡。加一個變體，不動預設。 */
+.tip.wrap{white-space:normal;max-width:250px;line-height:1.6;}
+/* 品牌明細的右欄櫃數：靠右對齊成一欄，不用 flex（.tip 內容是 <br> 串起來的行，
+   不是 flex 容器——為了一個小標把泡泡改成 flex 會影響到所有資料點泡泡）。 */
+.tip .tipc{display:inline-block;min-width:46px;text-align:right;color:var(--text-muted);}
+.tip{position:fixed;z-index:95;pointer-events:none;
   background:var(--paper);color:var(--text-body);
   border:1px solid var(--border);border-radius:8px;padding:8px 11px;
   font-size:11px;line-height:1.5;
@@ -1328,6 +1633,87 @@ main{flex:1;min-height:0;overflow:hidden;
 /* 關閉鈕沿用 .fbx 的樣式（同一種「彈窗右上角關閉」語彙，不另發明一套） */
 @media (prefers-reduced-motion:reduce){.dov,.dmodal{transition:none;}.dmodal{transform:none;}}
 
+/* ============================================================
+   側欄的三個彈窗：搜尋對話 · 新增專案 · 刪除專案
+   ⚠️ **遮罩層直接重用 .dov**（連同它的壓暗色、暗色修正、開闔轉場、reduced-motion
+      退場），index.html 那邊是另一套 .modal-backdrop（自己的 backdrop-filter:blur(4px)
+      ＋ fadeIn keyframe ＋ 寫死 rgba）——搬過來等於同一頁出現兩種「彈窗底」。
+      這裡只加一個 .top 修飾子：搜尋要**靠上**開（打字時視線不該往中間跳，
+      而且結果列會長高，置中的話整塊會邊打字邊上下跳）。其餘兩個維持置中。
+   ⚠️ z-index 沿用 .dov 的 80。搜尋開著時側欄(66)在它下面是對的——搜尋是
+      「跨全部對話」的視圖，不是側欄的子功能，蓋住側欄反而說對了它的層級。 */
+.dov.top{align-items:flex-start;padding-top:12vh;}
+/* 搜尋：比 .dmodal 窄（580 vs 640）——結果是單行文字不是表格，撐到 640 只會讓
+   眼睛橫向掃很遠。max-height 讓給結果區自己捲（見 .sres）。 */
+.smodal{position:relative;display:flex;flex-direction:column;overflow:hidden;
+  width:100%;max-width:580px;max-height:100%;
+  background:var(--paper);border:1px solid var(--border);border-radius:var(--radius-lg);
+  box-shadow:var(--shadow-lg);transform:translateY(8px);transition:transform .18s var(--ease-out);}
+.dov.open .smodal{opacity:1;transform:none;}
+.sbar{display:flex;align-items:center;gap:var(--space-3);flex:none;
+  padding:var(--space-4) var(--space-5);border-bottom:1px solid var(--border);}
+.sbar>.ic{flex:none;color:var(--text-muted);}
+.sbar input{flex:1;min-width:0;background:transparent;border:0;outline:0;
+  font-family:var(--font-body);font-size:var(--text-body-size);color:var(--text);}
+.sbar input::placeholder{color:var(--text-muted);}
+/* 結果區用跟 .sbody／.dmwrap 同一組常駐捲軸（第四處，寫法見 .dmwrap 註解） */
+.sres{flex:1 1 auto;min-height:0;overflow-y:auto;padding:var(--space-2);}
+.sres::-webkit-scrollbar{width:var(--space-2);}
+.sres::-webkit-scrollbar-track{background:transparent;}
+.sres::-webkit-scrollbar-thumb{background:var(--border-2);border-radius:var(--radius-pill);}
+@supports not selector(::-webkit-scrollbar){
+  .sres{scrollbar-width:thin;scrollbar-color:var(--border-2) transparent;}}
+.sri{display:flex;align-items:flex-start;gap:var(--space-3);width:100%;
+  border:0;background:transparent;cursor:pointer;text-align:left;
+  padding:var(--space-3);border-radius:var(--radius-sm);font-family:var(--font-body);}
+.sri:hover,.sri.on{background:var(--surface-2);}
+.sri>.ic{flex:none;color:var(--text-muted);margin-top:2px;}
+.srib{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px;line-height:var(--lh-tight);}
+.srin{font-size:var(--text-small);color:var(--text);}
+.srim{font-family:var(--font-mono);font-size:var(--text-micro);color:var(--text-muted);
+  display:flex;gap:var(--space-2);}
+/* 命中字高亮。⚠️ <mark> 的瀏覽器預設是黃底黑字，一定要蓋掉（DS 沒有黃色）。 */
+.sres mark{background:var(--accent-soft);color:var(--accent);border-radius:2px;
+  font-weight:var(--fw-medium);padding:0 1px;}
+.sfoot{flex:none;padding:var(--space-2) var(--space-5);border-top:1px solid var(--border);
+  background:var(--surface-2);font-family:var(--font-mono);font-size:var(--text-micro);
+  color:var(--text-muted);display:flex;gap:var(--space-4);}
+.sfoot kbd{font-family:inherit;background:var(--paper);border:1px solid var(--border-2);
+  border-radius:3px;padding:0 4px;color:var(--text-body);}
+.shint{padding:var(--space-6) var(--space-4);text-align:center;
+  font-size:var(--text-label);color:var(--text-muted);margin:0;line-height:var(--lh-body);}
+
+/* 新增／刪除專案：小卡，比照 .smodal 但不捲、寬 420 */
+.pmodal{position:relative;width:100%;max-width:420px;
+  background:var(--paper);border:1px solid var(--border);border-radius:var(--radius-lg);
+  box-shadow:var(--shadow-lg);padding:var(--space-5);
+  transform:translateY(8px);transition:transform .18s var(--ease-out);}
+.dov.open .pmodal{transform:none;}
+.pmodal h2{margin:0 0 var(--space-2);font-family:var(--font-display);
+  font-size:var(--text-body-size);font-weight:var(--fw-semibold);color:var(--text);}
+.pmodal p{margin:0 0 var(--space-4);font-size:var(--text-label);
+  color:var(--text-body);line-height:var(--lh-body);}
+.pmodal input{width:100%;box-sizing:border-box;margin-bottom:var(--space-4);
+  padding:var(--space-3);border:1px solid var(--border-2);border-radius:var(--radius-sm);
+  background:var(--paper);color:var(--text);outline:0;
+  font-family:var(--font-body);font-size:var(--text-small);}
+.pmodal input:focus{border-color:var(--accent);}
+.pmodal input::placeholder{color:var(--text-muted);}
+/* 專案名 chip：刪除確認裡把名字獨立成一顆，避免「刪除 xx 嗎」被讀成一整句 */
+.pntag{display:inline-flex;align-items:center;background:var(--accent-soft);color:var(--accent);
+  border-radius:var(--radius-sm);padding:1px var(--space-2);font-weight:var(--fw-semibold);}
+.pmft{display:flex;gap:var(--space-2);justify-content:flex-end;}
+.pbtn{border:1px solid var(--border-2);background:var(--paper);color:var(--text-body);
+  cursor:pointer;padding:var(--space-2) var(--space-4);border-radius:var(--radius-sm);
+  font-family:var(--font-body);font-size:var(--text-small);}
+.pbtn:hover{background:var(--surface-2);color:var(--text);}
+.pbtn.pri{border-color:var(--accent);background:var(--accent);color:var(--text-on-accent);}
+.pbtn.pri:hover{background:color-mix(in srgb,var(--accent),var(--text) 12%);}
+.pbtn.pri:disabled{opacity:.45;cursor:not-allowed;}
+.pbtn.dgr{border-color:var(--color-danger);background:var(--color-danger);color:var(--text-on-accent);}
+.pbtn.dgr:hover{background:color-mix(in srgb,var(--color-danger),var(--text) 12%);}
+@media (prefers-reduced-motion:reduce){.smodal,.pmodal{transition:none;transform:none;}}
+
 /* Hero 數字卡可點（drill）：卡片本身變 <button>，先把瀏覽器預設全部歸零。
    ⚠️ 主動作是「看明細」→ cursor:pointer 說的是真話（對照 drawer 標頭主動作是拖，才用 grab）。
    hover 只給極淡的 iris tint：這條卡列本身已經坐在 accent-soft 底上，
@@ -1371,6 +1757,9 @@ main{flex:1;min-height:0;overflow:hidden;
    選一顆角度後整塊換成正式的一輪問答。 */
 .chooser{display:flex;flex-direction:column;align-items:flex-start;text-align:left;gap:var(--space-3);}
 .chooser .ctx{align-self:flex-start;}
+/* 「選角度」開場的圖表標籤那一列：.ctxrow 預設是置中（對話裡的引用要置中當分段記號），
+   在這裡要靠左，跟下面的提示句與 chips 切齊。 */
+.chooser .ctxrow{align-self:flex-start;justify-content:flex-start;}
 .chooser .dig-prompt{margin:0;font-size:var(--text-small);line-height:var(--lh-body);color:var(--text-body);}
 .chooser .chips{justify-content:flex-start;}
 .chooser .chip{text-align:left;}
@@ -1381,12 +1770,28 @@ main{flex:1;min-height:0;overflow:hidden;
 
 .dft{border-top:1px solid var(--border);padding:var(--space-3) var(--space-5) var(--space-5);
   display:flex;flex-direction:column;gap:var(--space-2);position:relative;}
-.fld{display:flex;align-items:center;gap:var(--space-2);height:42px;padding:0 var(--space-2);
+/* ⚠️ height:42px → min-height:42px（2026-08-10）：輸入框改成會長高的 textarea。
+   單行時視覺完全不變（內容 32px < 42px，靠 align-items:center 置中）。 */
+.fld{display:flex;align-items:center;gap:var(--space-2);min-height:42px;padding:0 var(--space-2);
   border-radius:var(--radius-pill);border:1px solid var(--border-2);background:var(--surface-2);}
 .fld:focus-within{border-color:var(--accent);}
-.fld input{flex:1;min-width:0;border:0;background:transparent;outline:none;color:var(--text);
+/* 多行時：按鈕沉到底（聊天輸入框的通例——送出鈕跟著最後一行走，不浮在文字中間），
+   圓角從 pill 收成 md（一個 100px 高的膠囊兩端會鼓成半圓，讀起來像藥丸不像輸入框）。 */
+.fld.multi{align-items:flex-end;border-radius:var(--radius-md);padding-top:5px;padding-bottom:5px;}
+.fld input,.fld textarea{flex:1;min-width:0;border:0;background:transparent;outline:none;color:var(--text);
   font-family:var(--font-body);font-size:var(--text-small);}
-.fld input::placeholder{color:var(--text-muted);}
+.fld input::placeholder,.fld textarea::placeholder{color:var(--text-muted);}
+/* 自己長高的發問框。
+   ⚠️ 行高只有一份，就在這裡（line-height:20px）。JS 不再算第二份，只做
+      「height 歸零 → 量 scrollHeight → 取 min」。
+   ⚠️ 這裡的 --ci-max-lines 是**絕對天花板**，不是實際上限。真正的上限由 growCi()
+      再套一道「跟著抽屜高度走」的幾何限制（2026-08-10 改，見 growCi 的說明）——
+      使用者可以把抽屜拖到 MINH=240，固定行數在那個尺寸下會把輸入框自己裁掉。
+   ⚠️ overflow-y 預設 hidden：留著 auto 的話，還沒到上限就會因為捲軸出現而閃一下寬度。
+      到上限才由 JS 掛 .cap 換成 auto。 */
+.fld textarea{resize:none;line-height:20px;padding:6px 0;overflow-y:hidden;
+  max-height:calc(20px * var(--ci-max-lines,8) + 12px);}
+.fld textarea.cap{overflow-y:auto;}
 /* 送出鈕改 iris：抽屜是紙面視圖，coral 留給「這是一句可以問的話」（.chip:hover）。
    送出這個動作用不著全場最重的視覺重量——Enter 也送得出去。 */
 .fld .snd{flex:none;width:30px;height:30px;border-radius:var(--radius-pill);border:0;
@@ -1408,7 +1813,14 @@ main{flex:1;min-height:0;overflow:hidden;
 
 /* 已選的引用：送出前掛在輸入框上方，可移除。
    inline-flex ＋ 容器 align-items:flex-start → 寬度貼齊文字，不被拉滿。 */
-#attwrap{display:flex;align-items:flex-start;}
+/* 輸入框上方那一排「這一句會帶什麼條件」：引用的圖 ＋ 品牌範圍。
+   ⚠️ 兩個插槽用 display:contents，讓真正的膠囊當 flex 子項——否則 setAtt／syncBsel
+      各自寫 innerHTML 時會互相蓋掉對方（同一個容器兩個寫入者）。 */
+#attwrap{display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-2);}
+#attwrap>span{display:contents;}
+/* 兩個插槽都空的時候整條讓出來——插槽本身是 display:contents，`:empty` 驗不到，
+   要看有沒有真的膠囊。（不這樣寫的話 .dft 的 gap 會永遠多留 8px。） */
+#attwrap:not(:has(.att,.bchip)){display:none;}
 .att{display:inline-flex;align-items:center;gap:var(--space-2);max-width:100%;
   font-size:var(--text-label);font-family:var(--font-body);color:var(--text-body);
   background:var(--accent-soft);border:1px solid color-mix(in srgb,var(--accent),transparent 80%);
@@ -1483,6 +1895,26 @@ body.picking .pickhint{opacity:1;transform:translateX(-50%);}
   .heroleft{gap:var(--space-2);}
   .heroright{gap:var(--space-3);}
 }
+/* 佔比對照卡（kpi-sh）在**極矮視埠**把條區的上下留白各收一階。
+   ⚠️ 2026-08-07：三張 kpi-sh 卡（促銷業績佔比／會員回購率／新客 90 天回購率）在
+      視埠高 ≤632px 時溢出 2–7px（600→7px、620→4px、625→3px、630→2px、640 起 0），
+      症狀是卡片底部內距被吃掉、最後一列貼死在邊框上。
+   成因：`.sh-row` 是 `flex:none`，列高＝條高＝`clamp(14px,2.1vh,22px)`，
+   而那個 **14px 下限在 2026-08-06 從 10 調上來時，vh 是拿 768 當基準算的**
+   （「1366×768 的舊值 1.6vh＝12px」）——但 1366×768 那台機器加上瀏覽器介面與工作列
+   之後，真實視埠只有 **625**，2.1vh＝13.1px 會被下限接成 14px。
+   於是條區成了不可壓縮的固定高度，卡片一矮就頂出去。
+   → 不動 clamp（動它會改掉所有尺寸的條粗細，那是使用者拍板過的），
+     改收 `.sh-list` 的 margin-top／padding-top 各 8→4px ＋ gap 6→4：共讓出 10px，
+     覆蓋掉最壞情況的 7px 還有餘。
+   ⚠️ 斷點取 660 不取 632：卡高是格線與 hero 高度的函數，貼著失效點設等於沒有餘裕。
+      660–820 之間本來就沒事，收這一階在畫面上看不出來（跟 hero 那段同一個道理）。
+   ⚠️ **`allsweep` 的舊尺寸清單驗不到這個**——它把螢幕解析度直接當視埠用
+      （1366×768 測的是視埠 768），只有 MBA13 那格扣過瀏覽器高度。已改用真實視埠，
+      見 officesweep 的尺寸表。 */
+@media (max-height:660px){
+  .kpi-sh .sh-list{margin-top:var(--space-1);padding-top:var(--space-1);gap:4px;}
+}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;}
   .hero::before,.hero::after{animation:none;}}
 
@@ -1554,12 +1986,35 @@ body.picking .pickhint{opacity:1;transform:translateX(-50%);}
   <div class="sdiv"></div>
 
   <!-- 對話資產：抽屜裡的每一串關閉後都落在這裡，點回去可以原封不動繼續問。
-       清單由 JS 的 HIST 生成（renderHist），不寫死。
-       ⚠️「釘選」區已於第六次 session 移除——大欄維持不捲、不做客製化，
-       抽屜那顆〔把這個加進 Dashboard〕不接，留著只會承諾一個不存在的功能。 -->
+       三個分區全部由 JS 依 HIST／PROJ 生成（renderSide），不寫死。
+
+       ⚠️ 這裡的「釘選」**不是**第六次 session 移除的那個（2026-08-07 使用者裁示）。
+          那次移除的是「把**圖表**釘到 Dashboard」——理由是大欄維持不捲、不做客製化，
+          抽屜那顆〔把這個加進 Dashboard〕不接。**那條理由到今天仍然有效，不要復活它。**
+          這裡釘的是**對話**：把一則常回頭看的 thread 拉到清單最上面，
+          純粹是側欄自己的排序，跟大欄與抽屜完全無關，兩者不衝突。
+       ⚠️ 釘選與近期對話**沒有收合 chevron**，只有專案有：前兩者是「自動成立」的分區
+          （有釘的才出現、沒歸專案的都落到近期），收合一個自動分區只會讓人以為東西不見了。 -->
   <div class="sbody" id="sbody">
-    <span class="slbl">近期對話</span>
-    <div id="histlist"></div>
+    <div class="ssec" id="sec-pin" hidden>
+      <div class="ssech"><span class="slbl">釘選</span></div>
+      <div class="ssecbd" id="pinlist"></div>
+    </div>
+
+    <div class="ssec" id="sec-proj">
+      <div class="ssecrow">
+        <button class="ssech" id="projtog" type="button" aria-expanded="true" aria-controls="projlist">
+          <span class="slbl">專案</span>
+        </button>
+        <button class="ssecadd" id="projadd" type="button" aria-label="新增專案"></button>
+      </div>
+      <div class="ssecbd" id="projlist"></div>
+    </div>
+
+    <div class="ssec" id="sec-hist">
+      <div class="ssech"><span class="slbl">近期對話</span></div>
+      <div class="ssecbd" id="histlist"></div>
+    </div>
   </div>
 
   <div class="sft profile" id="profile">
@@ -1612,7 +2067,29 @@ body.picking .pickhint{opacity:1;transform:translateX(-50%);}
     </div>
   </div>
   <div class="heroright">
-    <span class="datchip"><span class="di" id="data-ic"></span>資料截至 2026-07-07</span>
+    <!-- ⚠️ 帳務模式放在膠囊**左邊**是刻意的：這顆是「因」、膠囊是「果」。
+         「資料截至」那個日期底層就是 MAX(日期欄) —— 換了帳務模式，取的是不同欄位，
+         那個日期本身也會變。由左而右讀成「依銷售日 → 資料截至 7/07」是一句完整的話；
+         反過來擺會先給結論再給前提。
+         ⚠️ 語意邊界見 工程師文件/業績模組_欄位與SQL需求.md 第 1.2 節：
+            「依入帳日」(DepartRegisterDate) **只對「線上 × 月／季／年」成立**，
+            線下永遠是銷售日、日／週粒度兩邊都必須是銷售日（批次登記會把好幾天的單
+            全塞進同一天，Q1 實測 07-15 暴增 1,120 筆、其餘 0 筆）。
+            這顆目前是**純前端狀態**，切了不動數字——接後端前不做假動作。 -->
+    <div class="hrtop">
+      <!-- 品牌選擇器（2026-08-10）。版位比稿三版之後使用者選 A：放在帳務模式**左邊**，
+           因為它是三顆裡最外層的範圍限定 —— 由左而右讀成
+           「EM ＋2 → 依銷售日 → 資料截至 7/07」，範圍 → 日期欄 → 資料到哪一天。
+           ⚠️ 與帳務模式同樣是**純前端狀態，切了不動任何數字**。品牌在 ERP 裡掛在哪一層
+              尚未確認（見下方 BRANDS 的註解），前端假裝重算等於編一組不存在的數字。
+           內容由 JS 生成（見 renderBsel）——品牌清單接後端後是動態的，不寫死在 HTML。 -->
+      <div class="bsel" id="bsel"></div>
+      <div class="bmode" id="bmode" role="group" aria-label="帳務模式">
+        <button type="button" data-bm="sale" aria-pressed="true">依銷售日</button>
+        <button type="button" data-bm="book" aria-pressed="false">依入帳日</button>
+      </div>
+      <span class="datchip"><span class="di" id="data-ic"></span>資料截至 2026-07-07</span>
+    </div>
     <div class="hero-gauges" id="hero-gauges"></div>
   </div>
 </header>
@@ -1626,6 +2103,51 @@ body.picking .pickhint{opacity:1;transform:translateX(-50%);}
 
 <!-- Hero 數字卡下鑽：各店櫃明細。body 層級（不在 drawer 內——它不是對話，是掃一眼就關的臨時視窗）。
      內容全由 openDrill() 依「被點的是哪一格」重繪，markup 只留殼。 -->
+<!-- ════ 側欄的三個彈窗（遮罩層重用 .dov，見該處註解）════ -->
+
+<!-- 搜尋對話。⚠️ 刻意**沒有**右上角 ✕：三條出口（Esc／點遮罩／再按 Cmd-K）都通，
+     而且頁腳那條 mono 提示把它們寫出來了——580px 的卡上再放一顆 ✕ 會跟輸入框搶第一眼。 -->
+<div class="dov top" id="sov" aria-hidden="true">
+  <div class="smodal" role="dialog" aria-modal="true" aria-label="搜尋對話">
+    <div class="sbar">
+      <input id="sq" type="text" placeholder="搜尋對話記錄……" aria-label="搜尋對話"
+             autocomplete="off" role="combobox" aria-expanded="false"
+             aria-controls="sres" aria-autocomplete="list">
+    </div>
+    <div class="sres" id="sres" role="listbox" aria-label="搜尋結果"></div>
+    <div class="sfoot">
+      <span><kbd>↑</kbd><kbd>↓</kbd> 選擇</span><span><kbd>Enter</kbd> 開啟</span><span><kbd>Esc</kbd> 關閉</span>
+    </div>
+  </div>
+</div>
+
+<!-- 新增專案 -->
+<div class="dov" id="npov" aria-hidden="true">
+  <div class="pmodal" role="dialog" aria-modal="true" aria-labelledby="np-t">
+    <h2 id="np-t">新增專案</h2>
+    <p>把相關的對話收在一起，之後從側欄直接展開。建立後把對話拖進來即可。</p>
+    <input id="np-in" type="text" placeholder="例如：百貨周年慶_2026" maxlength="40" autocomplete="off">
+    <div class="pmft">
+      <button class="pbtn" id="np-no" type="button">取消</button>
+      <button class="pbtn pri" id="np-ok" type="button" disabled>建立</button>
+    </div>
+  </div>
+</div>
+
+<!-- 刪除專案。⚠️ 文案要講清楚「對話不會跟著消失」——index.html 那版是連同 conversations
+     一起丟掉的，這裡改成把對話退回近期對話（見 delProj），文案必須對得上實際行為。 -->
+<div class="dov" id="dpov" aria-hidden="true">
+  <div class="pmodal" role="dialog" aria-modal="true" aria-labelledby="dp-t">
+    <h2 id="dp-t">刪除專案</h2>
+    <p>確定要刪除 <span class="pntag" id="dp-name"></span> 嗎？<br>
+       裡面的對話<b>不會</b>被刪除，會退回「近期對話」。</p>
+    <div class="pmft">
+      <button class="pbtn" id="dp-no" type="button">取消</button>
+      <button class="pbtn dgr" id="dp-ok" type="button">刪除專案</button>
+    </div>
+  </div>
+</div>
+
 <div class="dov" id="drillov" aria-hidden="true">
   <div class="dmodal" role="dialog" aria-modal="true" aria-labelledby="drill-t">
     <div class="dmhd"><h2 class="dmt" id="drill-t"></h2></div>
@@ -1649,10 +2171,10 @@ body.picking .pickhint{opacity:1;transform:translateX(-50%);}
   </div>
   <div class="dbd" id="db" role="log" aria-live="polite" aria-atomic="false"></div>
   <div class="dft" id="dft">
-    <div id="attwrap"></div>
-    <div class="fld">
+    <div id="attwrap"><span id="attslot"></span><span id="brslot"></span></div>
+    <div class="fld" id="cfld">
       <button class="plus" id="cplus" type="button" aria-label="引用圖表" aria-haspopup="menu" aria-expanded="false"></button>
-      <input id="ci" placeholder="什麼都可以問……" aria-label="發問">
+      <textarea id="ci" rows="1" placeholder="什麼都可以問……" aria-label="發問"></textarea>
       <button class="snd" id="cs" type="button" aria-label="送出"></button>
     </div>
   </div>
@@ -1707,6 +2229,13 @@ const F = n => n.toLocaleString("en-US");
 const DV = ["var(--dv-1)","var(--dv-2)","var(--dv-3)","var(--dv-4)","var(--dv-5)"];
 /* tooltip 內容是 HTML，要塞進 data-tip 屬性 —— 不跳脫引號會把屬性提早關掉 */
 const attr = s => String(s).replace(/"/g,"&quot;");
+/* 全檔的 HTML 轉義器。任何**使用者或後端給的字串**進 innerHTML 之前都要過它
+   （側欄對話標題、專案名、品牌名…）。`attr` 只擋引號，是給屬性值用的，兩者不同。
+   ⚠️ 2026-08-10 從側欄那一段搬上來：品牌選擇器（renderBsel）在檔案前段就要用它，
+      而它原本宣告在 7800 多行的 `const` —— 同一個 <script> 區塊裡等於 TDZ，載入即爆。
+      這種通用小工具要放在所有使用者之前。 */
+const escH = s => String(s).replace(/[&<>"]/g,
+  c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 
 /* ---- Lucide line icons（DS 規則 8：不用 emoji 當功能 icon） ---- */
 const P = {
@@ -1722,6 +2251,11 @@ const P = {
   stop:'<rect width="14" height="14" x="5" y="5" rx="2"/>',
   arrowr:'<path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>',
   msg:'<path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/><path d="M12 8v4"/><path d="M10 10h4"/>',
+  /* ⚠️ `msg` 是 message-circle-**plus**（帶 ＋），那是「新對話」的動作圖。
+     歷史清單的每一列**不能用它**——列是「一則既有對話」，不是「開一則新的」，
+     每列掛一個 ＋ 會跟側欄頂端那顆〔新對話〕變成同一顆圖（2026-08-07 使用者回報
+     「icon 看起來很混亂」的主因）。列用這顆沒有 ＋ 的。 */
+  msgC:'<path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/>',
   find:'<circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>',
   plus:'<path d="M5 12h14"/><path d="M12 5v14"/>',
   minus:'<path d="M5 12h14"/>',
@@ -1743,6 +2277,10 @@ const P = {
   msgSq:'<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M12 7v4"/><path d="M12 15h.01"/>',
   logout:'<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/>',
   chev:'<path d="m6 9 6 6 6-6"/>',
+  /* 品牌標籤（lucide tag）：抽屜裡「這一句是在哪些品牌範圍下問的」用這顆。
+     ⚠️ 不重用 package（庫存分頁）／users（CRM 分頁）—— 分頁 icon 是「模組」的記號，
+        拿去當「篩選條件」會讓同一顆圖在畫面上代表兩件事。 */
+  tag:'<path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"/><circle cx="7.5" cy="7.5" r=".9" fill="currentColor" stroke="none"/>',
   /* 快捷發問列的左右捲動鈕（lucide chevron-left／right） */
   chevL:'<path d="m15 18-6-6 6-6"/>',
   chevR:'<path d="m9 18 6-6-6-6"/>',
@@ -1753,7 +2291,17 @@ const P = {
   clock:'<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
   refresh:'<path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/><path d="M3 21v-5h5"/>',
   info:'<circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>',
-  db:'<ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14a9 3 0 0 0 18 0V5"/><path d="M3 12a9 3 0 0 0 18 0"/>'
+  db:'<ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14a9 3 0 0 0 18 0V5"/><path d="M3 12a9 3 0 0 0 18 0"/>',
+  /* 側欄的對話管理（Lucide line，自 index.html 的 LUCIDE_* 常數移植）：
+     pin 釘選 · folder／folderOpen 專案 · more ⋯ · pencil 重新命名 · trash 刪除。
+     ⚠️「移出專案」沿用上面的 `logout` —— Lucide 的 log-out 與 index.html 那顆
+        LUCIDE_MOVE_OUT 是同一組路徑（框＋往外的箭頭），不重複收一份幾乎一樣的圖。 */
+  pin:'<path d="M12 17v5"/><path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"/>',
+  folder:'<path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/><path d="M2 10h20"/>',
+  folderOpen:'<path d="m6 14 1.5-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.54 6a2 2 0 0 1-1.95 1.5H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H18a2 2 0 0 1 2 2v2"/>',
+  more:'<circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/>',
+  pencil:'<path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/><path d="m15 5 4 4"/>',
+  trash:'<path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/>'
 };
 const ic = (n, cls="ic") =>
   `<svg class="${cls}" viewBox="0 0 24 24" aria-hidden="true">${P[n]}</svg>`;
@@ -1773,6 +2321,244 @@ const USER = "王老闆";
 document.getElementById("pname").textContent = USER;
 
 document.getElementById("data-ic").innerHTML = ic("db","ic sm");
+
+/* 帳務模式：依銷售日（SDate）／依入帳日（DepartRegisterDate）。
+   ⚠️ 目前**只切狀態、不動任何數字**——換欄位是後端的事，前端假裝重算等於編一組
+      不存在的數字。`BMODE` 與 documentElement 上的 data-bm 是留給接後端時的掛勾。
+   ⚠️ 語意邊界（工程師文件/業績模組_欄位與SQL需求.md 第 1.2 節，該文件自稱
+      「全文件最容易寫錯的一條」）：
+        · 線下（百貨專櫃）**永遠**是 SDate，這顆管不到它
+        · 線上只有 月／季／年 窗口才用 DepartRegisterDate
+        · 日／週 粒度兩邊都必須 SDate —— 批次登記會把好幾天的單全塞進同一個登記日
+          （Q1 實測：07-15 暴增 1,120 筆／174 萬，其餘日期 0 筆）
+      → 接後端時這顆**不能是無條件的全域開關**，日／週粒度下要停用或標註，
+        否則畫面會出現那種「一天暴增、其餘歸零」的假訊號。 */
+let BMODE = "sale";
+document.getElementById("bmode").addEventListener("click", e => {
+  const b = e.target.closest("button[data-bm]"); if(!b || b.dataset.bm === BMODE) return;
+  BMODE = b.dataset.bm;
+  document.querySelectorAll("#bmode button").forEach(x =>
+    x.setAttribute("aria-pressed", x.dataset.bm === BMODE ? "true" : "false"));
+  document.documentElement.dataset.bm = BMODE;
+});
+
+/* ═══ 品牌篩選（2026-08-10）══════════════════════════════════════════════
+   使用者的客戶旗下多品牌，需要一顆能篩品牌的下拉。裁示：**全域**（四模組全套）、
+   **多選 ＋「全部品牌」預設**、篩不動的卡片標出來（mono 小標，見 .nbrand）。
+
+   ⚠️ **只切狀態、不動任何數字**（同 BMODE）。`BSEL` 與 documentElement 上的
+      data-brands 是接後端的掛勾。
+
+   ⚠️ **品牌在 ERP 裡掛在哪一層目前是未知的**（2026-08-10 使用者要去問客戶）。
+      工程師文件/業績模組_欄位與SQL需求.md 的四表 JOIN 鏈
+      （SaleIndex → EosConfig → PosConfig → Warehouse）**沒有任何一欄是品牌**，
+      整份文件 0 次出現這個詞。畫面上的品牌代號目前只活在檔期名稱與 ETL 斷點知識卡的文案裡。
+      兩種可能各自的後果完全相反，所以 BRAND_BLIND（下方）現在是**暫定的**：
+        · 品牌掛在**店櫃**（p.Name 那一層）→ 線下可篩；**線上篩不動**
+          （線上只有 EC08／EC09 兩個店碼，一個店碼賣所有品牌）→ 該標的是「通路」不是「層」。
+        · 品牌掛在**商品**（PIS_Goods）→ 線上線下都可篩，但品牌只存在**明細層**，
+          而 Hero 三格／達成率／通路 YoY 全走**表頭層** SUM(si.MustPayTotal)
+          （文件 1.3：JOIN 明細後不可再 SUM 表頭，會 fan-out）→ 那批全部篩不動。
+      **答案回來之後只要改 BRAND_BLIND 這一個常數。**
+
+   品牌名取自現有畫面（EM／SM2／Techichi／YCVC 出現在檔期命名與南西新光那張知識卡），
+   後兩個與櫃數都是示意值。 */
+/* ⚠️ **功能開關（2026-08-10）：品牌篩選預設關閉。**
+   老闆裁示多品牌延後處理，但週四會議還要拿出來討論 → 程式碼整套留著，只是不顯示。
+     · 平常開發：直接開 dashboard.html，畫面完全回到沒有品牌功能的樣子。
+     · 會議示範：開 `dashboard.html?brand=1`（`?brand=0` 可強制關）。
+   ⚠️ 關的方式刻意是「**渲染時早退**」而不是把程式碼註解掉或搬走：
+      註解掉的東西會在後續改大欄圖表時慢慢腐爛（改了 khHTML／renderTurn 的簽名沒人
+      跟著改註解裡的那份），等要示範時才發現接不回去。留在活的路徑上、只是不輸出，
+      它就會跟著其他修改一起被維護，而且每次 allsweep／功能測試都還是掃得到。
+   影響到的四個出口全部集中在下面：bselEl.hidden（Hero 那顆下拉）、nbTag（卡片小標）、
+   bchipHTML（抽屜標籤）、BSEL 強制清空（body.bfilt 永遠不會亮）。 */
+const BRAND_ON = (() => {
+  const q = new URLSearchParams(location.search).get("brand");
+  return q === null ? false : q !== "0";
+})();
+
+const BRANDS = [
+  {id:"EM",  name:"EM",       n:"22 櫃"},
+  {id:"SM2", name:"SM2",      n:"18 櫃"},
+  {id:"TC",  name:"Techichi", n:"11 櫃"},
+  {id:"YC",  name:"YCVC",     n:"7 櫃"},
+  {id:"X1",  name:"品牌 E",   n:"5 櫃"},
+  {id:"X2",  name:"品牌 F",   n:"3 櫃"}
+];
+let BSEL = [];                       /* 空陣列 ＝ 全部品牌（不另設一個 "ALL" 狀態） */
+const bselEl = document.getElementById("bsel");
+
+/* ── 哪些元件「篩不動」（＝掛 mono 小標的名單）────────────────────────────
+   ⚠️ **這份名單是暫定的，前提尚未成立。** 它假設「品牌掛在商品（PIS_Goods）上」，
+      於是品牌只存在明細層，而下面這些全部走表頭層 SUM(si.MustPayTotal)
+      —— 依 工程師文件/業績模組_欄位與SQL需求.md 第 1.3 節的表頭層／明細層分野，
+      該節同時寫明「JOIN 明細後不可再 SUM 表頭，會被明細行數放大（fan-out）」。
+   ⚠️ **若客戶回答「品牌掛在店櫃上」，這份名單整個作廢**：那時表頭層全部可篩（店櫃自帶
+      品牌），篩不動的改成**線上通路**（EC08／EC09 兩個店碼賣所有品牌）。
+      → 兩種答案的名單沒有交集，所以現在不猜第二套，只留這一套並標明前提。
+   ⚠️ 只列 1.3 節**點名過**的元件。「百貨抽成成本」是第十九節把熱力圖換掉後新增的，
+      文件寫成時還不存在、沒有依據，因此不列——寧可漏標也不要標一個沒來源的。
+   ⚠️ 庫存／促銷／CRM 三個模組**完全沒有對應文件**（工程師文件目前只有業績模組），
+      整批留白。等品牌來源確定 ＋ 那三個模組的欄位文件出來再補。 */
+const BRAND_BLIND = new Set([
+  "本月業績", "本月交易筆數", "平均客單價",          /* 業績 Hero 三格 */
+  "目標達成率", "各店櫃達成率", "各通路業績 YoY",
+  "業績走勢", "交易筆數 vs 客單價"
+]);
+/* ⚠️ **示意模式（2026-08-10 使用者裁示）：小標只展示一枚。**
+   BRAND_BLIND 那份名單是「口徑判斷」的紀錄，不動；這裡只是把**渲染**收斂到一個樣本，
+   避免在前提還沒成立時就讓八枚警示鋪滿畫面（那會讓一份暫定的猜測看起來像已定案）。
+   → 品牌來源確定後，把 NB_DEMO 改成 null 就恢復整組，名單本身不必重建。 */
+const NB_DEMO = "本月業績";
+/* 小標本體。⚠️ 永遠寫進 DOM，顯不顯示由 body.bfilt 決定（見 .nbrand 的 CSS 註解）
+   —— 沒篩品牌時「此數字不分品牌」是廢話，篩下去的那一刻才是它有用的時候。
+   ⚠️ 說明改走 data-tip（見 showTip），**不用原生 title**：使用者回報「看不到」，
+      原因是 title 要停留約一秒才浮出，而這顆小標只有 10px 高、又長在 .hstat-drill
+      這顆按鈕裡面，游標很難剛好壓住不動那麼久。順便解掉 title 只有滑鼠拿得到的問題。 */
+const nbTag = name => BRAND_ON && BRAND_BLIND.has(name) && (!NB_DEMO || name === NB_DEMO)
+  ? `<span class="nbrand" data-htip="nb">全品牌</span>`
+  : "";
+
+/* 品牌明細（懸浮內容）：名稱 ＋ 櫃數，一行一個。
+   ⚠️ 讀的是元素上的 data-bids（那一輪**送出當下**的快照），不是現在的 BSEL——
+      否則翻歷史時每一則都會顯示現在這組。 */
+function brandTip(ids, title){
+  const list = String(ids || "").split(",").filter(Boolean)
+    .map(id => BRANDS.find(b => b.id === id)).filter(Boolean);
+  return `<b>${escH(title || "品牌範圍")}</b><br>` + list.map(b =>
+    `${escH(b.name)}<span class="tipc">${escH(b.n)}</span>`).join("<br>");
+}
+
+/* ── 抽屜裡的品牌標籤 ───────────────────────────────────────────────────
+   「EM、SM2 ＋2」：列前兩個名字 ＋ 其餘數量。
+   ⚠️ 前兩個用名字、第三個以後才收成 ＋N —— 抽屜只有 420 寬，全列會撐爆；
+      但只寫「4 個品牌」又等於什麼都沒說（使用者要知道**是哪些**）。明細交給懸浮。
+   ⚠️ aria-label 把完整清單念出來，不倚賴懸浮：tooltip 是視覺的補充，不是唯一管道。 */
+function bchipHTML(ids, cls, title){
+  if(!BRAND_ON || !ids || !ids.length) return "";
+  const ns = ids.map(id => (BRANDS.find(b => b.id === id) || {}).name).filter(Boolean);
+  if(!ns.length) return "";
+  const more = ns.length > 2 ? `<span class="bp num">＋${ns.length - 2}</span>` : "";
+  return `<span class="bchip ${cls}" tabindex="0" data-htip="brands" data-bids="${escH(ids.join(","))}"`
+    + ` data-tipt="${escH(title)}" aria-label="${escH(title)}：${escH(ns.join("、"))}">`
+    + `${ic("tag","ic sm")}<span class="bn">${escH(ns.slice(0,2).join("、"))}</span>${more}</span>`;
+}
+
+/* 關著時的標籤：全部 → 單一品牌名 → 首選 ＋N。
+   ⚠️ 刻意不寫「2 個品牌」——使用者要知道的是**是哪些**，數量本身不解決任何問題。 */
+function bselLabel(){
+  if(!BSEL.length) return "全部";
+  const first = BRANDS.find(b => b.id === BSEL[0]).name;
+  return BSEL.length === 1 ? first : first + " ＋" + (BSEL.length - 1);
+}
+function renderBsel(){
+  bselEl.innerHTML =
+    `<button class="bselb" id="bselb" type="button" aria-haspopup="true" aria-expanded="false">
+       <span class="bl">品牌</span><span class="bv">${bselLabel()}</span>${ic("chev")}</button>
+     <div class="bmenu" id="bmenu" role="menu" aria-label="品牌篩選">
+       <button class="bmi" type="button" role="menuitemcheckbox" data-all aria-checked="true">
+         <span class="bx">${ic("check")}</span><span class="bn">全部品牌</span>
+         <span class="bc">${BRANDS.length}</span></button>
+       <hr class="bmdiv">
+       ${BRANDS.map(b => `<button class="bmi" type="button" role="menuitemcheckbox"
+           data-b="${b.id}" aria-checked="false"><span class="bx">${ic("check")}</span>
+           <span class="bn">${escH(b.name)}</span><span class="bc">${b.n}</span></button>`).join("")}
+     </div>`;
+  syncBsel();
+}
+/* 一處同步全部外顯狀態：標籤／作用中底色／勾選記號／body.bfilt（＝小標的開關）／後端掛勾。 */
+function syncBsel(){
+  /* 功能關閉時：整顆下拉退出版面與 tab 順序，並把選擇強制清空——
+     ⚠️ 清空是必要的，不是保險。BSEL 只要非空，body.bfilt 就會亮，卡片標題上會冒出
+        沒有下拉可以解釋它的「全品牌」小標。 */
+  bselEl.hidden = !BRAND_ON;
+  if(!BRAND_ON && BSEL.length) BSEL = [];
+  bselEl.querySelector(".bv").textContent = bselLabel();
+  bselEl.classList.toggle("act", BSEL.length > 0);
+  document.body.classList.toggle("bfilt", BSEL.length > 0);
+  bselEl.querySelector("[data-all]").setAttribute("aria-checked", BSEL.length ? "false" : "true");
+  bselEl.querySelectorAll("[data-b]").forEach(el =>
+    el.setAttribute("aria-checked", BSEL.includes(el.dataset.b) ? "true" : "false"));
+  document.documentElement.dataset.brands = BSEL.join(",");   /* 接後端的掛勾 */
+  /* 抽屜裡「還沒送出」的那顆品牌標籤——跟著全域篩選走，隨改隨變。
+     ⚠️ 版位是**圖表標籤旁**（「選角度」開場那一列），2026-08-10 使用者指定。
+        原本做在輸入框上方（比稿頁的 C 版），已改掉；#brslot 這個插槽留著沒拆，
+        要改回去只要把下面這行換成 brslot.innerHTML = …。
+     ⚠️ 只動還沒送出的那顆；已經送出的那些是各自的快照，不能被改寫（見 renderTurn 的 br）。 */
+  /* querySelectorAll：抽屜開著時再點一次別張圖的〔深入分析〕會**再接一個** chooser
+     到同一串尾端（見 openDig 的 append），所以可能同時有不只一個還沒選角度的開場。 */
+  document.querySelectorAll(".chooser .ctxrow").forEach(row => {
+    const old = row.querySelector(".bchip");
+    if(old) old.remove();
+    row.insertAdjacentHTML("beforeend", bchipHTML(BSEL, "pend", "目前的品牌範圍"));
+  });
+}
+const bselOpen  = () => bselEl.classList.contains("open");
+/* 選單是 position:fixed（見 .bmenu 的 CSS 註解：`.hero` 的 overflow:hidden 會裁掉
+   absolute 的浮層），所以每次開啟都要現算視窗座標。
+   ⚠️ **現算不快取**：使用者可以拖動視窗大小、也可以切分頁（hrtop 內容不變，但保險）。
+   ⚠️ 靠右緣對齊按鈕：用 right 而不是 left，選單比按鈕寬時才不會往視窗外長。 */
+function placeBmenu(){
+  const b = bselEl.querySelector("#bselb").getBoundingClientRect();
+  const m = bselEl.querySelector("#bmenu");
+  m.style.top   = (b.bottom + 6) + "px";
+  m.style.right = (innerWidth - b.right) + "px";
+}
+function openBsel(i){
+  placeBmenu();                /* ⚠️ 先定位再顯示，否則會看到選單從舊位置飛過來 */
+  bselEl.classList.add("open");
+  bselEl.querySelector("#bselb").setAttribute("aria-expanded","true");
+  if(i != null) focusBmi(i);
+}
+/* 視窗變動時選單會留在舊座標（fixed 不跟著重排）→ 直接關掉。
+   重新定位也可以，但改視窗大小的當下使用者的注意力不在這顆選單上，收起來更乾淨。 */
+addEventListener("resize", () => { if(bselOpen()) closeBsel(); });
+/* 焦點交還與 .pmenu 同一條規則：只在焦點**確實還在選單裡**時才搶回按鈕。 */
+function closeBsel(){
+  const menu = bselEl.querySelector("#bmenu"), btn = bselEl.querySelector("#bselb");
+  const inside = menu.contains(document.activeElement);
+  bselEl.classList.remove("open");
+  btn.setAttribute("aria-expanded","false");
+  if(inside) btn.focus();
+}
+const bmiAll = () => [...bselEl.querySelectorAll(".bmi")];
+const focusBmi = i => { const it = bmiAll(); if(it.length) it[(i + it.length) % it.length].focus(); };
+const moveBmi = d => {
+  const it = bmiAll(), cur = it.indexOf(document.activeElement);
+  focusBmi((cur < 0 ? (d > 0 ? -1 : 0) : cur) + d);
+};
+/* ⚠️ 宣告了 role=menu／menuitemcheckbox 就要實作它承諾的行為（↑↓／Home／End／
+      單一 tab stop）。這是搜尋的 syncSel 與帳號選單立過兩次的標準，新元件不能又漏一次。 */
+bselEl.addEventListener("click", e => {
+  const btn = e.target.closest("#bselb");
+  if(btn){ e.stopPropagation(); bselOpen() ? closeBsel() : openBsel(); return; }
+  const it = e.target.closest(".bmi"); if(!it) return;
+  if(it.dataset.all !== undefined) BSEL = [];
+  else {
+    const id = it.dataset.b;
+    BSEL = BSEL.includes(id) ? BSEL.filter(x => x !== id) : [...BSEL, id];
+    /* 全部勾起來 ＝ 全部品牌。不留兩種內容相同、標籤不同的狀態。 */
+    if(BSEL.length === BRANDS.length) BSEL = [];
+  }
+  syncBsel();      /* ⚠️ 不呼叫 draw()：小標的顯隱由 body.bfilt 這個 class 決定，
+                      數字一個都沒變，重繪只會讓所有 ECharts 白閃一下。 */
+});
+bselEl.addEventListener("keydown", e => {
+  if(e.target.closest("#bselb")){
+    if(e.key === "ArrowDown"){ e.preventDefault(); openBsel(0); }
+    else if(e.key === "ArrowUp"){ e.preventDefault(); openBsel(-1); }
+    return;
+  }
+  if(!e.target.closest(".bmi")) return;
+  if(e.key === "ArrowDown"){ e.preventDefault(); moveBmi(1); }
+  else if(e.key === "ArrowUp"){ e.preventDefault(); moveBmi(-1); }
+  else if(e.key === "Home"){ e.preventDefault(); focusBmi(0); }
+  else if(e.key === "End"){ e.preventDefault(); focusBmi(-1); }
+  else if(e.key === "Tab"){ e.preventDefault(); closeBsel(); }
+});
+document.addEventListener("click", e => { if(!bselEl.contains(e.target)) closeBsel(); });
+renderBsel();
 
 /* 分頁 icon 放在文字左側（不用顏色點點） */
 const TAB_IC = {業績:"trendingUp", 庫存:"package", 促銷:"percent", CRM:"users"};
@@ -1795,12 +2581,50 @@ document.querySelectorAll(".pmi").forEach(b => {
 document.querySelector("#profile-btn .chev").innerHTML = ic("chev","ic sm");
 
 const profile = document.getElementById("profile"),
-      profileBtn = document.getElementById("profile-btn");
-const closeProfile = () => { profile.classList.remove("open"); profileBtn.setAttribute("aria-expanded","false"); };
-profileBtn.addEventListener("click", e => {
-  e.stopPropagation();
-  const open = profile.classList.toggle("open");
-  profileBtn.setAttribute("aria-expanded", open ? "true" : "false");
+      profileBtn = document.getElementById("profile-btn"),
+      pmenu = document.getElementById("pmenu");
+const pmOpen = () => profile.classList.contains("open");
+
+/* 帳號選單的鍵盤行為（2026-08-10，第三十三節缺口 5）。
+   在此之前 #pmenu 標了 role=menu／menuitem 卻只有 toggle class ——
+   **宣告了 role 就要實作它承諾的行為**，這是搜尋那邊 syncSel 已經立過的標準
+   （見該函式註解），pmenu 是同一標準下最後一個沒補的。 */
+const pmItems = () => [...pmenu.querySelectorAll(".pmi")];
+const focusPmi = i => { const it = pmItems(); if(it.length) it[(i + it.length) % it.length].focus(); };
+/* 目前不在任何一項上（例如剛用滑鼠開的）就從頭／尾接：↓ 落第一項、↑ 落最後一項。 */
+const movePmi = d => {
+  const it = pmItems(), cur = it.indexOf(document.activeElement);
+  focusPmi((cur < 0 ? (d > 0 ? -1 : 0) : cur) + d);
+};
+function openProfile(i){
+  profile.classList.add("open");
+  profileBtn.setAttribute("aria-expanded","true");
+  if(i != null) focusPmi(i);
+}
+/* ⚠️ 焦點只在**確實還留在選單裡**時才交還給按鈕。點側欄別處關掉時焦點本來就不在這裡，
+      無條件 focus() 會把游標從使用者剛點的地方硬拉回來。（同 closeDrill 的 _drillFrom 判斷。） */
+function closeProfile(){
+  const inside = pmenu.contains(document.activeElement);
+  profile.classList.remove("open");
+  profileBtn.setAttribute("aria-expanded","false");
+  if(inside) profileBtn.focus();
+}
+profileBtn.addEventListener("click", e => { e.stopPropagation(); pmOpen() ? closeProfile() : openProfile(); });
+/* 按鈕上的 ↓／↑ ＝ 開啟並落在第一／最後一項。
+   ⚠️ Enter／Space 刻意不攔：原生 button 自己會派 click，攔了會開兩次（＝開完立刻關）。 */
+profileBtn.addEventListener("keydown", e => {
+  if(e.key === "ArrowDown"){ e.preventDefault(); openProfile(0); }
+  else if(e.key === "ArrowUp"){ e.preventDefault(); openProfile(-1); }
+});
+/* ⚠️ menu 不吃 Tab：ARIA 的 menu 是**單一 tab stop**，項目之間只走方向鍵。
+      這裡讓 Tab 收掉選單並把焦點還給按鈕（preventDefault，所以底下側欄的
+      focus trap 會看到 defaultPrevented 而不插手，兩個處理器不會搶同一顆 Tab）。 */
+pmenu.addEventListener("keydown", e => {
+  if(e.key === "ArrowDown"){ e.preventDefault(); movePmi(1); }
+  else if(e.key === "ArrowUp"){ e.preventDefault(); movePmi(-1); }
+  else if(e.key === "Home"){ e.preventDefault(); focusPmi(0); }
+  else if(e.key === "End"){ e.preventDefault(); focusPmi(-1); }
+  else if(e.key === "Tab"){ e.preventDefault(); closeProfile(); }
 });
 document.addEventListener("click", e => { if(!profile.contains(e.target)) closeProfile(); });
 document.getElementById("newchat").innerHTML = ic("msg") + "<span>新對話</span>";
@@ -3844,13 +4668,62 @@ const MEMBER_ACT_DRILL = {
    圖表
    ============================================================ */
 const tip = document.getElementById("tip");
+/* 跟著游標走的 tooltip —— 給圖表資料點用。滑過折線時泡泡要黏著游標，
+   因為「目標」是曲線上一個連續移動的位置，不是一個固定的方框。 */
 function showTip(e, html){
-  tip.innerHTML = html; tip.classList.add("on");
+  tip.innerHTML = html; tip.classList.add("on"); tip.classList.remove("anchored");
+  tip.style.removeProperty("--arrow-y");
   const r = tip.getBoundingClientRect();
   tip.style.left = Math.min(e.clientX + 14, innerWidth - r.width - 10) + "px";
   tip.style.top  = Math.max(e.clientY - r.height - 12, 8) + "px";
 }
-const hideTip = () => tip.classList.remove("on");
+/* 錨在元件**右側、垂直置中**的 tooltip —— 給收合軌那三顆 icon 用。
+   ⚠️ 這是新的一支，不是改 showTip：兩種目標的性質不同，共用一套定位一定有一邊是錯的。
+      收合軌的 icon 是固定方框，泡泡跟著游標在 icon 內漂沒有意義；而且 showTip 是
+      **往上偏**（clientY − height − 12），在軌頂端那幾顆就會去撞 hero 標題
+      （2026-08-07 使用者截圖回報的就是這個，不只是 z-index）。
+   ⚠️ 箭頭的 y 由 JS 算（--arrow-y ＝ 元件中心相對泡泡頂端），不寫死 50%：
+      泡泡碰到視窗上下緣會被 clamp，寫死 50% 的話箭頭就不指著元件了。 */
+function showTipAt(el, html, wrap){
+  tip.innerHTML = html; tip.classList.add("on","anchored"); tip.classList.toggle("wrap", !!wrap);
+  const r = el.getBoundingClientRect(), t = tip.getBoundingClientRect();
+  let x = r.right + 10;
+  /* 右邊放不下就翻到左邊（收合軌碰不到，但這支之後可能掛到別處） */
+  const flip = x + t.width > innerWidth - 8;
+  if(flip) x = Math.max(8, r.left - t.width - 10);
+  const y = Math.min(Math.max(r.top + (r.height - t.height) / 2, 8), innerHeight - t.height - 8);
+  tip.style.left = x + "px"; tip.style.top = y + "px";
+  tip.classList.toggle("flip", flip);
+  tip.style.setProperty("--arrow-y", (r.top + r.height / 2 - y) + "px");
+}
+const hideTip = () => tip.classList.remove("on","anchored","flip","wrap");
+
+/* ── 說明型懸浮：data-htip ─────────────────────────────────────────────────
+   跟資料點的 data-tip **刻意分成兩個屬性**：
+     · data-tip  ＝ 屬性值本身就是 HTML，掛在 chEl 上、跟著游標走（資料點）。
+     · data-htip ＝ 屬性值是一個 key，內容由 HTIPS 現算，錨在元件旁（說明）。
+   合成一個的話，「值是 HTML 還是 key」得靠猜，而且說明型的目標散在 hero／抽屜／側欄，
+   不在 chEl 底下，本來就走不了那條委派。
+   ⚠️ 這一支取代了原生 title。使用者回報 title「看不到」——它要停留約一秒才浮出，
+      而「全品牌」小標只有 10px 高、又長在 <button class="hstat-drill"> 裡面，
+      游標很難剛好壓住不動那麼久；title 也只有滑鼠拿得到。 */
+const HTIPS = {
+  nb:     () => "此指標取自交易表頭層，目前口徑<b>無法分品牌</b>，數字為全品牌合計。",
+  brands: el => brandTip(el.dataset.bids, el.dataset.tipt)
+};
+const htipOf = t => t && t.closest ? t.closest("[data-htip]") : null;
+const showHtip = el => { const f = HTIPS[el.dataset.htip]; if(f) showTipAt(el, f(el), true); };
+/* pointerover／out（不是 mousemove）：只在「進出某個元素」時觸發，不必每格像素跑一次。 */
+document.addEventListener("pointerover", e => { const el = htipOf(e.target); if(el) showHtip(el); });
+document.addEventListener("pointerout",  e => { if(htipOf(e.target)) hideTip(); });
+/* 鍵盤：「全品牌」小標不能自己帶 tabindex（它長在 <button> 裡，巢狀可聚焦元素是無效
+   標記），所以聚焦到**含有小標的那顆按鈕**時就浮出。抽屜的 .bchip 不在按鈕裡，
+   自己帶 tabindex=0，走 closest 那一路。 */
+const htipIn = t => htipOf(t) || (t.querySelector ? t.querySelector("[data-htip]") : null);
+document.addEventListener("focusin",  e => { const el = htipIn(e.target); if(el) showHtip(el); });
+document.addEventListener("focusout", e => { if(htipIn(e.target)) hideTip(); });
+/* 座標是當下算的，捲動或改視窗大小之後就不對了——不追著補位，直接收掉。 */
+addEventListener("scroll", hideTip, true);
 
 /* ── 商品主檔懸浮欄位（2026-08-05，使用者指定的五個欄位）────────────────────────
    {n:商品名稱, code:商品代號, style:款式代號, spec:規格名稱, price:定價}
@@ -5268,6 +6141,7 @@ function gaugeRing(g){
 function khHTML(k){
   return `<div class="kh">
       <span class="k">${k.k}</span>
+      ${nbTag(k.k)}
       ${k.sent?`<span class="warnicon" title="${k.sent}">${ic("alert","ic sm")}</span>`:""}
       ${k.t?`<span class="tag ${k.t[0]}">${k.t[1]}</span>`:""}
     </div>`;
@@ -5586,7 +6460,7 @@ function heroStat(s){
     : ` class="hstat"`;
   const chev = s.drill ? ic("chevR","ic dchev") : "";
   return `<${tag}${attr}>
-    <span class="hl">${s.label}${s.per?`<span class="hper num">（${s.per}）</span>`:""}${s.partial?`<span class="hpart">進行中</span>`:""}${chev}</span>
+    <span class="hl">${s.label}${s.per?`<span class="hper num">（${s.per}）</span>`:""}${s.partial?`<span class="hpart">進行中</span>`:""}${nbTag(s.label)}${chev}</span>
     <div class="hrow"><span class="hv num">${s.v}${s.u?`<small>${s.u}</small>`:""}</span>${badge}</div>
     ${s.scope?`<span class="hscope num">${s.scope}${s.vper?`（${s.vper}）`:""}</span>`:""}
   </${tag}>`;
@@ -5742,7 +6616,12 @@ chEl.addEventListener("mousemove", e => {
   /* 挑圖模式下整張面板是一個可點的目標，資料點 tooltip 只會干擾 */
   if(document.body.classList.contains("picking")){ hideTip(); return; }
   const t = e.target.closest("[data-tip]");
-  t ? showTip(e, t.dataset.tip) : hideTip();
+  /* ⚠️ 不在 [data-tip] 裡就 hideTip()，**但 [data-htip] 要放過**。這條委派掛在 chEl 上，
+     而說明型小標（.nbrand）會出現在 chEl 底下的 KPI 卡裡：不放過的話 pointerover 剛
+     showTipAt 完，游標一動 mousemove 立刻把它關掉。這正是本檔案上面那條註解記過的坑
+     （逐列綁 listener 那次），同一個成因、換一個受害者。 */
+  if(t) showTip(e, t.dataset.tip);
+  else if(!e.target.closest("[data-htip]")) hideTip();
 });
 chEl.addEventListener("mouseleave", hideTip);
 chEl.addEventListener("click", e => {
@@ -5942,6 +6821,7 @@ function draw(){
     return `<div class="kpi${k.sent ? " sent" : ""}" style="--cs:${k.cs||3};--rs:${k.rs||1}">
       <div class="kh">
         <span class="k">${k.k}</span>
+        ${nbTag(k.k)}
         ${k.sent ? `<span class="warnicon" title="${k.sent}">${ic("alert","ic sm")}</span>` : ""}
         <span class="tag ${k.t[0]}">${k.t[1]}</span>
       </div>
@@ -5975,7 +6855,7 @@ function draw(){
         style="--cs:${c.cs || 4};--rs:${c.rs || 1}">
       <div class="phd">
         <div>
-          <div class="ph-t"><h3>${c.h}</h3>${c.warn ? `<button class="warnbtn" type="button" aria-label="資料哨兵"
+          <div class="ph-t"><h3>${c.h}</h3>${nbTag(c.h)}${c.warn ? `<button class="warnbtn" type="button" aria-label="資料哨兵"
             title="${attr(stripTags(c.warn))}">${ic("alert","ic sm")}</button>` : ""}</div>
           <p class="sub">${c.s}</p>
           ${c.big ? `<div class="pbig"><span class="v num">${c.big[0]}<small>${c.big[1]||""}</small></span
@@ -6148,9 +7028,28 @@ const GENERIC = {
    引用（.ctx）是「某一則訊息」的附件，不是整串的屬性——對話中期可以用 ＋
    再引用別張圖，所以它跟著問句走，不會升到標頭去。
    ============================================================ */
-const HIST = [];          /* 過去的 threads（新的在前） */
-let TH = null;            /* 當前 thread：{title, turns:[{q,ctx}]} */
+/* thread 的形狀（2026-08-07 為了側欄的釘選／專案／時間分組擴充）：
+     {id, title, ts, pin, pid, turns:[{q,ctx,typed}]}
+   · id  — 給 DOM 的 data-id 用（拖放與 ⋯ 選單都要能從事件回頭找到物件）
+   · ts  — **最後一次動過**的時間，不是建立時間。archive() 會更新它，
+           因為 archive 本來就把 thread unshift 回陣列最前面 ——
+           ts 若記建立時間，「陣列順序」與「時間分組」會給出兩種不同的先後，
+           清單就會出現「今天」那組裡排在後面的比「昨天」那組還舊的錯覺。
+   · pin — 釘選（側欄自己的排序，與「把圖表釘到 Dashboard」無關，見側欄 HTML 註解）
+   · pid — 所屬專案 id，null ＝ 未分類
+
+   ⚠️ 專案**不另存一份對話陣列**。index.html 那邊是 historyData ＋ projectsData
+      各存一半，於是 togglePin／deleteConv／moveOutOfProject 每一個都要分
+      「在專案裡／不在專案裡」兩條路走，還要在兩個陣列間 splice 搬運。
+      這裡改成單一真相：**所有 thread 都在 HIST，專案只是 pid 這個標籤**。
+      渲染專案 ＝ HIST.filter(t => t.pid === p.id)。搬進搬出 ＝ 改一個欄位。
+      連帶好處：刪專案時對話不會跟著消失（清掉 pid 就退回近期對話）。 */
+const HIST = [];          /* 全部 threads（新的在前） */
+const PROJ = [];          /* 專案：{id, name, open, pin, more}（more＝已展開幾則，見 renderProjects） */
+let TH = null;            /* 當前 thread */
 let ATT = null;           /* 待送出的引用：{m:模組, h:圖表名} */
+let _tid = 0;             /* thread／專案的流水號 */
+const nextId = p => `${p}${++_tid}`;
 
 const trim_ = (s,n=28) => s.length > n ? s.slice(0,n) + "…" : s;
 
@@ -6558,9 +7457,15 @@ function renderTurn(q, ctx, animate, typed, turnObj){
   if(typed) _demo[id] = classifyDemo(q);               /* demo：關鍵字模擬故障/截斷；''＝拒答 */
   _turnObj[id] = turnObj || null;                       /* 回饋落點：thread 的 turn 物件 */
   if(turnObj && turnObj.fb) _fb[id] = {...turnObj.fb};  /* 重開歷史：把上次的評價 hydrate 回來 */
+  /* 這一輪當時的品牌範圍。⚠️ 讀 turnObj 而不是現在的 BSEL——使用者隨時可以在右上角
+     改品牌再追問，舊答案是用舊範圍算的，重開歷史時也必須顯示當時那組。 */
+  const br = (turnObj && turnObj.br) || [];
+  const head = (ctx || br.length)
+    ? `<div class="ctxrow">${ctx ? ctxHTML(ctx) : ""}${bchipHTML(br,"done","此問題的品牌範圍")}</div>`
+    : "";
   db.insertAdjacentHTML("beforeend",
     `<div class="turn" data-t="${id}">
-       ${ctx ? ctxHTML(ctx) : ""}
+       ${head}
        <p class="q">${q}</p>
        <div class="pend" id="pend-${id}"></div>
      </div>`);
@@ -6572,22 +7477,28 @@ function renderTurn(q, ctx, animate, typed, turnObj){
 /* 追加一輪到當前 thread；沒有當前 thread 就先開一串。typed＝非 chip 的自由輸入。 */
 function ask(q, ctx, typed){
   if(!TH) startThread(q, ctx, typed);
-  else { const t = {q,ctx,typed}; TH.turns.push(t); renderTurn(q, ctx, true, typed, t); }
+  else { const t = {q,ctx,typed,br:BSEL.slice()}; TH.turns.push(t); renderTurn(q, ctx, true, typed, t); }
 }
-/* 開新的一串（舊的先存進歷史） */
+/* 開新的一串（舊的先存進歷史）
+   ⚠️ br 在**送出的當下**快照（BSEL.slice()，不是存參照）：BSEL 是同一個陣列物件被
+      就地改寫的，存參照的話後來改品牌會把歷史裡所有輪次一起改掉。 */
 function startThread(q, ctx, typed){
   archive();
-  TH = {title:q, turns:[{q,ctx,typed}]};
+  TH = {id:nextId("t"), title:q, ts:Date.now(), pin:false, pid:null,
+        turns:[{q,ctx,typed,br:BSEL.slice()}]};
   dt.textContent = trim_(q);
   stopAllThink(); db.innerHTML = "";
   renderTurn(q, ctx, true, typed, TH.turns[0]);
   showDrawer();
 }
-/* 把當前 thread 收進側欄歷史（同一串重開再關不會重複堆） */
+/* 把當前 thread 收進側欄歷史（同一串重開再關不會重複堆）。
+   ⚠️ ts 在這裡更新而不是建立時：見 HIST 宣告處那段——陣列順序（unshift 到最前）
+      與時間分組必須講同一個先後，否則「今天」那組會排出比「昨天」更舊的東西。 */
 function archive(){
   if(!TH || !TH.turns.length) return;
   const i = HIST.indexOf(TH); if(i > -1) HIST.splice(i,1);
-  HIST.unshift(TH); TH = null; renderHist();
+  TH.ts = Date.now();
+  HIST.unshift(TH); TH = null; renderSide();
 }
 function showDrawer(){
   /* 從「關著」變「開著」時才復位尺寸與位置——使用者拖過／拉過的版面只保留到關閉為止。
@@ -6834,7 +7745,11 @@ function openDig(m, h, angles){
   if(!append){ archive(); TH = null; dt.textContent = "深入分析"; stopAllThink(); db.innerHTML = ""; }
   const chooser = document.createElement("div");
   chooser.className = "chooser";
-  chooser.innerHTML = `${ctxHTML({m, h})}
+  /* 品牌標籤跟圖表標籤並排（2026-08-10 使用者指定的版位）。
+     ⚠️ 用 pend（iris）不是 done（灰）：這一刻還沒送出任何問題，範圍**仍然是活的**——
+        使用者可以先改品牌再挑角度。所以 syncBsel 會回頭更新這顆（見那裡）。 */
+  chooser.innerHTML = `<div class="ctxrow">${ctxHTML({m, h})}${
+         bchipHTML(BSEL, "pend", "目前的品牌範圍")}</div>
        <p class="dig-prompt">這張圖你想從哪個角度看？</p>
        <div class="chips">${angles.map(a => `<button class="chip" type="button">${a}</button>`).join("")}</div>`;
   db.appendChild(chooser);
@@ -6853,11 +7768,11 @@ function close_(){
    重開＝直接鋪答案（animate=false），不把歷史每一輪都重演一次思考動畫。 */
 function openThread(t){
   archive();
-  TH = t; const i = HIST.indexOf(t); if(i > -1) HIST.splice(i,1);
+  TH = t;
   dt.textContent = trim_(t.title);
   stopAllThink(); db.innerHTML = "";
   t.turns.forEach(x => renderTurn(x.q, x.ctx, false, x.typed, x));
-  renderHist(); showDrawer();
+  renderSide(); showDrawer();
 }
 
 /* ---- 引用圖表（＋）＝直接跟大欄互動 ---------------------------------
@@ -6871,13 +7786,17 @@ function syncPlus(){
   cplus.innerHTML = ic(on ? "minus" : "plus","ic sm");
   cplus.setAttribute("aria-label", on ? "移除引用" : "引用圖表");
 }
-function clearAtt(){ ATT = null; attwrap.innerHTML = ""; syncPlus(); }
+/* ⚠️ 寫進 #attslot 而不是整個 #attwrap：那一排現在有兩個寫入者（引用圖表 ＋ 品牌範圍），
+   誰先寫 attwrap.innerHTML 誰就把對方清掉。兩個插槽是 display:contents，
+   膠囊仍然是 attwrap 這個 flex 容器的直接子項，排版不變。 */
+const attslot = document.getElementById("attslot");
+function clearAtt(){ ATT = null; attslot.innerHTML = ""; syncPlus(); }
 function setAtt(m, h){
   ATT = {m, h};
-  attwrap.innerHTML = `<span class="att">${ic(TAB_IC[m],"ic sm")}
+  attslot.innerHTML = `<span class="att">${ic(TAB_IC[m],"ic sm")}
     <span class="nm"><b>${m}</b> › ${h}</span>
     <button type="button" aria-label="移除引用">${ic("x","ic sm")}</button></span>`;
-  attwrap.querySelector("button").addEventListener("click", clearAtt);
+  attslot.querySelector("button").addEventListener("click", clearAtt);
   syncPlus();
 }
 const cplus = document.getElementById("cplus");
@@ -6968,6 +7887,9 @@ function applyBox(){
   drawer.style.top    = BOX.y + "px";
   drawer.style.width  = BOX.w + "px";
   drawer.style.height = BOX.h + "px";
+  /* ⚠️ 抽屜被拉窄時文字會重新折行，已經打好的內容行數會變——不重量的話輸入框會
+     卡在舊高度（拉窄後被截、拉寬後留一片空白）。 */
+  growCi();
 }
 /* 完全不許出界：抽屜是唯一能看到答案的地方，被拖出去一半就等於答案被裁掉。
    ⚠️ 左界不是 0 而是 rail 寬——側欄 z-index 66 蓋在抽屜(61)之上，
@@ -7054,9 +7976,16 @@ drawer.querySelector(".dhd").addEventListener("dblclick", e => {
 });
 /* 視窗變動時：最大化中就重算滿版，否則把抽屜拉回可見範圍 */
 addEventListener("resize", () => {
-  if(!BOX) return;
-  if(maximized) BOX = maxBox();
-  clampBox(); applyBox();
+  if(BOX){
+    if(maximized) BOX = maxBox();
+    clampBox(); applyBox();          /* applyBox 結尾會呼叫 growCi */
+    return;
+  }
+  /* ⚠️ BOX === null ＝ 使用者沒拖過，抽屜是預設浮卡（高度由 CSS 的 top/bottom inset
+     決定，跟著視埠走）。舊版在這裡直接 return，於是**縮視窗時輸入框的上限不會重算**
+     ——已經打到 8 行的框卡在舊高度，視窗一矮就被 overflow:hidden 裁掉下緣。
+     拖曳／拉伸／最大化三條路徑都走 applyBox()，只有這一條漏了。 */
+  growCi();
 });
 
 document.getElementById("dx").addEventListener("click", close_);
@@ -7064,17 +7993,58 @@ document.getElementById("dx").addEventListener("click", close_);
    拍板後另接——屆時可以是「已最大化時再按一次才進 ③」。 */
 dex.addEventListener("click", toggleMax);
 
+/* ---- 抽屜輸入框：打字時自己長高（2026-08-10）------------------------------
+   ⚠️ 只做抽屜，**Hero 的發問框維持單行**（使用者裁示）。技術上也非做不可：整頁是
+      overflow:hidden 的一屏，Hero 長高不會讓頁面捲，而是直接吃掉圖表高度——實測
+      1366×625 只有 6px 餘裕（先爆「目標達成率」），1280／1440／1920 也只有 12px，
+      連第二列都放不下。抽屜沒這個問題：.dbd 是 minmax(0,1fr)，訊息區會自己讓位。
+   ⚠️ **上限不可以是固定行數**（2026-08-10 量過之後改）。抽屜是可以拖的，`MINH = 240`：
+        · 抽屜 = `grid-template-rows:auto minmax(0,1fr) auto` ＋ `overflow:hidden`
+        · 但 `.dbd` 有 `padding:var(--space-5)` → **訊息區的真實地板是 48px 不是 0**
+        · 所以輸入框長過某個點，被擠出去的不是訊息區，是**輸入框自己被 overflow:hidden
+          裁掉下緣**（連送出鈕）——使用者看不到自己在打什麼。
+      實測（四視埠 × 抽屜拖到 240）：第 7 行開始裁，改前的 5 行餘裕只有 **1px**。
+      而同一個 5 行在 1920 的預設浮卡下卻還剩 686px 訊息區沒用到——**固定行數等於
+      讓所有人遷就最糟情況**。
+   ⚠️ 所以上限 = min(CSS 的絕對天花板 8 行, 抽屜實際高度 × CI_RATIO)。
+      行高仍然只有 CSS 一份：這裡讀的是 `getComputedStyle(ci).maxHeight`（已含行高），
+      只是再套一道幾何限制，沒有把 20px 抄第二次。
+      實得：預設浮卡 8 行；拖到 240 時自動收成 3 行（訊息區 65px，仍在 48px 地板之上）。
+   ⚠️ 不用加新的監聽：拖曳／拉伸／最大化／視窗 resize **四條路徑最後都走 applyBox()**，
+      而 applyBox() 結尾就呼叫 growCi() —— 拖曳中就會即時收合。 */
+const cfld = document.getElementById("cfld");
+const CI_RATIO = .35;          /* 輸入框最多吃掉抽屜高度的幾成 */
+function growCi(){
+  ci.style.height = "auto";
+  /* ⚠️ 幾何上限要**對齊整行**再用。直接拿 0.35×高度當上限的話，240px 抽屜算出 84px，
+     那是 3.6 行——第 4 行被切一半留在框裡，看起來像壞掉。無條件捨去到 3 行乾淨。
+     ⚠️ 行高與 padding 一律從 computed style 讀回來，**不在 JS 裡抄第二份**
+     （抄了就會跟 .fld textarea 的 line-height 對不上，那是遲早的事）。 */
+  const cs = getComputedStyle(ci);
+  const lh = parseFloat(cs.lineHeight), pad = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom);
+  const geo = pad + lh * Math.max(1, Math.floor((drawer.clientHeight * CI_RATIO - pad) / lh));
+  const max = Math.min(parseFloat(cs.maxHeight), geo);
+  ci.style.height = Math.min(ci.scrollHeight, max) + "px";
+  ci.classList.toggle("cap", ci.scrollHeight > max + 1);   /* 到頂才給捲軸，見 .cap */
+  cfld.classList.toggle("multi", ci.scrollHeight > 33);     /* 單行 20+12=32；>33 ＝ 已經第二列 */
+}
+ci.addEventListener("input", growCi);
 const sendCi = () => {
   if(_replyingId != null){ stopReply(); return; }   /* 回覆中：這顆鈕＝停止 */
   const q = ci.value.trim(); if(!q) return;
-  ask(q, ATT, true); ci.value = ""; clearAtt();      /* 自由輸入 → 無法回答 */
+  ask(q, ATT, true); ci.value = ""; clearAtt(); growCi();   /* 自由輸入 → 無法回答 */
 };
 document.getElementById("cs").addEventListener("click", sendCi);
 /* ⚠️ CJK 友善：中文靠輸入法組字，選字／確認候選也是按 Enter。若不擋，注音打到一半
    按 Enter 選字會被當成「送出」，把半成品或錯字直接送掉。isComposing／keyCode 229＝
-   組字中，這時的 Enter 只屬於輸入法，不觸發送出。 */
+   組字中，這時的 Enter 只屬於輸入法，不觸發送出。
+   ⚠️ 改成 textarea 之後多一條：Shift＋Enter ＝ 換行（聊天輸入框的通例），這時**不送出、
+      也不 preventDefault**，讓瀏覽器自己插入換行。單獨 Enter 才送，且要 preventDefault，
+      否則會先送出、再往空掉的框裡插一個換行。 */
 ci.addEventListener("keydown", e => {
-  if(e.key === "Enter" && !e.isComposing && e.keyCode !== 229) sendCi();
+  if(e.key === "Enter" && !e.shiftKey && !e.isComposing && e.keyCode !== 229){
+    e.preventDefault(); sendCi();
+  }
 });
 
 /* 頂欄常駐輸入列 —— 自由問句一律走完整 AI（第一版不做路由器），
@@ -7087,43 +8057,531 @@ ti.addEventListener("keydown", e => {   /* 同 ci：組字中的 Enter 屬於輸
 });
 
 /* ---- 側欄：預設收起，展開是 overlay（不推擠主區） ---- */
-const side = document.getElementById("side"), sscrim = document.getElementById("sscrim");
-const openSide  = () => { side.classList.add("open"); sscrim.classList.add("on"); hideTip(); };
-const closeSide = () => { side.classList.remove("open"); sscrim.classList.remove("on"); };
-document.getElementById("plane").addEventListener("click", openSide);
-document.getElementById("tog").addEventListener("click", closeSide);
+const side = document.getElementById("side"), sscrim = document.getElementById("sscrim"),
+      plane = document.getElementById("plane"), tog = document.getElementById("tog");
+/* ⚠️ 展開／收起會把**當前那顆按鈕自己**藏起來（.side.open .plane 與
+   .side:not(.open) .tog 互為 display:none），焦點於是掉回 body、Tab 要從頭走一遍。
+   → 兩態互相接手：紙飛機開 → 焦點交給收起鈕，收起鈕關 → 焦點交回紙飛機。
+   只在焦點確實停在那顆將被藏起的按鈕上時才搬（滑鼠點的時候 activeElement 也是它，
+   但搬過去的目標同樣不吃 :focus-visible，畫面上不會多出一圈框）。 */
+const openSide  = () => {
+  side.classList.add("open"); sscrim.classList.add("on"); hideTip();
+  if(document.activeElement === plane) tog.focus();
+};
+const closeSide = () => {
+  side.classList.remove("open"); sscrim.classList.remove("on");
+  if(document.activeElement === tog) plane.focus();
+};
+
+/* focus trap（2026-08-10，第三十三節缺口 6）。側欄展開時是覆蓋層、主區被 .sscrim 蓋住，
+   Tab 不該跑進底下那一整片「看得見但點不到」的東西。
+
+   ⚠️ 清單**每次 Tab 現算，不在 openSide 時快取**：釘選／專案／近期三個分區每次
+      renderSide 都整塊換掉（見該函式的事件委派註解），快取到的節點按一次釘選就全成了孤兒。
+   ⚠️ 可聚焦判斷要同時擋 display:none（`hidden` 的釘選分區）與 visibility:hidden
+      （收起的帳號選單）——只查其中一個都會把摸不到的節點算成首／末項，
+      於是 Tab 到邊界時 focus() 打在空氣上、焦點掉回 body。 */
+const SIDE_FOCUSABLE = 'a[href],button:not([disabled]),input:not([disabled]),select,textarea,[tabindex]:not([tabindex="-1"])';
+const sideTabbables = () => [...side.querySelectorAll(SIDE_FOCUSABLE)]
+  .filter(el => el.getClientRects().length && getComputedStyle(el).visibility !== "hidden");
+
+addEventListener("keydown", e => {
+  if(e.key !== "Tab" || e.defaultPrevented) return;      /* pmenu 的 Tab 已自己處理掉 */
+  if(!side.classList.contains("open")) return;
+  /* 疊在側欄之上的層自己管焦點：⋯ 選單(z90)、搜尋／新增專案／刪專案(z80)。
+     這裡插手會把焦點從那些彈窗裡拖出來。 */
+  if(ctxOpen() || searchOpen() || npOpen() || dpOpen()) return;
+  const f = sideTabbables();
+  if(!f.length) return;
+  const first = f[0], last = f[f.length - 1], a = document.activeElement;
+  if(!side.contains(a)){ e.preventDefault(); (e.shiftKey ? last : first).focus(); }
+  else if(e.shiftKey && a === first){ e.preventDefault(); last.focus(); }
+  else if(!e.shiftKey && a === last){ e.preventDefault(); first.focus(); }
+});
+plane.addEventListener("click", openSide);
+tog.addEventListener("click", closeSide);
 sscrim.addEventListener("click", closeSide);
 
 /* ---- 側欄的兩個對話入口 ----
    點一則歷史 → openThread()：thread 本來就住在抽屜(②)，重開它不需要知道 ③ 長什麼樣，
    所以這個現在就是真的。
-   「新對話」→ ③ 的空狀態（那組跨模組通用的大卡片只該出現在那裡），仍是 stub：
-   「吸收進 dashboard.html vs 跳去 index.html」尚未拍板（見 進度與交接.md 第十一節），
-   那題決定的正是這個函式的本體（吸收＝展開同一份 DOM、⤢ 可做連續放大；
-   跳頁＝location.href + sessionStorage 交接）。刻意留白，不先接之後要拆的假動作。 */
-function newThread(){ }
+   「新對話」→ 2026-08-07 使用者裁示：**滑出右邊抽屜**。
+   ⚠️ 這同時把第十一節那題（「吸收進 dashboard.html vs 跳去 index.html」）**定成「吸收」**——
+      不跳頁、不做 sessionStorage 交接，就用同一個抽屜。原本留 stub 的理由是
+      「不先接之後要拆的假動作」，現在方向定了，這裡就是真的實作，不是佔位。
+
+   結構完全沿用 openDig 的開場模型（就在上面幾十行），三件事一模一樣：
+     ① `TH = null` —— **問出第一句之前不建立 thread**。沒問就關掉，
+        archive 以 `turns.length` 為準，側欄不會多出一串空的。
+     ② 開場鋪在 `db` 裡（`.chooser` ＋ `.dig-prompt` ＋ `.chips`），沿用同一組 class，
+        不新增 CSS —— 兩者是同一種東西（「還沒開始的一串」）。
+     ③ 選了 chip 才 `ask()` → 由 startThread 起串。
+
+   ⚠️ 起手句直接讀 `QC[page]`（Hero 快捷發問那三句，全部取自 golden 294）。
+      **不另外寫一組文案**：同一個模組在畫面上已經有一組「該問什麼」的答案，
+      再發明第二組只會出現兩套說法，而且新的那組沒有 golden 依據。
+   ⚠️ 與 openDig 的差別只有一個：openDig 在抽屜開著時是 **append**（把選角度接在
+      當前對話尾端），這裡**永遠是新的一串**——「新對話」的語意就是新的，
+      抽屜開著時也要清掉重來，否則點了會像沒反應。
+   ⚠️ 不呼叫 resetDrawer()：抽屜已經開著時不復位尺寸與位置（showDrawer 自己判斷），
+      使用者拖過的版面不該因為開新的一串而在眼前跳掉。 */
+function newThread(){
+  archive();                    /* 收掉當前那一串（沒有就 no-op） */
+  TH = null;
+  clearAtt();                   /* 舊的引用不跟到新對話 */
+  stopAllThink();
+  dt.textContent = "新對話";
+  db.innerHTML = "";
+  const op = document.createElement("div");
+  op.className = "chooser";
+  op.innerHTML = `<p class="dig-prompt">想問什麼都可以。也可以從這幾句開始：</p>
+       <div class="chips">${(QC[page] || [])
+         .map(q => `<button class="chip" type="button">${q}</button>`).join("")}</div>`;
+  db.appendChild(op);
+  op.querySelectorAll(".chip").forEach(b =>
+    b.addEventListener("click", () => { const q = b.textContent.trim(); op.remove(); ask(q, null); }));
+  db.scrollTop = 0;
+  closeSide();                  /* 側欄讓位——抽屜在右邊，兩邊同時開著沒有意義 */
+  showDrawer();                 /* 內含 ci.focus()，滑出後游標就在輸入框 */
+}
 document.getElementById("newchat").addEventListener("click", newThread);
 
-const histlist = document.getElementById("histlist");
-function renderHist(){
-  histlist.innerHTML = HIST.length
-    ? HIST.map((t,i) => `<button class="hist" type="button" data-i="${i}">${t.title}</button>`).join("")
-    : `<p class="sempty">還沒有對話。點圖表下的〔深入分析〕或在上方發問。</p>`;
-  histlist.querySelectorAll(".hist").forEach(b =>
-    b.addEventListener("click", () => { openThread(HIST[+b.dataset.i]); closeSide(); }));
+/* ============================================================
+   側欄的對話管理：釘選 · 專案 · 近期對話（時間分組）· ⋯ 選單 · 拖放
+   2026-08-07 自 index.html 移植。**行為照搬，樣式與接線重寫**：
+     · 樣式全部換成本檔 token（index.html 那邊是 --bg/--muted/--hover/--brand
+       另一套變數，且大量寫死 13.5px / 16px / rgba(0,0,0,.22)，踩 DS 規則 1）
+     · index.html 全用 inline onclick=；本檔一律 addEventListener。
+       這裡再進一步用**事件委派**掛在 .sbody 上——清單每次重繪都是整塊換掉，
+       逐列掛 listener 等於每次重繪都要重掛一輪。
+   ============================================================ */
+const sbody   = document.getElementById("sbody"),
+      pinlist = document.getElementById("pinlist"),
+      projlist= document.getElementById("projlist"),
+      histlist= document.getElementById("histlist"),
+      secPin  = document.getElementById("sec-pin"),
+      secProj = document.getElementById("sec-proj");
+
+/* ---- 時間 ----
+   ⚠️ **不照抄 index.html 的 formatItemTime**：它算 `(now - d) / 86400000` 取整，
+      那是「相隔幾個 24 小時」不是「相隔幾天」——昨天 23:50 的對話在今天 00:10 看
+      只差 0.33 → 會標成「今天」。改成比對兩邊的**日曆日**。 */
+const _2 = n => String(n).padStart(2,"0");
+const _midnight = d => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+const dayGap = ts => Math.round((_midnight(new Date()) - _midnight(new Date(ts))) / 86400000);
+function fmtTs(ts){
+  const d = new Date(ts), g = dayGap(ts), hm = `${_2(d.getHours())}:${_2(d.getMinutes())}`;
+  return g === 0 ? `今天 ${hm}` : g === 1 ? `昨天 ${hm}` : `${d.getMonth()+1}/${d.getDate()} ${hm}`;
 }
+/* ⚠️ 2026-08-07 使用者裁示：**不做時間分組**（今天／昨天／過去 7 天／更早），
+   照 index.html 的做法——平鋪一列列、新的在前，時間就寫在每一列的第二行。
+   理由是分組把清單切得太碎、看起來亂。`fmtTs` 已經逐列講清楚是哪一天了，
+   分組標題只是把同一件事再說一次，還多插四道橫向斷點。
+   → `.tgrp` 與 `grpOf()` 已移除，不要再加回來。 */
+
+/* ---- 一列對話 ----
+   ⚠️ 從 <button> 改成 div[role=button]：列內要放 ⋯ 這顆 button，而 button 不可巢狀
+      （巢狀 button 的 HTML 解析結果是把內層踢出去，實際會壞掉、不只是不合規）。
+      鍵盤等價由委派層的 Enter／Space 補回。 */
+function rowHTML(t){
+  const nm = t.pin
+    ? `<span class="histn wdot"><span class="pindot"></span><span>${escH(t.title)}</span></span>`
+    : `<span class="histn">${escH(t.title)}</span>`;
+  return `<div class="hist${t === TH ? " on" : ""}" data-tid="${t.id}" draggable="true"
+       role="button" tabindex="0" title="${escH(t.title)}">
+    ${ic("msgC","ic sm")}
+    <span class="histb">${nm}<span class="histt">${fmtTs(t.ts)}</span></span>
+    <button class="moreb" type="button" data-tmenu="${t.id}" aria-label="更多動作"
+            aria-haspopup="menu" aria-expanded="false">${ic("more","ic sm")}</button>
+  </div>`;
+}
+
+const byTs = (a,b) => b.ts - a.ts;
+const findT = id => HIST.find(t => t.id === id);
+const findP = id => PROJ.find(p => p.id === id);
+const inProj = p => HIST.filter(t => t.pid === p.id)
+  .sort((a,b) => (b.pin - a.pin) || (b.ts - a.ts));   /* 釘選的排在專案內最前 */
+
+const PMAX = 4;   /* 專案預設只展開四則，其餘收進「顯示更多」 */
+function projHTML(p){
+  const cs = inProj(p), shown = p.more || PMAX;
+  const rest = cs.length - shown;
+  const body = cs.length
+    ? cs.slice(0, shown).map(rowHTML).join("") +
+      (rest > 0 ? `<button class="showmore" type="button" data-pmore="${p.id}">顯示更多（${rest}）</button>` : "")
+    : `<p class="sempty">尚無對話。把「近期對話」的項目拖進來。</p>`;
+  return `<div class="pf${p.open ? " open" : ""}" data-pf="${p.id}">
+    <div class="pfh" data-pid="${p.id}">
+      ${ic(p.open ? "folderOpen" : "folder","ic sm")}
+      <button class="pfn" type="button" data-ptog="${p.id}">${escH(p.name)}</button>
+      <button class="moreb" type="button" data-pmenu="${p.id}" aria-label="更多動作"
+              aria-haspopup="menu">${ic("more","ic sm")}</button>
+    </div>
+    <div class="pfbd">${body}</div>
+  </div>`;
+}
+
+/* ---- 三個分區一起重繪 ----
+   ⚠️ 一個 thread 只會出現在**一個**地方：釘選 > 專案 > 近期對話，由上往下先搶先贏。
+      同一則同時出現兩次的話，拖放與 ⋯ 選單都會對到兩個 DOM、data-tid 也不再唯一。
+      釘選的專案同理，會從專案區濾掉。 */
+function renderSide(){
+  const pinT = HIST.filter(t => t.pin && !t.pid).sort(byTs);
+  const pinP = PROJ.filter(p => p.pin);
+  secPin.hidden = !(pinT.length || pinP.length);
+  pinlist.innerHTML = pinP.map(projHTML).join("") + pinT.map(rowHTML).join("");
+
+  const openP = PROJ.filter(p => !p.pin);
+  projlist.innerHTML = openP.length
+    ? openP.map(projHTML).join("")
+    : `<p class="sempty">還沒有專案。點右上角的 ＋ 建立一個。</p>`;
+
+  /* 近期對話：未釘選、未歸專案的，依時間分組 */
+  const rest = HIST.filter(t => !t.pin && !t.pid).sort(byTs);
+  histlist.innerHTML = rest.length
+    ? rest.map(rowHTML).join("")
+    : `<p class="sempty">還沒有對話。點圖表下的〔深入分析〕或在上方發問。</p>`;
+}
+/* ---- ⋯ 選單 ----
+   容器是 .ctxm，項目直接重用帳號選單的 .pmi／.pmdiv（見 .ctxm 的 CSS 註解）。 */
+let _ctx = null, _ctxBtn = null, _ctxRow = null;
+function closeCtx(){
+  if(_ctx){ _ctx.remove(); _ctx = null; }
+  if(_ctxBtn){ _ctxBtn.classList.remove("on"); _ctxBtn.setAttribute("aria-expanded","false"); _ctxBtn = null; }
+  if(_ctxRow){ _ctxRow.classList.remove("ctxon"); _ctxRow = null; }
+}
+const ctxOpen = () => !!_ctx;
+/* items：[icon, 文字, 動作, danger?]，null ＝ 分隔線 */
+function openCtx(btn, items){
+  closeCtx();
+  const m = document.createElement("div");
+  m.className = "ctxm"; m.setAttribute("role","menu");
+  items.forEach(it => {
+    if(!it){ m.insertAdjacentHTML("beforeend", `<hr class="pmdiv">`); return; }
+    const [icon, label, act, dgr] = it;
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "pmi" + (dgr ? " danger" : ""); b.setAttribute("role","menuitem");
+    b.innerHTML = ic(icon) + `<span>${label}</span>`;
+    b.addEventListener("click", e => { e.stopPropagation(); closeCtx(); act(); });
+    m.appendChild(b);
+  });
+  document.body.appendChild(m);
+  /* 定位：預設貼在 ⋯ 的右側；右邊或下方裝不下就翻邊。用實際量到的尺寸，
+     不用 index.html 那組寫死的 mw=170/mh=160（項目數不同，選單高度本來就會變）。 */
+  const r = btn.getBoundingClientRect(), mr = m.getBoundingClientRect();
+  let x = r.right + 4, y = r.top;
+  if(x + mr.width  > innerWidth  - 8) x = Math.max(8, r.left - mr.width - 4);
+  if(y + mr.height > innerHeight - 8) y = Math.max(8, innerHeight - mr.height - 8);
+  m.style.left = x + "px"; m.style.top = y + "px";
+  btn.classList.add("on"); btn.setAttribute("aria-expanded","true");
+  _ctx = m; _ctxBtn = btn;
+  /* 標記母列——不然浮在旁邊的選單看不出屬於哪一則 */
+  const row = btn.closest(".hist, .pfh");
+  if(row){ row.classList.add("ctxon"); _ctxRow = row; }
+  setTimeout(() => document.addEventListener("click", closeCtx, {once:true}), 0);
+}
+
+/* ---- 對話的動作 ---- */
+function togglePin(t){ t.pin = !t.pin; renderSide(); }
+function delThread(t){
+  const i = HIST.indexOf(t); if(i > -1) HIST.splice(i,1);
+  if(TH === t){ TH = null; close_(); }   /* 刪的正是開著的那一串 → 一併收掉抽屜 */
+  renderSide();
+}
+function moveOut(t){ t.pid = null; renderSide(); }
+
+/* 就地改名（專案名與對話標題共用一套）。
+   ⚠️ 中文輸入法：commit 必須擋在組字中——blur 與 Enter 都會在選字時誤觸發。
+      compositionstart/end ＋ isComposing 兩道都要（同 ti／ci 的 keydown 處理）。 */
+function inlineRename(el, cur, commit){
+  const inp = document.createElement("input");
+  inp.type = "text"; inp.className = "rnin"; inp.value = cur;
+  let comp = false, done = false;
+  const fin = ok => {
+    if(done) return; done = true;
+    const v = inp.value.trim();
+    if(ok && v) commit(v); else renderSide();
+  };
+  inp.addEventListener("compositionstart", () => { comp = true; });
+  inp.addEventListener("compositionend",   () => { comp = false; });
+  inp.addEventListener("blur",  () => { if(!comp) fin(true); });
+  inp.addEventListener("click", e => e.stopPropagation());
+  inp.addEventListener("keydown", e => {
+    if(e.isComposing || comp || e.keyCode === 229) return;
+    if(e.key === "Enter"){ e.preventDefault(); fin(true); }
+    if(e.key === "Escape"){ e.preventDefault(); e.stopPropagation(); fin(false); }
+  });
+  el.replaceWith(inp); inp.focus(); inp.select();
+}
+function renameThread(t){
+  const el = sbody.querySelector(`.hist[data-tid="${t.id}"] .histn`);
+  if(!el) return;
+  inlineRename(el, t.title, v => {
+    t.title = v;
+    if(TH === t) dt.textContent = trim_(v);   /* 開著的那一串，抽屜標頭要同步 */
+    renderSide();
+  });
+}
+function threadMenu(btn, t){
+  openCtx(btn, [
+    ["pin", t.pin ? "取消釘選" : "釘選", () => togglePin(t)],
+    ["pencil", "重新命名", () => renameThread(t)],
+    ...(t.pid ? [null, ["logout", "移出專案", () => moveOut(t)]] : []),
+    null,
+    ["trash", "刪除對話", () => delThread(t), true]
+  ]);
+}
+
+/* ---- 專案的動作 ---- */
+function toggleProj(p){ p.open = !p.open; if(!p.open) p.more = 0; renderSide(); }
+function renameProj(p){
+  const el = sbody.querySelector(`.pf[data-pf="${p.id}"] .pfn`);
+  if(!el) return;
+  inlineRename(el, p.name, v => { p.name = v; renderSide(); });
+}
+function projMenu(btn, p){
+  openCtx(btn, [
+    ["pin", p.pin ? "取消釘選" : "釘選", () => { p.pin = !p.pin; renderSide(); }],
+    ["pencil", "重新命名", () => renameProj(p)],
+    null,
+    ["trash", "刪除專案", () => askDelProj(p), true]
+  ]);
+}
+
+/* ---- 事件委派：整個 .sbody 一顆 listener ---- */
+sbody.addEventListener("click", e => {
+  const tm = e.target.closest("[data-tmenu]");
+  if(tm){ e.stopPropagation(); const t = findT(tm.dataset.tmenu); if(t) threadMenu(tm, t); return; }
+  const pm = e.target.closest("[data-pmenu]");
+  if(pm){ e.stopPropagation(); const p = findP(pm.dataset.pmenu); if(p) projMenu(pm, p); return; }
+  const pt = e.target.closest("[data-ptog]");
+  if(pt){ const p = findP(pt.dataset.ptog); if(p) toggleProj(p); return; }
+  const pmo = e.target.closest("[data-pmore]");
+  if(pmo){ const p = findP(pmo.dataset.pmore); if(p){ p.more = (p.more || PMAX) + PMAX; renderSide(); } return; }
+  const row = e.target.closest(".hist");
+  if(row){ const t = findT(row.dataset.tid); if(t){ openThread(t); closeSide(); } }
+});
+/* div[role=button] 的鍵盤等價（見 rowHTML 註解）。Space 要 preventDefault 擋捲頁。 */
+sbody.addEventListener("keydown", e => {
+  if(e.key !== "Enter" && e.key !== " ") return;
+  const row = e.target.closest(".hist");
+  if(!row || e.target.closest(".moreb")) return;
+  e.preventDefault();
+  const t = findT(row.dataset.tid); if(t){ openThread(t); closeSide(); }
+});
+
+/* ---- 拖放：把對話丟進專案／拖回近期對話 ----
+   單一真相（HIST ＋ pid）讓這裡只剩「改一個欄位」，不必在兩個陣列間 splice 搬運。 */
+let _drag = null;
+sbody.addEventListener("dragstart", e => {
+  const row = e.target.closest(".hist"); if(!row) return;
+  _drag = row.dataset.tid;
+  row.classList.add("dragging");
+  e.dataTransfer.effectAllowed = "move";
+  e.dataTransfer.setData("text/plain", _drag);   /* Firefox 沒有 setData 不會啟動拖曳 */
+});
+sbody.addEventListener("dragend", e => {
+  e.target.closest(".hist")?.classList.remove("dragging");
+  sbody.querySelectorAll(".dragover,.dropzone").forEach(el => el.classList.remove("dragover","dropzone"));
+  _drag = null;
+});
+sbody.addEventListener("dragover", e => {
+  if(!_drag) return;
+  const pf = e.target.closest(".pf"), hz = e.target.closest("#histlist");
+  if(!pf && !hz) return;
+  e.preventDefault(); e.dataTransfer.dropEffect = "move";
+  sbody.querySelectorAll(".dragover,.dropzone").forEach(el => el.classList.remove("dragover","dropzone"));
+  if(pf) pf.classList.add("dragover"); else hz.classList.add("dropzone");
+});
+sbody.addEventListener("drop", e => {
+  if(!_drag) return;
+  const pf = e.target.closest(".pf"), hz = e.target.closest("#histlist");
+  if(!pf && !hz) return;
+  e.preventDefault();
+  const t = findT(_drag); _drag = null;
+  sbody.querySelectorAll(".dragover,.dropzone").forEach(el => el.classList.remove("dragover","dropzone"));
+  if(!t) return;
+  if(pf){ const p = findP(pf.dataset.pf); if(p){ t.pid = p.id; t.pin = false; p.open = true; } }
+  else  { t.pid = null; t.pin = false; }   /* 拖回近期對話 ＝ 同時退出專案與釘選 */
+  renderSide();
+});
+
+/* ---- 新增專案 / 刪除專案 ---- */
+const npov = document.getElementById("npov"), npIn = document.getElementById("np-in"),
+      npOk = document.getElementById("np-ok"),
+      dpov = document.getElementById("dpov"), dpName = document.getElementById("dp-name");
+let _delP = null;
+
+const ovOpen  = ov => { ov.classList.add("open"); ov.setAttribute("aria-hidden","false"); };
+const ovClose = ov => { ov.classList.remove("open"); ov.setAttribute("aria-hidden","true"); };
+const npOpen  = () => npov.classList.contains("open");
+const dpOpen  = () => dpov.classList.contains("open");
+
+document.getElementById("projadd").addEventListener("click", () => {
+  npIn.value = ""; npOk.disabled = true; ovOpen(npov); setTimeout(() => npIn.focus(), 60);
+});
+npIn.addEventListener("input", () => { npOk.disabled = !npIn.value.trim(); });
+npIn.addEventListener("keydown", e => {
+  if(e.key === "Enter" && !e.isComposing && e.keyCode !== 229 && npIn.value.trim()) mkProj();
+});
+function mkProj(){
+  const n = npIn.value.trim(); if(!n) return;
+  PROJ.push({id:nextId("p"), name:n, open:true, pin:false, more:0});
+  secProj.classList.remove("shut");
+  document.getElementById("projtog").setAttribute("aria-expanded","true");
+  ovClose(npov); renderSide();
+}
+npOk.addEventListener("click", mkProj);
+document.getElementById("np-no").addEventListener("click", () => ovClose(npov));
+npov.addEventListener("click", e => { if(e.target === npov) ovClose(npov); });
+
+function askDelProj(p){ _delP = p; dpName.textContent = p.name; ovOpen(dpov); }
+document.getElementById("dp-ok").addEventListener("click", () => {
+  if(_delP){
+    HIST.forEach(t => { if(t.pid === _delP.id) t.pid = null; });   /* 對話退回近期，不跟著刪 */
+    const i = PROJ.indexOf(_delP); if(i > -1) PROJ.splice(i,1);
+    _delP = null;
+  }
+  ovClose(dpov); renderSide();
+});
+document.getElementById("dp-no").addEventListener("click", () => { _delP = null; ovClose(dpov); });
+dpov.addEventListener("click", e => { if(e.target === dpov){ _delP = null; ovClose(dpov); } });
+
+/* 「專案」分區收合 */
+document.getElementById("projtog").addEventListener("click", () => {
+  const shut = secProj.classList.toggle("shut");
+  document.getElementById("projtog").setAttribute("aria-expanded", shut ? "false" : "true");
+});
+document.getElementById("projtog").insertAdjacentHTML("afterbegin", ic("chev","ic sm tw"));
+document.getElementById("projadd").innerHTML = ic("plus","ic sm");
+
+/* ============================================================
+   搜尋對話（Cmd/Ctrl+K）
+   比對範圍比 index.html 大：除了標題，**每一輪的問句都搜**——
+   一串對話問了五個問題，只有第一句會變成標題，搜不到後面四句等於搜了一半。
+   ============================================================ */
+const sov = document.getElementById("sov"), sq = document.getElementById("sq"),
+      sres = document.getElementById("sres");
+const searchOpen = () => sov.classList.contains("open");
+let _sHits = [], _sIdx = -1;
+
+function openSearch(){
+  sq.value = ""; _sHits = []; _sIdx = -1; runSearch();
+  ovOpen(sov); setTimeout(() => sq.focus(), 60);
+}
+function closeSearch(){ ovClose(sov); sq.setAttribute("aria-expanded","false"); }
+
+/* 正則轉義：查詢字串會被塞進 RegExp 做高亮，使用者打「(」就會丟例外。 */
+const escRe = s => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+function runSearch(){
+  const q = sq.value.trim();
+  sq.setAttribute("aria-expanded", q ? "true" : "false");
+  if(!q){
+    _sHits = []; _sIdx = -1;
+    sres.innerHTML = `<p class="shint">輸入關鍵字，搜尋全部對話的標題與問句。</p>`;
+    syncSel();   /* 清掉指向已移除節點的 aria-activedescendant（懸空的參照比沒有更糟） */
+    return;
+  }
+  const lq = q.toLowerCase();
+  _sHits = HIST.filter(t =>
+    t.title.toLowerCase().includes(lq) || t.turns.some(x => x.q.toLowerCase().includes(lq))
+  ).sort(byTs);
+  if(!_sHits.length){
+    _sIdx = -1;
+    sres.innerHTML = `<p class="shint">找不到符合「${escH(q)}」的對話。</p>`;
+    syncSel();
+    return;
+  }
+  const re = new RegExp("(" + escRe(q) + ")", "gi");
+  /* ⚠️ 先轉義再上 <mark>，順序不能反——反過來的話 <mark> 標籤本身會被轉義成文字。 */
+  const hi = s => escH(s).replace(re, "<mark>$1</mark>");
+  _sIdx = 0;
+  sres.innerHTML = _sHits.map((t,i) => {
+    const p = t.pid ? findP(t.pid) : null;
+    /* 標題沒中但內文中了 → 補一行「命中的那一句」，否則看不出為什麼它在結果裡 */
+    const inTitle = t.title.toLowerCase().includes(lq);
+    const hitQ = inTitle ? null : t.turns.find(x => x.q.toLowerCase().includes(lq));
+    return `<div class="sri${i === 0 ? " on" : ""}" role="option" aria-selected="${i === 0}"
+         id="sri-${i}" data-sid="${t.id}" tabindex="-1">
+      ${ic("msgC","ic sm")}
+      <span class="srib">
+        <span class="srin">${hi(t.title)}</span>
+        ${hitQ ? `<span class="srin" style="color:var(--text-muted)">↳ ${hi(hitQ.q)}</span>` : ""}
+        <span class="srim"><span>${fmtTs(t.ts)}</span>${p ? `<span>${escH(p.name)}</span>` : ""}</span>
+      </span>
+    </div>`;
+  }).join("");
+  syncSel();
+}
+/* combobox 的選取項要**同時**用 class（給眼睛）與 aria-activedescendant（給讀屏）標記。
+   ⚠️ 只做 class 的話，上面那些 role=listbox／option 就是宣告了一套自己不實作的行為
+      ——跟 pmenu 早期「有 role=menu 但沒有 ↑↓」是同一種毛病，不要再犯一次。 */
+function syncSel(){
+  sres.querySelectorAll(".sri").forEach((el,i) => {
+    const on = i === _sIdx;
+    el.classList.toggle("on", on);
+    el.setAttribute("aria-selected", on ? "true" : "false");
+  });
+  const cur = sres.querySelector(".sri.on");
+  if(cur) sq.setAttribute("aria-activedescendant", cur.id);
+  else sq.removeAttribute("aria-activedescendant");
+}
+function moveSel(d){
+  const items = sres.querySelectorAll(".sri");
+  if(!items.length) return;
+  _sIdx = (_sIdx + d + items.length) % items.length;
+  syncSel();
+  items[_sIdx].scrollIntoView({block:"nearest"});
+}
+function pickSearch(t){ if(!t) return; closeSearch(); openThread(t); closeSide(); }
+
+document.querySelector(".sbar").insertAdjacentHTML("afterbegin", ic("find"));
+sq.addEventListener("input", runSearch);
+sq.addEventListener("keydown", e => {
+  if(e.isComposing || e.keyCode === 229) return;         /* 組字中不攔鍵 */
+  if(e.key === "ArrowDown"){ e.preventDefault(); moveSel(1); }
+  else if(e.key === "ArrowUp"){ e.preventDefault(); moveSel(-1); }
+  else if(e.key === "Enter"){ e.preventDefault(); pickSearch(_sHits[_sIdx]); }
+});
+sres.addEventListener("click", e => {
+  const it = e.target.closest("[data-sid]");
+  if(it) pickSearch(findT(it.dataset.sid));
+});
+sov.addEventListener("click", e => { if(e.target === sov) closeSearch(); });
+document.getElementById("search").addEventListener("click", openSearch);
+/* Cmd/Ctrl+K：開／關同一顆鍵。⚠️ 一定要 preventDefault——瀏覽器把 Cmd-K 綁在網址列搜尋。 */
+addEventListener("keydown", e => {
+  if((e.metaKey || e.ctrlKey) && (e.key === "k" || e.key === "K")){
+    e.preventDefault();
+    searchOpen() ? closeSearch() : openSearch();
+  }
+});
+
 /* 種幾串舊對話，讓側欄一開就有東西（都對到 A{} 裡的凍結答案，點下去秒回）。
+   時間刻意鋪在四個分組上（今天／昨天／過去 7 天／更早），示意值。
    接後端後改成讀真實歷史。 */
-[["現在最快斷貨的前十款是哪些？", null],
- ["週五的檔期要提前開嗎？", null],
- ["最近有沒有哪家門市業績異常？", {m:"業績", h:"各店櫃達成率"}]
-].forEach(([q,c]) => HIST.unshift({title:q, turns:[{q, ctx:c}]}));
-renderHist();
+const _hr = 3600000, _dy = 24*_hr;
+const _p1 = {id:nextId("p"), name:"百貨周年慶_2026", open:true, pin:false, more:0};
+PROJ.push(_p1);
+/*  問句                            引用                          多久以前   釘  專案  */
+[["現在最快斷貨的前十款是哪些？", null,                          2*_hr,   0, null],
+ ["週五的檔期要提前開嗎？",       null,                          7*_hr,   0, null],
+ ["最近有沒有哪家門市業績異常？", {m:"業績", h:"各店櫃達成率"},  27*_hr,  0, null],
+ ["上個月的折讓集中在哪幾檔？",   {m:"促銷", h:"檔期效益"},       3*_dy,  0, null],
+ ["會員回購率為什麼掉？",         {m:"CRM",  h:"會員回購率"},     5*_dy,  1, null],
+ ["哪些款要提前備貨？",           null,                          12*_dy,  0, null],
+ ["周年慶各品牌業績比較",         {m:"業績", h:"各通路業績 YoY"}, 4*_dy,  0, _p1],
+ ["周年慶期間來客數怎麼走？",     {m:"CRM",  h:"會員活躍度"},     6*_dy,  1, _p1]
+].forEach(([q,c,ago,pin,p]) => HIST.push({
+  id:nextId("t"), title:q, ts:Date.now() - ago, pin:!!pin, pid:p ? p.id : null, turns:[{q, ctx:c}]
+}));
+renderSide();
 
 /* 收起態只有 icon，靠 tooltip 補回標籤 */
 [["plane","開啟選單"],["newchat","新對話"],["search","搜尋對話"]].forEach(([id,label]) => {
   const el = document.getElementById(id);
-  el.addEventListener("mouseenter", e => { if(!side.classList.contains("open")) showTip(e, label); });
+  el.addEventListener("mouseenter", () => { if(!side.classList.contains("open")) showTipAt(el, label); });
   el.addEventListener("mouseleave", hideTip);
 });
 
@@ -7247,13 +8705,26 @@ gaugesEl.addEventListener("click", e => {
 document.getElementById("drill-x").addEventListener("click", closeDrill);
 drillov.addEventListener("click", e => { if(e.target === drillov) closeDrill(); });  /* 點外面關 */
 
-/* Esc：挑圖模式優先——只取消挑圖，不要順手把抽屜也關掉 */
+/* Esc ＝ 由上往下剝一層，**一次只關一個**。
+   ⚠️ 2026-08-07 修：最後一行原本是無條件的 `close_(); closeSide(); closeProfile();`
+      ——前面三層明明都仔細做了「只關最上層」，到了側欄這一層卻三個一起關，
+      於是**帳號選單開著按 Esc 會連側欄一起收掉**（選單是側欄的子物件，
+      關子物件不該把母層也帶走）。改成跟上面同一種寫法，一層一個 return。
+   層序＝視覺層序：⋯ 選單(z90) → 三個彈窗(z80) → 明細 → 倒讚 → 挑圖
+   → 品牌下拉(z72) → 帳號選單(z70) → 側欄(z66) → 抽屜(z61)。 */
 addEventListener("keydown", e => {
   if(e.key !== "Escape") return;
-  if(drillOpen()){ closeDrill(); return; }  /* 明細彈窗是最上層：Esc 只關它 */
-  if(fbOpen()){ closeFb(); return; }        /* 倒讚彈窗開著：Esc 只關彈窗，不關抽屜 */
+  if(ctxOpen()){ closeCtx(); return; }          /* ⋯ 選單在所有東西之上 */
+  if(searchOpen()){ closeSearch(); return; }
+  if(npOpen()){ ovClose(npov); return; }
+  if(dpOpen()){ _delP = null; ovClose(dpov); return; }
+  if(drillOpen()){ closeDrill(); return; }      /* 明細彈窗：Esc 只關它 */
+  if(fbOpen()){ closeFb(); return; }            /* 倒讚彈窗開著：只關彈窗，不關抽屜 */
   if(picking()){ closePick(); return; }
-  close_(); closeSide(); closeProfile();
+  if(bselOpen()){ closeBsel(); return; }        /* 品牌下拉(z72)：只關它，不動側欄 */
+  if(profile.classList.contains("open")){ closeProfile(); return; }
+  if(side.classList.contains("open")){ closeSide(); return; }
+  close_();
 });
 
 draw();
