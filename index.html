@@ -1710,7 +1710,9 @@ main{flex:1;min-height:0;overflow:hidden;
    若由內容決定，展開／換層時上下緣**同時**往外推——比稿頁實測現況那版一輪跳 435px
    （314 → 699 → 749），剛剛在看的那一列會從游標底下跑掉。
    min(520px, 100%)：矮螢幕（1366×768 → .dov 扣掉上下內距剩 704）仍然吃得下 520。
-   → tools/mockups/店櫃選擇視窗比稿.html 有四版的實測數字。 */
+   → tools/mockups/店櫃選擇視窗比稿.html 有四版的實測數字。
+   ⚠️ 雙欄版（現行）本來就沒有會長高的東西，這條看起來像多餘的——**不要拿掉**：
+      右欄換品牌時內容量會從 3 列變 22 列，沒有它高度照樣跟著跳。 */
 .stmodal{position:relative;display:flex;flex-direction:column;overflow:hidden;
   width:100%;max-width:560px;height:min(520px,100%);
   background:var(--paper);border:1px solid var(--border);border-radius:var(--radius-lg);
@@ -1720,53 +1722,46 @@ main{flex:1;min-height:0;overflow:hidden;
    排行是同層比較這件事，卡片上沒有地方講得下（副標只有一行），這裡是唯一的位置。 */
 .sthint{margin:5px 0 0;font-size:var(--text-label);line-height:1.5;color:var(--text-muted);}
 .sthint b{color:var(--text-body);font-weight:var(--fw-semibold);}
-/* ⚠️ padding-top 是 0：第一版寫 space-2，再加上分組標題自己的 space-3，
-   標題列與上面那條分隔線之間就空出 20px ＋ 行距——使用者回報「很奇怪的空白」。
-   間距由 .dmhd 的下內距一路負責到底，這裡不再疊第二層。 */
-.stwrap{flex:1 1 auto;min-height:0;overflow-y:auto;
-  padding:0 var(--space-5) var(--space-4);}
+/* ── 雙欄：品牌｜店櫃（2026-08-12 使用者選 B）──────────────────────────────
+   左欄品牌、右欄那個品牌的店櫃。**沒有「展開」這個動作**，所以沒有東西會長高——
+   這是它跟手風琴版的根本差別：手風琴要靠寫死高度去壓住長高，B 是一開始就沒有。
+   ⚠️ 兩欄各自捲，容器本身 overflow:hidden：整片一起捲的話左欄的品牌會捲出畫面，
+      而左欄正是「我現在在看誰」的唯一線索。
+   ⚠️ 左欄 150px。右欄剩 560−150−1(框)−32(內距) ≈ 377 → 店櫃兩欄放得下（實測）。 */
+.stwrap{flex:1 1 auto;min-height:0;display:grid;grid-template-columns:150px 1fr;
+  overflow:hidden;}
 @supports not selector(::-webkit-scrollbar){
-  .stwrap{scrollbar-width:thin;scrollbar-color:var(--border-2) transparent;}}
-.stwrap::-webkit-scrollbar{width:var(--space-2);}
-.stwrap::-webkit-scrollbar-track{background:transparent;}
-.stwrap::-webkit-scrollbar-thumb{background:var(--border-2);border-radius:var(--radius-pill);}
-/* ── 兩段式鑽入（2026-08-12 使用者選 C）───────────────────────────────────
-   第一層只有六個品牌，點一個之後**整片換成**它的店櫃，要回去按「返回」。
-   ⚠️ 換掉的是手風琴（展開／收合就地長高）。手風琴本身沒問題，問題是它把高度交給
-      內容決定；而這裡是置中彈窗，高度一變上下緣同時外推。C 版把「展開」這個動作
-      整個拿掉——一次只呈現一層，配上寫死的高度，重排只發生在捲動區內部。
-   ⚠️ 已知代價（比稿時列出、使用者接受）：換品牌要兩下（返回 ＋ 再點），
-      而且第二層看不到別的品牌有什麼。 */
-/* 第一層：品牌卡。兩欄 ＋ 兩行，**每張卡都是兩行**——第二行不是「目前」就是
-   「選擇店櫃 ›」，高度才會一致；只讓持有目前選擇的那張多一行，六張卡會參差。 */
-.stbgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:var(--space-2);}
-.stbcard{display:flex;flex-direction:column;gap:3px;width:100%;cursor:pointer;text-align:left;
-  font-family:var(--font-body);background:var(--paper);
-  border:1px solid var(--border);border-radius:var(--radius-sm);padding:var(--space-3);}
-.stbcard:hover{border-color:var(--accent);background:var(--accent-soft);}
-.stbcard:focus-visible{outline:2px solid var(--accent);outline-offset:1px;}
-.stbcard .bl1{display:flex;align-items:baseline;gap:var(--space-2);}
-.stbcard .bn{font-size:var(--text-label);font-weight:var(--fw-semibold);color:var(--text);}
-.stbcard .bc{margin-left:auto;font-family:var(--font-mono);font-size:var(--text-micro);
+  .stbrands,.stpane{scrollbar-width:thin;scrollbar-color:var(--border-2) transparent;}}
+.stbrands::-webkit-scrollbar,.stpane::-webkit-scrollbar{width:var(--space-2);}
+.stbrands::-webkit-scrollbar-track,.stpane::-webkit-scrollbar-track{background:transparent;}
+.stbrands::-webkit-scrollbar-thumb,.stpane::-webkit-scrollbar-thumb{
+  background:var(--border-2);border-radius:var(--radius-pill);}
+.stbrands{border-right:1px solid var(--border);background:var(--surface-2);
+  overflow-y:auto;padding:var(--space-2);}
+.stbi{display:flex;align-items:center;gap:6px;width:100%;border:0;cursor:pointer;
+  background:transparent;border-radius:var(--radius-sm);padding:7px var(--space-3);
+  text-align:left;font-family:var(--font-body);font-size:var(--text-label);
+  color:var(--text-body);}
+.stbi:hover{background:var(--paper);}
+/* ⚠️ outline-offset 是**負的**：左欄有 8px 內距，正偏移的焦點框會被 .stbrands 的
+   overflow 裁掉一半，鍵盤使用者只看得到三邊。 */
+.stbi:focus-visible{outline:2px solid var(--accent);outline-offset:-2px;}
+.stbi .bn{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.stbi .bc{flex:none;font-family:var(--font-mono);font-size:var(--text-micro);
   color:var(--text-muted);}
-.stbcard .bl2{font-size:var(--text-micro);color:var(--text-muted);
-  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-/* 持有目前選擇的那一張：iris 框 ＋ 第二行寫出來。第一層唯一的狀態線索就是它。 */
-.stbcard.has{border-color:var(--accent);}
-.stbcard.has .bn,.stbcard.has .bl2{color:var(--accent);}
-.stbcard.has .bl2{font-weight:var(--fw-medium);}
-/* 第二層：返回 ＋ 這一層是誰。
-   ⚠️ 返回鍵放在捲動區**裡面**是刻意的：它是「這一層的內容」，跟著捲走沒關係——
-      釘在標題列下面會多一條分隔線，而視窗只有 520px，那條線很貴。 */
-.stback{display:inline-flex;align-items:center;gap:5px;border:0;background:transparent;
-  cursor:pointer;color:var(--accent);font-family:var(--font-body);font-size:var(--text-label);
-  font-weight:var(--fw-semibold);padding:var(--space-2) 0;margin:0;}
-.stback:hover{text-decoration:underline;}
-.stback:focus-visible{outline:2px solid var(--accent);outline-offset:1px;border-radius:3px;}
-.stback .ic{width:12px;height:12px;transform:rotate(90deg);}   /* chev 轉成「‹」 */
+/* 正在瀏覽：白底 ＋ 左側 iris 條（＝「右邊那一片是這個」）。 */
+.stbi[aria-selected="true"]{background:var(--paper);color:var(--text);
+  font-weight:var(--fw-semibold);box-shadow:inset 3px 0 0 var(--accent);}
+/* ⚠️ **「正在瀏覽」與「已套用」是兩件事，一定要分開標。** 使用者可以點去別的品牌
+   看一眼卻不選，那時左欄的高亮在 B 品牌、而套用中的店櫃還在 A 品牌。
+   已套用的那一組掛一顆實心點——少了它，畫面上就沒有任何線索指得回現況。 */
+.stbi .dot{width:5px;height:5px;border-radius:50%;background:var(--accent);
+  flex:none;opacity:0;}
+.stbi.has .dot{opacity:1;}
+.stpane{overflow-y:auto;padding:var(--space-3) var(--space-4) var(--space-4);}
 .stptt{margin:0 0 var(--space-2);font-family:var(--font-mono);
   font-size:var(--text-micro);color:var(--text-muted);}
-.stgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:4px;}
+.stgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:4px;}
 .strow{display:flex;align-items:center;gap:var(--space-2);width:100%;
   border:1px solid transparent;border-radius:var(--radius-sm);cursor:pointer;
   background:var(--surface-2);padding:6px var(--space-3);text-align:left;
@@ -9394,49 +9389,48 @@ drillov.addEventListener("click", e => { if(e.target === drillov) closeDrill(); 
 const stov = document.getElementById("stov"), stList = document.getElementById("st-list");
 document.getElementById("st-x").innerHTML = ic("x");
 let _stFrom = null, _stC = null, _stBox = null;   /* 開啟前的焦點 ＋ 是哪一張卡開的 */
-let _stStep = null;                              /* null ＝ 第一層（品牌）；品牌 id ＝ 第二層 */
+let _stPane = null;                              /* 右欄正在顯示哪個品牌的店櫃 */
 const storeOpen = () => stov.classList.contains("open");
 
 /* ⚠️ 是「哪一張卡」開的必須記下來（_stC／_stBox）：這顆視窗是共用的，
    而套用要回填到開它的那張清單上。之後若第二張卡也要店櫃選擇，這裡一個字都不用改。 */
-/* 畫出目前這一層。⚠️ 兩層共用同一個容器、同一次 innerHTML —— 兩個 DOM 互相 hidden
-   的寫法（第一版的手風琴）正是「高度由內容決定」的來源。 */
-function renderStore(){
+/* 右欄：目前這個品牌的店櫃。⚠️ **只重畫右欄。** 整個 stList 重畫會把左欄的 DOM 也換掉，
+   剛剛被點的那顆品牌鈕消失、焦點退回 <body>，鍵盤使用者當場失去位置；
+   而且左欄的捲動位置也會歸零（品牌多起來時就看得出來）。 */
+function renderPane(){
   const cur = storeOf(_stC).id;
-  const row = s => `<button class="strow" type="button" role="radio" data-sid="${s.id}"
-      aria-checked="${s.id === cur}"><span class="sn">${escH(s.name)}</span>
-      <span class="sf">${s.fl}</span>${ic("check")}</button>`;
-  if(_stStep){
-    const b = BRANDS.find(x => x.id === _stStep);
-    stList.innerHTML =
-      `<button class="stback" type="button" data-back>${ic("chev")}全部品牌</button>
-       <p class="stptt">${escH(b.name)} · 選一個店櫃</p>
-       <div class="stgrid" role="radiogroup" aria-label="${escH(b.name)} 的店櫃">`
-      + storesOf(b.id).map(row).join("") + `</div>`;
-    return;
-  }
-  /* 第一層。只列目前品牌範圍內的（見 storeGroups）——Hero 篩掉的品牌在這裡還列得出來
-     的話，兩顆篩選器會互相打臉。 */
-  stList.innerHTML = `<div class="stbgrid">` + storeGroups().map(g => {
-    const mine = g.list.find(s => s.id === cur);
-    return `<button class="stbcard${mine?" has":""}" type="button" data-cb="${g.b.id}">
-      <span class="bl1"><span class="bn">${escH(g.b.name)}</span>
-        <span class="bc">${escH(g.b.n)}</span></span>
-      <span class="bl2">${mine ? `目前 ${escH(mine.name)} ${mine.fl}` : "選擇店櫃 ›"}</span>
-    </button>`; }).join("") + `</div>`;
+  const b = BRANDS.find(x => x.id === _stPane) || BRANDS[0];
+  stList.querySelector(".stpane").innerHTML =
+    `<p class="stptt">${escH(b.name)} · ${escH(b.n)}</p>
+     <div class="stgrid" role="radiogroup" aria-label="${escH(b.name)} 的店櫃">`
+    + storesOf(b.id).map(s => `<button class="strow" type="button" role="radio"
+        data-sid="${s.id}" aria-checked="${s.id === cur}"><span class="sn">${escH(s.name)}</span>
+        <span class="sf">${s.fl}</span>${ic("check")}</button>`).join("") + `</div>`;
 }
 
 function openStore(box, c){
   _stC = c; _stBox = box;
-  /* ⚠️ 每次開窗都從第一層開始，不保留上次鑽到哪裡：關窗代表這一輪選完了。 */
-  _stStep = null;
-  renderStore();
+  const own = ALL_STORES().find(s => s.id === storeOf(c).id);
+  /* ⚠️ 開窗時右欄落在**套用中那個店櫃的品牌**，不是第一個品牌：一進來就看到現況，
+     不必先找自己在哪一組。 */
+  _stPane = own ? own.bid : (storeGroups()[0] || {}).b?.id;
+  /* 只列目前品牌範圍內的（見 storeGroups）——Hero 篩掉的品牌在這裡還列得出來的話，
+     兩顆篩選器會互相打臉。 */
+  stList.innerHTML = `<div class="stbrands" role="tablist" aria-label="品牌">`
+    + storeGroups().map(g => {
+        const mine = g.list.some(s => s.id === (own||{}).id);
+        return `<button class="stbi${mine?" has":""}" type="button" role="tab"
+          data-bp="${g.b.id}" aria-selected="${g.b.id === _stPane}"><span class="dot"></span>
+          <span class="bn">${escH(g.b.name)}</span><span class="bc">${escH(g.b.n)}</span></button>`;
+      }).join("")
+    + `</div><div class="stpane"></div>`;
+  renderPane();
   _stFrom = document.activeElement;
   stov.classList.add("open");
   stov.setAttribute("aria-hidden","false");
-  /* 焦點落在**持有目前選擇的那張品牌卡**：鍵盤使用者一進來就站在現況上。 */
-  const own = ALL_STORES().find(s => s.id === storeOf(c).id);
-  (stList.querySelector(own ? `.stbcard[data-cb="${own.bid}"]` : "nope")
+  /* 焦點落在**現在套用中的那一列**（右欄一開始就顯示它所在的品牌）。
+     找不到（被品牌範圍濾掉）才退回關閉鈕。 */
+  (stList.querySelector('.strow[aria-checked="true"]')
     || document.getElementById("st-x")).focus();
 }
 function closeStore(){
@@ -9444,7 +9438,7 @@ function closeStore(){
   stov.classList.remove("open");
   stov.setAttribute("aria-hidden","true");
   if(_stFrom && _stFrom.isConnected) _stFrom.focus();
-  _stFrom = null; _stC = null; _stBox = null; _stStep = null;
+  _stFrom = null; _stC = null; _stBox = null; _stPane = null;
 }
 /* 套用：換狀態 → 重排清單（rankBoard 會用新的店櫃算出另一份排行）→ 換標籤上的字 → 關窗。
    ⚠️ 走 syncList 而不是 draw()：重畫整頁會讓所有 ECharts 重新掛載、開場動畫整片重跑
@@ -9461,24 +9455,19 @@ function applyStore(sid){
   closeStore();
 }
 stList.addEventListener("click", e => {
-  /* 鑽入某個品牌。⚠️ 換層之後焦點必須自己搬——整片 innerHTML 換掉，原本被點的那顆
-     節點已經不存在，瀏覽器會把焦點退回 <body>，鍵盤使用者當場失去位置。 */
-  const cb = e.target.closest(".stbcard[data-cb]");
-  if(cb){
-    _stStep = cb.dataset.cb;
-    renderStore();
-    (stList.querySelector('.strow[aria-checked="true"]')
-      || stList.querySelector(".stback")).focus();
-    return;
-  }
-  if(e.target.closest(".stback")){
-    const back = _stStep;
-    _stStep = null;
-    renderStore();
-    /* 回到第一層時焦點放回**剛剛鑽進去的那張卡**，不是第一張——否則按了返回會發現
-       自己被丟到列表開頭，等於把剛才那一下操作的位置感抹掉。 */
-    (stList.querySelector(`.stbcard[data-cb="${back}"]`)
-      || stList.querySelector(".stbcard")).focus();
+  /* 切品牌：只換右欄 ＋ 改左欄的 aria-selected。
+     ⚠️ 明確把焦點放回被點的那顆。滑鼠點按鈕本來就會帶焦點，但**不是每種點擊都會**
+        ——程式派發的 click（自動化、輔助工具）不觸發 mousedown，焦點會留在 <body>，
+        接著按 Tab 就從整頁最前面重來。實測探針正是這樣掉出去的。
+        `.stbi` 沒有被重畫（見 renderPane），所以這裡 focus 的是同一顆節點、不會跳位。 */
+  const bp = e.target.closest(".stbi[data-bp]");
+  if(bp){
+    _stPane = bp.dataset.bp;
+    stList.querySelectorAll(".stbi").forEach(x =>
+      x.setAttribute("aria-selected", String(x === bp)));
+    renderPane();
+    stList.querySelector(".stpane").scrollTop = 0;   /* 換了品牌，右欄回到頂 */
+    bp.focus();
     return;
   }
   const r = e.target.closest(".strow[data-sid]");
@@ -9516,13 +9505,9 @@ addEventListener("keydown", e => {
   if(npOpen()){ ovClose(npov); return; }
   if(dpOpen()){ _delP = null; ovClose(dpov); return; }
   if(drillOpen()){ closeDrill(); return; }      /* 明細彈窗：Esc 只關它 */
-  /* 店櫃選擇。⚠️ 它自己就有兩層（品牌 → 店櫃），所以照這一段的規矩「一次剝一層」：
-     在第二層按 Esc 是**回到品牌**，不是關窗。直接關掉的話，鑽錯品牌想退回去的
-     最直覺按鍵會把整個視窗收掉，等於逼人重開。 */
-  if(storeOpen()){
-    if(_stStep){ stList.querySelector(".stback")?.click(); return; }
-    closeStore(); return;
-  }
+  /* 店櫃選擇。⚠️ 雙欄版**沒有子層**（品牌與店櫃同時在畫面上），所以 Esc 就是關窗，
+     不需要像抽屜那樣先剝一層。 */
+  if(storeOpen()){ closeStore(); return; }
   if(fbOpen()){ closeFb(); return; }            /* 倒讚彈窗開著：只關彈窗，不關抽屜 */
   if(picking()){ closePick(); return; }
   if(bselOpen()){ closeBsel(); return; }        /* 品牌下拉(z72)：只關它，不動側欄 */
