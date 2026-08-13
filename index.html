@@ -1249,6 +1249,25 @@ main{flex:1;min-height:0;overflow:hidden;
   font-weight:var(--fw-semibold);box-shadow:var(--shadow-xs);}
 .sgb:focus-visible{outline:2px solid var(--accent);outline-offset:1px;}
 
+/* 店櫃標籤（頁腳右側）。三個「可以點」的線索見 stagHTML 的註解。
+   ⚠️ 虛線框是**唯一**一處虛線，不要再往別的元件上加——它現在的意思很精確：
+      「這一格的值是可以換的」。到處都有就什麼都不是了。 */
+/* ⚠️ gap 與左內距**刻意壓到 4／6**：1280 的可用寬是 131px，最長的標籤
+   （SM2 · 高雄遠百）量到 129px——只剩 2px。gap 少 1px ×3 ＋ 左內距少 1px 換到 8px 餘裕，
+   視覺上看不出差別，但少一次「加一個字就整條 wrap」。 */
+.stag{display:inline-flex;align-items:center;gap:4px;flex:none;
+  border:1px dashed var(--accent);border-radius:var(--radius-pill);
+  background:var(--accent-soft);color:var(--accent);cursor:pointer;
+  font-family:var(--font-body);font-size:11px;line-height:1.4;
+  padding:3px var(--space-2) 3px 6px;
+  transition:border-color .14s var(--ease-out),box-shadow .14s var(--ease-out);}
+/* hover：虛線轉實線 ＋ 微陰影 —— 「還沒定案」變「正要動它」。 */
+.stag:hover{border-style:solid;box-shadow:var(--shadow-xs);}
+.stag:focus-visible{outline:2px solid var(--accent);outline-offset:1px;}
+.stag .ic{width:12px;height:12px;flex:none;}
+.stag .sv{font-weight:var(--fw-semibold);white-space:nowrap;}
+@media (prefers-reduced-motion:reduce){.stag{transition:none;}}
+
 /* ---- tooltip ----
    ⚠️ 2026-08-05：由**深底反白**改成**白底細框**，與 ECharts 的懸浮窗同一套（使用者要求）。
    數值必須與 chartOption 裡的 `tip` 物件一致，兩邊是同一個視覺元件的兩套實作：
@@ -1678,6 +1697,94 @@ main{flex:1;min-height:0;overflow:hidden;
   background:var(--color-warning-soft);color:var(--color-warning);}
 /* 關閉鈕沿用 .fbx 的樣式（同一種「彈窗右上角關閉」語彙，不另發明一套） */
 @media (prefers-reduced-motion:reduce){.dov,.dmodal{transition:none;}.dmodal{transform:none;}}
+
+/* ── 店櫃選擇視窗（2026-08-12）─────────────────────────────────────────────
+   ⚠️ **做成置中彈窗、不是頁腳的浮動選單。** 第一版想掛在標籤上開一個 popover，
+      兩個問題擋死：① `.panel` 是 overflow:hidden，absolute 的浮層會被卡片裁掉
+      （同 .bmenu 為什麼要 position:fixed 的理由）；② 最多 66 個店櫃，
+      在一張 262px 高的卡片旁邊開一個比卡片還高的浮層，讀起來像壞掉。
+      置中彈窗還順帶解決了「品牌是分組的」——分組標題要釘頂才看得出自己在哪一組。
+   ⚠️ 遮罩重用 .dov（同側欄三個彈窗）。寬度 560：兩欄剛好，比 .dmodal 的 640 窄，
+      因為每一列只是「場館 ＋ 樓層」不是一張表。 */
+/* ⚠️ **高度寫死，不是 max-height。** 使用者回報「視窗一直忽大忽小」：置中彈窗的高度
+   若由內容決定，展開／換層時上下緣**同時**往外推——比稿頁實測現況那版一輪跳 435px
+   （314 → 699 → 749），剛剛在看的那一列會從游標底下跑掉。
+   min(520px, 100%)：矮螢幕（1366×768 → .dov 扣掉上下內距剩 704）仍然吃得下 520。
+   → tools/mockups/店櫃選擇視窗比稿.html 有四版的實測數字。 */
+.stmodal{position:relative;display:flex;flex-direction:column;overflow:hidden;
+  width:100%;max-width:560px;height:min(520px,100%);
+  background:var(--paper);border:1px solid var(--border);border-radius:var(--radius-lg);
+  box-shadow:var(--shadow-lg);transform:translateY(8px);transition:transform .18s var(--ease-out);}
+.dov.open .stmodal{transform:none;}
+/* 標題下那句話講的是**為什麼要選**，不是重複「選擇店櫃」四個字。
+   排行是同層比較這件事，卡片上沒有地方講得下（副標只有一行），這裡是唯一的位置。 */
+.sthint{margin:5px 0 0;font-size:var(--text-label);line-height:1.5;color:var(--text-muted);}
+.sthint b{color:var(--text-body);font-weight:var(--fw-semibold);}
+/* ⚠️ padding-top 是 0：第一版寫 space-2，再加上分組標題自己的 space-3，
+   標題列與上面那條分隔線之間就空出 20px ＋ 行距——使用者回報「很奇怪的空白」。
+   間距由 .dmhd 的下內距一路負責到底，這裡不再疊第二層。 */
+.stwrap{flex:1 1 auto;min-height:0;overflow-y:auto;
+  padding:0 var(--space-5) var(--space-4);}
+@supports not selector(::-webkit-scrollbar){
+  .stwrap{scrollbar-width:thin;scrollbar-color:var(--border-2) transparent;}}
+.stwrap::-webkit-scrollbar{width:var(--space-2);}
+.stwrap::-webkit-scrollbar-track{background:transparent;}
+.stwrap::-webkit-scrollbar-thumb{background:var(--border-2);border-radius:var(--radius-pill);}
+/* ── 兩段式鑽入（2026-08-12 使用者選 C）───────────────────────────────────
+   第一層只有六個品牌，點一個之後**整片換成**它的店櫃，要回去按「返回」。
+   ⚠️ 換掉的是手風琴（展開／收合就地長高）。手風琴本身沒問題，問題是它把高度交給
+      內容決定；而這裡是置中彈窗，高度一變上下緣同時外推。C 版把「展開」這個動作
+      整個拿掉——一次只呈現一層，配上寫死的高度，重排只發生在捲動區內部。
+   ⚠️ 已知代價（比稿時列出、使用者接受）：換品牌要兩下（返回 ＋ 再點），
+      而且第二層看不到別的品牌有什麼。 */
+/* 第一層：品牌卡。兩欄 ＋ 兩行，**每張卡都是兩行**——第二行不是「目前」就是
+   「選擇店櫃 ›」，高度才會一致；只讓持有目前選擇的那張多一行，六張卡會參差。 */
+.stbgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:var(--space-2);}
+.stbcard{display:flex;flex-direction:column;gap:3px;width:100%;cursor:pointer;text-align:left;
+  font-family:var(--font-body);background:var(--paper);
+  border:1px solid var(--border);border-radius:var(--radius-sm);padding:var(--space-3);}
+.stbcard:hover{border-color:var(--accent);background:var(--accent-soft);}
+.stbcard:focus-visible{outline:2px solid var(--accent);outline-offset:1px;}
+.stbcard .bl1{display:flex;align-items:baseline;gap:var(--space-2);}
+.stbcard .bn{font-size:var(--text-label);font-weight:var(--fw-semibold);color:var(--text);}
+.stbcard .bc{margin-left:auto;font-family:var(--font-mono);font-size:var(--text-micro);
+  color:var(--text-muted);}
+.stbcard .bl2{font-size:var(--text-micro);color:var(--text-muted);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+/* 持有目前選擇的那一張：iris 框 ＋ 第二行寫出來。第一層唯一的狀態線索就是它。 */
+.stbcard.has{border-color:var(--accent);}
+.stbcard.has .bn,.stbcard.has .bl2{color:var(--accent);}
+.stbcard.has .bl2{font-weight:var(--fw-medium);}
+/* 第二層：返回 ＋ 這一層是誰。
+   ⚠️ 返回鍵放在捲動區**裡面**是刻意的：它是「這一層的內容」，跟著捲走沒關係——
+      釘在標題列下面會多一條分隔線，而視窗只有 520px，那條線很貴。 */
+.stback{display:inline-flex;align-items:center;gap:5px;border:0;background:transparent;
+  cursor:pointer;color:var(--accent);font-family:var(--font-body);font-size:var(--text-label);
+  font-weight:var(--fw-semibold);padding:var(--space-2) 0;margin:0;}
+.stback:hover{text-decoration:underline;}
+.stback:focus-visible{outline:2px solid var(--accent);outline-offset:1px;border-radius:3px;}
+.stback .ic{width:12px;height:12px;transform:rotate(90deg);}   /* chev 轉成「‹」 */
+.stptt{margin:0 0 var(--space-2);font-family:var(--font-mono);
+  font-size:var(--text-micro);color:var(--text-muted);}
+.stgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:4px;}
+.strow{display:flex;align-items:center;gap:var(--space-2);width:100%;
+  border:1px solid transparent;border-radius:var(--radius-sm);cursor:pointer;
+  background:var(--surface-2);padding:6px var(--space-3);text-align:left;
+  font-family:var(--font-body);font-size:var(--text-label);color:var(--text-body);}
+.strow:hover{border-color:var(--border-2);color:var(--text);}
+.strow:focus-visible{outline:2px solid var(--accent);outline-offset:1px;}
+.strow .sn{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+/* 樓層走 mono：它是這張卡的比較範圍（同樓層），不是店名的一部分。 */
+.strow .sf{flex:none;font-family:var(--font-mono);font-size:var(--text-micro);
+  color:var(--text-muted);}
+.strow .ic{width:13px;height:13px;flex:none;opacity:0;color:var(--accent);}
+/* 選中：iris 底 ＋ 勾。⚠️ 勾記號一定要有——單靠底色的話，色弱使用者在一格
+   淡紫底上讀不出「這個是現在套用中的」，而這是整個視窗唯一的狀態。 */
+.strow[aria-checked="true"]{background:var(--accent-soft);border-color:var(--accent);
+  color:var(--accent);font-weight:var(--fw-semibold);}
+.strow[aria-checked="true"] .ic{opacity:1;}
+.strow[aria-checked="true"] .sf{color:var(--accent);}
+@media (prefers-reduced-motion:reduce){.stmodal{transition:none;transform:none;}}
 
 /* ============================================================
    側欄的三個彈窗：搜尋對話 · 新增專案 · 刪除專案
@@ -2205,6 +2312,21 @@ body.picking .pickhint{opacity:1;transform:translateX(-50%);}
     <button class="fbx" id="drill-x" type="button" aria-label="關閉"></button>
   </div>
 </div>
+
+<!-- 店櫃選擇視窗（2026-08-12）。清單由 openStore() 依目前的品牌範圍重繪，markup 只留殼。
+     ⚠️ role="radiogroup" 不是 listbox：單選、選了立刻生效，沒有「先勾再按套用」那一步
+        ——單選加確認鈕等於多一個永遠只會按「確定」的按鈕（同 c.seg 拿掉排序鈕的理由）。 -->
+<div class="dov" id="stov" aria-hidden="true">
+  <div class="stmodal" role="dialog" aria-modal="true" aria-labelledby="st-t">
+    <div class="dmhd">
+      <h2 class="dmt" id="st-t">選擇店櫃</h2>
+      <p class="sthint">排行比的是<b>同一層樓</b>的品牌，所以要先指定看哪一個店櫃。
+        單選，點了立即套用。</p>
+    </div>
+    <div class="stwrap" id="st-list" role="radiogroup" aria-labelledby="st-t"></div>
+    <button class="fbx" id="st-x" type="button" aria-label="關閉"></button>
+  </div>
+</div>
 <aside class="drawer" id="drawer" aria-hidden="true" aria-label="追問對話">
   <span class="rz rz-n"  data-rz="n"></span><span class="rz rz-s"  data-rz="s"></span>
   <span class="rz rz-w"  data-rz="w"></span><span class="rz rz-e"  data-rz="e"></span>
@@ -2435,6 +2557,74 @@ const BRANDS = [
 let BSEL = [];                       /* 空陣列 ＝ 全部品牌（不另設一個 "ALL" 狀態） */
 const bselEl = document.getElementById("bsel");
 
+/* ═══ 店櫃選擇（2026-08-12）═══════════════════════════════════════════════
+   使用者的客戶是多品牌集團：A 客戶旗下 3 個品牌，每個品牌底下 n 個店櫃。
+   「競爭品牌排行」講的是**同一層樓**的比較——不指定看哪一個店櫃，「同樓層」三個字
+   就沒有指涉對象。所以這顆選擇器不是加值功能，是那張卡原本缺的那個參數。
+
+   ⚠️ **與 Hero 的品牌下拉是兩種東西，刻意不合併：**
+        品牌下拉 ＝ 全域、多選、只切狀態不動數字（BSEL）
+        店櫃選擇 ＝ 單張卡、單選、**真的會換一份排行**（換樓層就是換對手）
+      合併成一顆的話，「多選三個品牌」在這張卡上沒有意義——一次只能站在一層樓上。
+   ⚠️ 但兩者不能互相矛盾：品牌下拉篩掉的品牌，店櫃視窗裡不該還列得出來
+      （見 storeGroups 與 syncBsel 尾端的 reanchorStore）。
+
+   ⚠️ **店櫃清單是示意資料。** 真實來源是 ERP 的店櫃主檔（p.Name 那一層，見
+      工程師文件/業績模組_欄位與SQL需求.md 第 1.1 節的店碼閘），但**品牌掛在哪一層
+      至今未確認**（同 BRAND_BLIND 的 ⚠️）——若品牌其實掛在商品上，「某品牌底下有哪些
+      店櫃」這個階層根本不存在，這顆選擇器要改成「店櫃」單層平鋪。等客戶回覆。 */
+/* 場館池 [全名, 短名]。
+   ⚠️ **短名有硬上限，不是「順手縮一下」。** 卡片頁腳那一列還放著期間切換鈕（104px），
+      實測可用寬只有 1280→131px／1366→153px／1440→171px，而標籤本身的框（icon ＋ chev
+      ＋ 內距 ＋ gap）就吃掉 49px。所以短名全部壓在 **4 個全形字以內**，
+      第一版寫「高雄夢時代」「屏東太平洋」的時候，1280／1366 是**每一個店櫃都 wrap**、
+      1440 有 31 個 wrap——頁腳從 38px 變 74px，清單跟著矮一截。
+      新增場館時請照這個上限，並用 tools 那支寬度探針複驗（不 wrap 才算過）。
+   ⚠️ 縮寫原則：**短名只需要在這個池子裡唯一，不需要自己講完整。** 全名就在視窗那一列
+      上，標籤只是回指。照這條走「中壢 SOGO」可以縮成「中壢」（池裡只有一個中壢），
+      而不必去挑 SOGO 的中文名——拉丁字母比全形字寬，SOGO 那三家正是第二版
+      1280 唯一還在 wrap 的 11 個。 */
+const MALLS = [
+  ["左營新光",     "左營"],     ["台南新天地",   "新天地"],
+  ["台中新光三越", "台中新光"], ["高雄漢神巨蛋", "漢神"],
+  ["台中中友百貨", "中友"],     ["台北 A11 信義","A11"],
+  ["板橋大遠百",   "板橋"],     ["新竹巨城",     "巨城"],
+  ["台北 A8 天母", "A8"],       ["桃園統領",     "統領"],
+  ["高雄夢時代",   "夢時代"],   ["中壢 SOGO",    "中壢"],
+  ["嘉義耐斯",     "耐斯"],     ["竹北遠百",     "竹北"],
+  ["屏東太平洋",   "屏東"],     ["花蓮遠百",     "花蓮"],
+  ["台北信義 A13", "A13"],      ["南西新光",     "南西"],
+  ["台北忠孝 SOGO","忠孝"],     ["台北復興 SOGO","復興"],
+  ["台中大遠百",   "台中遠百"], ["高雄大遠百",   "高雄遠百"]];
+const FLOORS = ["2F","3F","4F","B1"];
+
+/* 某品牌底下的店櫃。櫃數直接讀 BRANDS 的 n（"22 櫃" → 22）——兩份資料若各寫一次，
+   下拉說 22 櫃、視窗列出 18 個，那種矛盾使用者一眼就看得到而我們不會。
+   ⚠️ 起點依品牌序位輪轉：不輪轉的話每個品牌的清單都是 EM 那份的前綴，
+      翻到第二個品牌會看到一模一樣的開頭，假得很明顯。 */
+const storesOf = bid => {
+  const i = BRANDS.findIndex(b => b.id === bid), b = BRANDS[i];
+  if(!b) return [];
+  const n = Math.min(parseInt(b.n, 10) || 0, MALLS.length);
+  return Array.from({length:n}, (_, k) => {
+    const m = MALLS[(i * 5 + k) % MALLS.length];
+    return { id:`${b.id}-${k}`, bid:b.id, bn:b.name,
+             name:m[0], short:m[1], fl:FLOORS[(i + k) % FLOORS.length] };
+  });
+};
+const ALL_STORES = () => BRANDS.flatMap(b => storesOf(b.id));
+/* 目前作用中的品牌範圍（空 ＝ 全部），店櫃視窗與 reanchor 共用同一條判斷。 */
+const storeGroups = () => BRANDS.filter(b => !BSEL.length || BSEL.includes(b.id))
+                                .map(b => ({ b, list:storesOf(b.id) }));
+
+const STORE_DEF = "EM-0";            /* 預設 ＝ EM 左營新光（STORE_DRILL 的業績第一名） */
+/* renderLists 跑過沒有。⚠️ 宣告在這裡是因為 syncBsel 要用，而它比 _lists 早跑——
+   詳見 syncBsel 尾端那條註解。 */
+let _listsReady = false;
+/* 卡片自己記著選了誰（同 c._sg 的作法：切分頁再回來時選擇還在）。 */
+const storeOf = c => ALL_STORES().find(s => s.id === (c._st || STORE_DEF))
+                  || ALL_STORES()[0];
+
 /* ── 哪些元件「篩不動」（＝掛 mono 小標的名單）────────────────────────────
    ⚠️ **這份名單是暫定的，前提尚未成立。** 它假設「品牌掛在商品（PIS_Goods）上」，
       於是品牌只存在明細層，而下面這些全部走表頭層 SUM(si.MustPayTotal)
@@ -2539,6 +2729,13 @@ function syncBsel(){
     if(old) old.remove();
     row.insertAdjacentHTML("beforeend", bchipHTML(BSEL, "pend", "目前的品牌範圍"));
   });
+  /* 品牌範圍一變，卡片上作用中的店櫃可能已經不在範圍內（見 reanchorStore 的 ⚠️）。
+     ⚠️ **旗標不能省、也不能改用 typeof 擋。** syncBsel 在 renderBsel() 裡就會跑一次
+        （檔案第 2749 行），而 `let _lists` 宣告在四千多行之後 → 那一刻 _lists 還在 TDZ，
+        碰到就是 ReferenceError。`typeof _lists` 對 let 一樣會丟（TDZ 不吃 typeof 豁免），
+        `typeof reanchorStore` 也擋不住（函式宣告會提升，判斷永遠成立、照樣進去踩）。
+        所以改用一顆自己宣告在這上面的旗標，由 renderLists 開啟。 */
+  if(_listsReady) reanchorStore();
 }
 const bselOpen  = () => bselEl.classList.contains("open");
 /* 選單是 position:fixed（見 .bmenu 的 CSS 註解：`.hero` 的 overflow:hidden 會裁掉
@@ -2905,21 +3102,30 @@ M["業績"] = { sub:"本月業績狀態盤點",
           出現過「競」字，沒有任何競品欄位——這份排行只可能來自**百貨提供的樓層／專櫃排行**。
           三件事沒確認之前，下面的數字全部是示意值：
             ① 拿不拿得到　② 多久更新一次　③ 給的是業績金額還是只有名次。
+          ⚠️ ② 從「補充題」升級成**卡住「昨日」那一段的前提**（2026-08-12 期間軸改成
+             昨日／本月累計之後）：百貨若是月結才給一次，「昨日」整段沒有資料源，
+             那顆鈕要拿掉、只留累計——不是換個文案就好。
           ③ 若答案是「只有名次」，主值欄沒有金額可放、頁尾的「距前一名」也不成立，
           這張卡要重新設計，不是改個欄位就好。 */
     {cs:3,rs:4,type:"list",h:"競爭品牌排行",
-     s:"我們在同樓層排第幾 · 近 12 個月 · 12 個品牌",   /* 初始文案；掛載後由 c.sub 覆寫 */
+     s:"我們在同樓層排第幾 · 本月累計 · 12 個品牌",   /* 初始文案；掛載後由 c.sub 覆寫 */
      /* n ＝ 畫出來的對手家數（沒有 topN 就等於全部）。副標寫「12 個品牌」不是「11 家對手」
         ——加上我們才是這個樓層的母體，而名次是對母體算的。 */
-     sub:(n,s) => `我們在同樓層排第幾 · ${PER_LAB[s.per]} · ${n + 1} 個品牌`,
-     /* 只有期間一組（見上方「拿掉排序」）。key 會寫進 c._sg，切換只重排這一張清單。 */
-     seg:[{k:"per", def:"12", o:[["1","上月"],["3","3月"],["6","6月"],["12","12月"]]}],
+     sub:(n,s) => `我們在同樓層排第幾 · ${PER[s.per].sub} · ${n + 1} 個品牌`,
+     /* 只有期間一組（見上方「拿掉排序」）。key 會寫進 c._sg，切換只重排這一張清單。
+        ⚠️ **兩段就是 App 現行的那兩段**（見 PER）。預設落在「本月累計」——整頁的框是
+           「本月業績狀態盤點」（M["業績"].sub），開場先給日粒度會跟旁邊每一張卡錯拍。 */
+     seg:[{k:"per", def:"m", o:[["d","昨日"],["m","本月累計"]]}],
+     /* 開啟頁腳右下角的店櫃標籤（見 stagHTML）。這張卡非有不可：「同樓層」要先有樓層。
+        狀態存在 c._st（同 c._sg，切分頁再回來還在）。 */
+     store:true,
      /* ⚠️ **名次是算出來的，不是資料裡的欄位**（見 rankBoard）：自家與對手放進同一份排序，
         當期名次用 now[ix] 排、上期名次用 prev[ix] 排。寫死名次的話切換期間後金額會動、
         名次不動，兩欄立刻互相矛盾——而且那是靜默的，畫面看起來完全正常。 */
+     /* 副註的第一個字樣跟著期間走（見 PER 的 prev）：「前一日 第 3」／「上月同期 第 3」。 */
      pick:(d,s,c) => rankBoard(c,s).rows.map(o =>
        [`<i class="rk">${o.r}</i>${o.n}`,
-        `上期 ${o.p} · ${o.d>0 ? "↑"+o.d : o.d<0 ? "↓"+(-o.d) : "持平"}`,
+        `${PER[s.per].prev} 第 ${o.p} · ${o.d>0 ? "↑"+o.d : o.d<0 ? "↓"+(-o.d) : "持平"}`,
         `${F(o.v)} 萬`]),
      /* 頁尾固定列（見 fillList 的 c.foot 與 .r.ft 的 CSS）。 */
      foot:(d,s,c) => { const B = rankBoard(c,s);
@@ -2931,20 +3137,24 @@ M["業績"] = { sub:"本月業績狀態盤點",
         頁尾也是 45px，可用高 238／233／262）——那等於把「誰在前面」砍掉一半。
         ⚠️ 代價：這是全站第二個會內捲的清單（第一個是 CRM 喚回清單）。捲軸是常駐的
            （.rows 那組 CSS），所以「下面還有」看得見；sticky 那一列的上緣陰影是第二個提示。 */
-     /* [品牌, [上月, 近3月, 近6月, 近12月] 月均業績（萬）, 同四格的**上一期**月均]
-        上一期 ＝ 前一個同長度的期間（選 3 月就是再前面那 3 個月），名次變動由它算出來。 */
-     self:["我們（紋藝）",  [1240,1268,1252,1240], [1188,1205,1215,1150]],
-     d:[["B 品牌", [2180,2145,2098,2062], [2090,2060,2030,2005]],
-        ["C 品牌", [1690,1622,1584,1560], [1430,1455,1490,1390]],
-        ["D 品牌", [1455,1462,1440,1420], [1520,1508,1470,1448]],
-        ["E 品牌", [1105,1118,1112,1105], [1096,1102,1108,1110]],
-        ["F 品牌", [ 968, 952, 940, 968], [ 905, 918, 930, 946]],
-        ["G 品牌", [ 902, 928, 946, 902], [ 960, 985,1000,1010]],
-        ["H 品牌", [ 770, 782, 776, 770], [ 758, 764, 770, 772]],
-        ["J 品牌", [ 705, 712, 708, 705], [ 690, 698, 702, 704]],
-        ["K 品牌", [ 640, 636, 638, 640], [ 648, 645, 642, 641]],
-        ["L 品牌", [ 588, 596, 592, 588], [ 572, 580, 585, 586]],
-        ["M 品牌", [ 512, 505, 508, 512], [ 534, 560, 580, 600]]],
+     /* [品牌, [昨日, 本月累計] 業績（萬）, 同兩格的**對照期**]
+        對照期依段別而異（見 PER 的 prev）：昨日 → 前一日；本月累計 → 上月同期
+        （上個月的月初到同一天，不是整個上個月——不然月中比較時分母長度就不一樣了）。
+        名次與名次變動全部由這兩組數字算出來，沒有寫死的名次欄（見 rankBoard）。
+        ⚠️ 兩段的名次刻意不一樣（我們：本月累計第 4、昨日第 6）。切過去名次不動的假資料
+           會讓人以為這顆切換鈕壞了，而這張卡的用途正是「單日會抖、累計才是趨勢」。 */
+     self:["我們（紋藝）",  [38, 855], [46, 826]],
+     d:[["B 品牌", [78,1420], [72,1385]],
+        ["C 品牌", [62,1088], [51, 940]],
+        ["D 品牌", [44, 968], [55,1010]],
+        ["E 品牌", [41, 762], [37, 770]],
+        ["F 品牌", [40, 668], [32, 640]],
+        ["G 品牌", [29, 620], [34, 655]],
+        ["H 品牌", [26, 531], [24, 522]],
+        ["J 品牌", [23, 486], [25, 470]],
+        ["K 品牌", [21, 441], [20, 448]],
+        ["L 品牌", [19, 405], [18, 398]],
+        ["M 品牌", [17, 353], [19, 372]]],
      /* 第 1 句＝業績-63（S3）「哪個專櫃這個月業績最慘？」，換圖後仍成立：
         圖講對手、這句講自己，兩者不重複。三句待 chips 階段統一複核（使用者裁示：
         chips 排到最後一個階段），這裡先原樣留著。 */
@@ -6361,16 +6571,57 @@ const chList = (c, i) => `<div class="rows${c.seg?" dense":""}" data-li="${i}"><
 
 /* 分段切換列（頁腳）。狀態存在 c._sg 上——M 是模組層級物件，切分頁再回來時選擇還在，
    這是刻意的：老闆把它切到「成本率」看了一輪，跳去庫存再回來不該被重設。 */
+/* ⚠️ `.pseg` 是 space-between：期間鈕靠左、店櫃標籤靠右下角（使用者指定的版位）。
+   c.store 沒開的卡片不長這顆，右半邊仍是空的——那正是它原本的樣子。 */
 const segHTML = c => `<div class="pseg">` + c.seg.map(g =>
   `<span class="sgrp" role="group">` + g.o.map(([v,lab]) =>
     `<button class="sgb" type="button" data-sg="${g.k}" data-sv="${v}"
-      aria-pressed="${segOf(c)[g.k]===v}">${lab}</button>`).join("") + `</span>`).join("") + `</div>`;
+      aria-pressed="${segOf(c)[g.k]===v}">${lab}</button>`).join("") + `</span>`).join("")
+  + (c.store ? stagHTML(c) : "") + `</div>`;
+
+/* 店櫃標籤（＝使用者說的 Tags）。
+   ⚠️ **要看得出來可以點**，這是需求裡明講的「引導」。三個線索疊在一起，缺一個都會退化
+      成一片看起來像說明文字的灰字：
+        ① 虛線框 —— 整份設計系統只有這一顆是虛線，讀作「這一格是可以換的」
+        ② chev 向下 —— 全站統一的「按了會開東西」記號（同 .bselb .ic）
+        ③ iris 字色 ＋ tag icon —— 頁腳其他東西全是 --text-muted 的灰
+      加上 title：滑過去會講出**按了會發生什麼**，不是只重複標籤上已經有的字。
+   ⚠️ 值用短名（見 MALLS 的註解），全名留給視窗裡那一列。
+   ⚠️ **「店櫃」兩個字與樓層都不放在標籤上**，寬度真的不夠（見 MALLS 的實測數字）：
+      加了「店櫃」就少 27px、加了樓層再少 15px，兩個都放就是必 wrap。
+      這兩件事各有別的地方講：`title` 與 aria-label 講「這是店櫃、按了會換」，
+      樓層在視窗裡每一列右邊都有。犧牲的是「不開視窗也看得到樓層」，已知、接受。 */
+const stagHTML = c => { const st = storeOf(c);
+  return `<button class="stag" type="button" data-stag aria-haspopup="dialog"
+      title="換店櫃：排行是同一層樓的比較，選哪個店櫃就看哪一層"
+      aria-label="店櫃：${escH(st.bn)} ${escH(st.name)} ${st.fl}，點擊切換">
+      ${ic("tag","ic sm")}<span class="sv">${escH(st.bid)} · ${escH(st.short)}</span>${ic("chev")}</button>`; };
+
+/* 套用後只換標籤上的字，不重建整條 .pseg——重建會把期間鈕的 DOM 換掉，
+   焦點跟著掉，鍵盤使用者切完店櫃就得重新 Tab 回去。 */
+function syncStag(panel, c){
+  const b = panel && panel.querySelector(".stag");
+  if(!b) return;
+  const st = storeOf(c);
+  b.querySelector(".sv").textContent = `${st.bid} · ${st.short}`;
+  b.setAttribute("aria-label", `店櫃：${st.bn} ${st.name} ${st.fl}，點擊切換`);
+}
 
 const segOf = c => (c._sg ||= Object.fromEntries(c.seg.map(g => [g.k, g.def])));
 
-/* 期間鍵 → 副標寫法。切換鈕上是「3月」（省寬度），副標要講清楚是「近 3 個月」。 */
-const PER_LAB = {"1":"上月","3":"近 3 個月","6":"近 6 個月","12":"近 12 個月"};
-const PER_IX  = {"1":0,"3":1,"6":2,"12":3};
+/* 期間鍵 → 三段文案 ＋ 資料索引。
+   ── 2026-08-12：四段（上月／3月／6月／12月）改成 App 現行的兩段（昨日／本月累計）──
+   使用者裁示：這張卡要跟 App 的期間切換一致，不要自己另立一套。連帶三件事一起改：
+     ① 切換鈕只剩兩顆（lab）
+     ② 副標的期間字樣（sub）
+     ③ **每一列的「上期」要正名**（prev）——四段時期「上期」是「前一個同長度的期間」，
+        兩段之後「昨日的上期」是前一日、「本月累計的上期」是上月同期，兩者不同義。
+        繼續寫「上期」的話，切到另一段畫面上完全看不出比較基準換了。 */
+const PER = {
+  d: { lab:"昨日",     sub:"昨日",     prev:"前一日"   },
+  m: { lab:"本月累計", sub:"本月累計", prev:"上月同期" }
+};
+const PER_IX = { d:0, m:1 };
 
 /* 依目前的分段選擇，產出 [名稱, 副註, 主值] 三元組。
    ⚠️ 主值欄必須跟著排序依據走：排金額時主值是金額、副註放另一個度量；切到另一組時對調。
@@ -6396,9 +6647,27 @@ function listRows(c){
    ⚠️ 兩份排序**都要含自家**，否則對手的名次會少算一名——1,2,3 之後直接接 4，
       跳號不見了，而跳號正是這張卡表達「我們在哪一格」的方式（見該卡 ⚠️）。
    回傳的 rows 已經濾掉自家、依當期名次排好；me／ahead 給頁尾那一列用。 */
+/* ── 換店櫃 ＝ 換樓層 ＝ 換一份排行（2026-08-12）──────────────────────────────
+   ⚠️ **這是示意資料的生成規則，不是業務規則。** demo 沒有 66 份真排行，也不該手編
+      66 份——改用店櫃 id 決定的**定量**抖動：同一個店櫃永遠得到同一份排行
+      （可重現、截圖對得起來、切走再切回來數字不會變），但換店櫃名次是真的會動的。
+      接真實資料時整段 jit 拿掉，改成後端依「樓層 × 期間」給一份排行。
+   ⚠️ 預設店櫃（STORE_DEF）**不抖動**，回傳基準盤：對照頁那三張手繪圖畫的就是這一份，
+      抖了的話會議上兩邊對不起來。
+   ⚠️ 對手仍叫 B～M 品牌：換一層樓對手本來就會換人，但佔位字母沒有真實對應，
+      硬給不同字母只是換一組假名字。接資料時對手名單也要跟著樓層來。 */
+const _fnv = s => { let h = 2166136261;
+  for(let i = 0; i < s.length; i++){ h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return h >>> 0; };
+const jit = (sid, name, k) =>
+  sid === STORE_DEF ? 1 : 0.80 + _fnv(sid + "|" + name + "|" + k) % 41 / 100;   /* 0.80–1.20 */
+
 function rankBoard(c, s){
   const ix = PER_IX[s.per];
-  const all = [...c.d, c.self].map(b => ({ n:b[0], v:b[1][ix], q:b[2][ix], me:b === c.self }));
+  const sid = storeOf(c).id;
+  const all = [...c.d, c.self].map(b => ({ n:b[0],
+    v: Math.round(b[1][ix] * jit(sid, b[0], "v")),
+    q: Math.round(b[2][ix] * jit(sid, b[0], "q")), me:b === c.self }));
   [...all].sort((a,b) => b.v - a.v).forEach((o,i) => o.r = i + 1);   /* 當期名次 */
   [...all].sort((a,b) => b.q - a.q).forEach((o,i) => o.p = i + 1);   /* 上期名次 */
   all.forEach(o => o.d = o.p - o.r);                                 /* 正 ＝ 進步 */
@@ -7000,6 +7269,14 @@ chEl.addEventListener("click", e => {
   /* 清單的分段切換（排序依據／期間）。只重排這一張清單，不重畫整頁——
      重畫會讓所有 ECharts 重新掛載、開場動畫整片重跑，切一下排序不該有那種代價。
      挑圖模式下停用（此刻整張面板是一個可點的目標，理由同下方圖例）。 */
+  /* 店櫃標籤 → 開選擇視窗。挑圖模式下停用，理由同下面的分段切換。 */
+  const stg = e.target.closest(".stag[data-stag]");
+  if(stg && !document.body.classList.contains("picking")){
+    const panel = stg.closest(".panel"), box = panel && panel.querySelector(".rows[data-li]");
+    const l = box && _lists.find(x => x.box === box);
+    if(l) openStore(box, l.c);
+    return;
+  }
   const sg = e.target.closest(".sgb[data-sg]");
   if(sg && !document.body.classList.contains("picking")){
     const panel = sg.closest(".panel"), box = panel && panel.querySelector(".rows[data-li]");
@@ -7296,6 +7573,7 @@ function renderLists(D){
     _lists.push({ box, c });
     syncList(box, c);
   });
+  _listsReady = true;                /* 見 syncBsel 尾端：在此之前 reanchorStore 碰不得 */
 }
 /* 填列 ＋ 同步副標。副標必須跟著切換走：期間換了副標還寫「近 12 個月」，
    會被讀成資料沒更新；列數隨螢幕變、副標卻寫死「前 5 家」也是同一種錯（同 syncSub 的理由）。
@@ -9110,6 +9388,120 @@ gaugesEl.addEventListener("click", e => {
 document.getElementById("drill-x").addEventListener("click", closeDrill);
 drillov.addEventListener("click", e => { if(e.target === drillov) closeDrill(); });  /* 點外面關 */
 
+/* ============================================================
+   店櫃選擇視窗（見上方 storesOf／stagHTML 的說明）
+   ============================================================ */
+const stov = document.getElementById("stov"), stList = document.getElementById("st-list");
+document.getElementById("st-x").innerHTML = ic("x");
+let _stFrom = null, _stC = null, _stBox = null;   /* 開啟前的焦點 ＋ 是哪一張卡開的 */
+let _stStep = null;                              /* null ＝ 第一層（品牌）；品牌 id ＝ 第二層 */
+const storeOpen = () => stov.classList.contains("open");
+
+/* ⚠️ 是「哪一張卡」開的必須記下來（_stC／_stBox）：這顆視窗是共用的，
+   而套用要回填到開它的那張清單上。之後若第二張卡也要店櫃選擇，這裡一個字都不用改。 */
+/* 畫出目前這一層。⚠️ 兩層共用同一個容器、同一次 innerHTML —— 兩個 DOM 互相 hidden
+   的寫法（第一版的手風琴）正是「高度由內容決定」的來源。 */
+function renderStore(){
+  const cur = storeOf(_stC).id;
+  const row = s => `<button class="strow" type="button" role="radio" data-sid="${s.id}"
+      aria-checked="${s.id === cur}"><span class="sn">${escH(s.name)}</span>
+      <span class="sf">${s.fl}</span>${ic("check")}</button>`;
+  if(_stStep){
+    const b = BRANDS.find(x => x.id === _stStep);
+    stList.innerHTML =
+      `<button class="stback" type="button" data-back>${ic("chev")}全部品牌</button>
+       <p class="stptt">${escH(b.name)} · 選一個店櫃</p>
+       <div class="stgrid" role="radiogroup" aria-label="${escH(b.name)} 的店櫃">`
+      + storesOf(b.id).map(row).join("") + `</div>`;
+    return;
+  }
+  /* 第一層。只列目前品牌範圍內的（見 storeGroups）——Hero 篩掉的品牌在這裡還列得出來
+     的話，兩顆篩選器會互相打臉。 */
+  stList.innerHTML = `<div class="stbgrid">` + storeGroups().map(g => {
+    const mine = g.list.find(s => s.id === cur);
+    return `<button class="stbcard${mine?" has":""}" type="button" data-cb="${g.b.id}">
+      <span class="bl1"><span class="bn">${escH(g.b.name)}</span>
+        <span class="bc">${escH(g.b.n)}</span></span>
+      <span class="bl2">${mine ? `目前 ${escH(mine.name)} ${mine.fl}` : "選擇店櫃 ›"}</span>
+    </button>`; }).join("") + `</div>`;
+}
+
+function openStore(box, c){
+  _stC = c; _stBox = box;
+  /* ⚠️ 每次開窗都從第一層開始，不保留上次鑽到哪裡：關窗代表這一輪選完了。 */
+  _stStep = null;
+  renderStore();
+  _stFrom = document.activeElement;
+  stov.classList.add("open");
+  stov.setAttribute("aria-hidden","false");
+  /* 焦點落在**持有目前選擇的那張品牌卡**：鍵盤使用者一進來就站在現況上。 */
+  const own = ALL_STORES().find(s => s.id === storeOf(c).id);
+  (stList.querySelector(own ? `.stbcard[data-cb="${own.bid}"]` : "nope")
+    || document.getElementById("st-x")).focus();
+}
+function closeStore(){
+  if(!storeOpen()) return;
+  stov.classList.remove("open");
+  stov.setAttribute("aria-hidden","true");
+  if(_stFrom && _stFrom.isConnected) _stFrom.focus();
+  _stFrom = null; _stC = null; _stBox = null; _stStep = null;
+}
+/* 套用：換狀態 → 重排清單（rankBoard 會用新的店櫃算出另一份排行）→ 換標籤上的字 → 關窗。
+   ⚠️ 走 syncList 而不是 draw()：重畫整頁會讓所有 ECharts 重新掛載、開場動畫整片重跑
+      （同 .sgb 那條的理由）。 */
+function applyStore(sid){
+  /* ⚠️ isConnected：視窗開著時仍然可以切分頁（draw() 會把整片 #charts 換掉），
+     那之後 _stBox 指的是已經被丟掉的節點。寫進去不會報錯——syncList／syncStag 兩邊
+     都有 optional chaining，於是「按了沒反應」而且沒有任何線索。直接關掉最誠實。 */
+  if(!_stC || !_stBox || !_stBox.isConnected) return closeStore();
+  _stC._st = sid;
+  const panel = _stBox.closest(".panel");
+  syncList(_stBox, _stC);
+  syncStag(panel, _stC);
+  closeStore();
+}
+stList.addEventListener("click", e => {
+  /* 鑽入某個品牌。⚠️ 換層之後焦點必須自己搬——整片 innerHTML 換掉，原本被點的那顆
+     節點已經不存在，瀏覽器會把焦點退回 <body>，鍵盤使用者當場失去位置。 */
+  const cb = e.target.closest(".stbcard[data-cb]");
+  if(cb){
+    _stStep = cb.dataset.cb;
+    renderStore();
+    (stList.querySelector('.strow[aria-checked="true"]')
+      || stList.querySelector(".stback")).focus();
+    return;
+  }
+  if(e.target.closest(".stback")){
+    const back = _stStep;
+    _stStep = null;
+    renderStore();
+    /* 回到第一層時焦點放回**剛剛鑽進去的那張卡**，不是第一張——否則按了返回會發現
+       自己被丟到列表開頭，等於把剛才那一下操作的位置感抹掉。 */
+    (stList.querySelector(`.stbcard[data-cb="${back}"]`)
+      || stList.querySelector(".stbcard")).focus();
+    return;
+  }
+  const r = e.target.closest(".strow[data-sid]");
+  if(r) applyStore(r.dataset.sid);
+});
+document.getElementById("st-x").addEventListener("click", closeStore);
+stov.addEventListener("click", e => { if(e.target === stov) closeStore(); });   /* 點外面關 */
+
+/* 品牌範圍變動時，作用中的店櫃可能已經被篩掉 → 改錨到範圍內的第一個。
+   ⚠️ 不能留著不管：卡片頁腳會顯示一個「已經不在篩選範圍內」的店櫃，而排行還是它的
+      ——畫面完全正常，只有數字是錯的範圍。這是靜默失效，所以在 syncBsel 尾端強制修正。 */
+function reanchorStore(){
+  const ok = new Set(storeGroups().flatMap(g => g.list.map(s => s.id)));
+  if(!ok.size) return;
+  _lists.forEach(({ box, c }) => {
+    if(!c.store) return;
+    if(ok.has(c._st || STORE_DEF)) return;
+    c._st = [...ok][0];
+    syncList(box, c);
+    syncStag(box.closest(".panel"), c);
+  });
+}
+
 /* Esc ＝ 由上往下剝一層，**一次只關一個**。
    ⚠️ 2026-08-07 修：最後一行原本是無條件的 `close_(); closeSide(); closeProfile();`
       ——前面三層明明都仔細做了「只關最上層」，到了側欄這一層卻三個一起關，
@@ -9124,6 +9516,13 @@ addEventListener("keydown", e => {
   if(npOpen()){ ovClose(npov); return; }
   if(dpOpen()){ _delP = null; ovClose(dpov); return; }
   if(drillOpen()){ closeDrill(); return; }      /* 明細彈窗：Esc 只關它 */
+  /* 店櫃選擇。⚠️ 它自己就有兩層（品牌 → 店櫃），所以照這一段的規矩「一次剝一層」：
+     在第二層按 Esc 是**回到品牌**，不是關窗。直接關掉的話，鑽錯品牌想退回去的
+     最直覺按鍵會把整個視窗收掉，等於逼人重開。 */
+  if(storeOpen()){
+    if(_stStep){ stList.querySelector(".stback")?.click(); return; }
+    closeStore(); return;
+  }
   if(fbOpen()){ closeFb(); return; }            /* 倒讚彈窗開著：只關彈窗，不關抽屜 */
   if(picking()){ closePick(); return; }
   if(bselOpen()){ closeBsel(); return; }        /* 品牌下拉(z72)：只關它，不動側欄 */
