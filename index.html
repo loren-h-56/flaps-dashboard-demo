@@ -3167,14 +3167,47 @@ M["業績"] = { sub:"本月業績狀態盤點",
      dig:"線上跟線下業績比例有沒有在變化？"},
     /* 商品線移到 KPI 那列（原本在中列 cs:6）——版位需要四塊 cs:3 填滿半列 1-2，
        而 stackbar 是唯一縮到 cs:3 還撐得住的圖型（標籤門檻會依寬度自動換算）。 */
-    /* 第 3、4 欄＝該品類的最熱銷單品與其業績（只出現在懸浮窗，見 stackbar 的 formatter）。
-       ⚠️ 品名與金額是**示意值**，不是 golden 算出來的（golden 只到品類層）。編的時候守兩條：
-       單品業績 ≤ 該類總額的三成（零售的長尾結構下，單一 SKU 撐起半個品類是不合理的），
-       且與整頁「6 月人流崩、客單價反升」的主線不衝突。 */
-    {cs:3,rs:2,type:"stackbar",h:"商品線業績貢獻",s:"業績有多依賴單一品類 · 本月佔比",unit:"萬",
-     d:[["服裝",1200,"涼感機能短袖 T",286],["配件",560,"真皮托特包",132],
-        ["鞋類",460,"厚底老爹鞋",108],["家居雜貨",380,"竹纖維涼被",74],
-        ["其他",287,"香氛蠟燭禮盒",46]],
+    /* ── 2026-08-14：「商品線業績貢獻」→「新品／常態／出清 貢獻」（比稿頁 C4 方案 D）──
+       ⚠️ **這是換軸不是換圖**：版位（cs:3 rs:2）、引擎（stackbar）、形狀（100% 堆疊橫條）
+          全部不動，只換那一列的分段是什麼——外加一列去年同期的對照（見 c.cmp）。
+       為什麼非換不可（比稿頁 C4 的原文摘要）：
+       ① 改前是**單月的品類佔比快照**，服裝佔 41.6% 一年不會變，老闆每個月讀到同一句話。
+          隔壁那格已經為了完全相同的理由改成 YoY（佔比的變化量 1–3pp 比佔比本身
+          5–55% 小一個數量級），**商品線是業績頁最後一張還在畫佔比的圖**。
+       ② 真正讓它非換不可的是需求方那個**品類樹問題**（比稿頁原 P1）：
+          「紋藝的大分類只有 2 個，但中分類多達 74 個」——這條軸切不出堪用的層級。
+          改用**生命週期階段**（新品／常態／出清）＝ 固定三段、與品類樹幾層無關，直接繞開。
+       ③ 它答的是**毛利的前導問題**：業績持平但出清段變胖，下個月毛利就要掉。
+       ④ 順帶答了原本掛在 DIG_MORE 上那句「新品上市之後業績怎麼樣」——改前那張答不了。
+
+       ⚠️⚠️ **三段的判準未定，而且以目前的資料源算不出來**（比稿頁列為當場要定案的事，
+          會議上沒答）。「上市 90 天內 ＝ 新品」「折扣 ≥ 30% ＝ 出清」只是先擺的一組：
+          四表 JOIN 鏈裡**沒有上市日、也沒有定價**（`TaxedSalePrice` 是實售單價，
+          沒有原價就算不出折扣率），兩個判準各缺一欄。**這是口徑問題不是實作細節**，
+          要需求方拍板。畫面先照這組做，數字全是示意值。
+
+       ⚠️ **兩列的合計是硬約束**（跨卡對齊，改資料要一起改）：
+            當月 982 ＋ 1,386 ＋ 519 ＝ **2,887 萬 ＝ Hero 本月業績**
+            去年 1,624 ＋ 1,861 ＋ 475 ＝ **3,960 萬 ＝ 隔壁「各通路業績 YoY」的去年同期合計**
+          （該卡：2,887 → 3,960，全公司 −27.1%）。三段互斥、加起來就是全部營收。
+       ⚠️ 佔比正好落在比稿頁定的那組：當月 34／48／18，去年 41／47／12。
+          **出清段 12% → 18%** 就是這張圖要講的那句話，已經寫進副標。
+       ⚠️ 副標寫**結論**不寫座標軸說明——比稿頁的草稿寫「本月 vs 去年同期」，那是把讀圖的
+          工作丟回給讀者，而且 cs:3 在 1366 只有約 23 個中文字，寫了就沒位子講結論。
+       ⚠️ `tint:[0,1,2]` ＝ 生命週期是**有序**的，不能吃 dv[i%5] 的分類配色。
+          dv-3（橘）給出清＝全站的「該處理」色，這一段變胖正是要處理的事。
+       ⚠️ 改前第 3、4 欄是「該品類的最熱銷單品」，走懸浮窗。**這一輪拿掉了**：
+          有了對照列之後，懸浮窗第二行要講的是去年同期與百分點差（見引擎 formatter），
+          兩件事塞不進同一行。要恢復單品那條就得先決定它擠掉誰。 */
+    {cs:3,rs:2,type:"stackbar",h:"新品／常態／出清 貢獻",
+     s:"靠新品拉還是靠出清撐 · 出清段 12%→18%",unit:"萬",
+     tint:[0,1,2], rowN:"當月",
+     d:[["新品",982],["常態",1386],["出清",519]],
+     cmp:{ n:"去年同期", d:[1624,1861,475] },
+     /* ⚠️ dig 沿用改圖前那句（使用者裁示 chips 排到最後一個階段統一挑）。
+        ⚠️ 但 DIG_MORE 裡的第 2 句「新品上市之後業績怎麼樣？有沒有帶動整體？」
+           **現在這張圖一眼就讀得到答案了**（新品段 41% → 34%），照規則 6 該換掉。
+           本輪不動，留給 chips 那一輪。 */
      dig:"最近有沒有哪個商品業績突然驟減？"/* ←改寫自 業績-60　⚠️待實測 top-1 */},
     /* 五年同期對照（原本是「本期 vs 去年同期」兩條線的滾動 12 個月）。
        x 軸必須從「滾動 7月→6月」改成「日曆 1–12 月」——2025／2024… 是日曆年，
@@ -6449,35 +6482,77 @@ function buildOption(c, tk, H, W, sel){
        原本的行為是壞的：ECharts 只是把那一段藏起來，xAxis.max 仍是原始總額，
        於是右側留下一塊沒人解釋的空白，而剩下四段的 % 還是照原始總額算——
        實測關掉「配件」後圖上是 42+16+13+10＝81%，一張自稱「佔比」的圖加不到 100。
-       ⚠️ 所以 total／xAxis.max／段內標籤／懸浮窗四處**必須共用同一個分母**，
-       改任何一處都要四處一起改，否則就會回到「加不到 100」那個狀態。
-       sel 由 legendselectchanged 事件帶進來（見 renderCharts），沒有時＝全選。 */
+       ⚠️ 分母、段內標籤、懸浮窗**必須共用同一套百分比**，改一處要一起改。
+       sel 由 legendselectchanged 事件帶進來（見 renderCharts），沒有時＝全選。
+
+       ── c.cmp ＝ 第二列對照（2026-08-14，為「新品／常態／出清 貢獻」加）───────────
+       `c.cmp = { n:"去年同期", d:[與 c.d 同長同序的值] }`。給了就畫成**兩列**：
+       上列＝當期（`c.rowN`，預設「當月」），下列＝對照期（整列淡一階）。
+       ⚠️ **兩列各自正規化到自己的 100%**，所以序列吃的是**百分比**不是金額
+          （xAxis.max 固定 100）。改前是「金額 ＋ xAxis.max ＝ total」那套——
+          兩列總額不同（2,887 vs 3,960），沿用舊那套會讓去年那列畫得比較長，
+          而這張圖比的是**結構**不是量體，長度不同就等於在比錯的東西。
+          金額仍然保留在資料裡，只走懸浮窗。
+       ⚠️ **有 c.cmp 就不畫圖例**：三段的名字已經印在段內，而圖例要吃掉 34px 的
+          grid.bottom——1366×625 的畫布只有 49px，扣掉圖例之後兩列各剩 1.6px。
+          代價是**那張卡失去「點圖例關掉一段重新正規化」的互動**（上面那段講的行為
+          仍在程式裡，只是這張卡沒有觸發它的入口）。這是知情的取捨，不是漏掉。 */
     const on = x => !sel || sel[x[0]] !== false;
-    const shown = c.d.filter(on);
-    const total = shown.reduce((s,x)=>s+x[1],0)||1;
-    /* 標籤門檻要跟著版位寬度換算：同一個百分比在 cs:3 只有 cs:6 一半的像素。
-       用實際可用寬度回推——「名稱 NN%」約需 58px、「NN%」約需 26px。 */
-    const plotW=(c.cs||4)/12*1430-40;
-    const needName=58/plotW*100, needPct=26/plotW*100;
+    const CMP = c.cmp;
+    const IX  = c.d.map((_,i)=>i).filter(i=>on(c.d[i]));
+    const sum = f => IX.reduce((s,i)=>s+f(i),0) || 1;
+    const totA = sum(i=>c.d[i][1]);
+    const totB = CMP ? sum(i=>CMP.d[i]) : 1;
+    const pctA = i => c.d[i][1]/totA*100;
+    const pctB = i => CMP ? CMP.d[i]/totB*100 : 0;
+    /* ⚠️ 標籤門檻改成**逐段量真正要印的那串字**，兩件事一起修：
+       ① 寬度來源從 `(c.cs||4)/12*1430-40`（猜的）換成實測的 W。猜的那條在 cs:3 給出
+          317px，而 1280 實際只有 279 － 左欄 － 右留白 ≈ 223px，門檻整個偏鬆 →
+          名稱放不下卻照印，被 canvas 直接裁掉（不報錯、不算溢出，allsweep 驗不到）。
+       ② 門檻從固定的「名稱 NN% ≈ 58px」換成 `estW(那一段實際的字串)`。58 是照三四個字的
+          名稱訂的，對「出清 18%」（≈46px）**過嚴**——1440 上那一段有 47px，放得下卻被
+          擋掉，於是「出清」這兩個字**在整張圖上一個字都沒出現**（兩列都只印得出數字）。
+          一個段名在圖上完全消失，比字有點擠嚴重得多。 */
+    const nameW = CMP ? 6 + estW(CMP.n, 11) : 4;        /* 左欄：放得下「去年同期」 */
+    const plotW = Math.max(60, (W||300) - nameW - 8);
+    const needPct = 26/plotW*100;
+    const needFor = (t, fs) => (estW(t, fs) + 8)/plotW*100;   /* +8 ＝ 段內左右各留一點 */
+    /* 兩列時把圖例那 34px 還給 grid，並依實測的帶高決定條粗與字級。 */
+    const gridT = 8, gridB = CMP ? 6 : 34;
+    const band  = Math.max(6, ((H||0) - gridT - gridB) / (CMP ? 2 : 1));
+    /* 條粗綁帶高、封頂 48。⚠️ 封頂太低（第一版寫 26）在 1920／2560 上會讓兩條細帶
+       浮在一大片空白裡——這格的高度是 rs:2 給的，圖只有兩列，不填就是空著。 */
+    const barW  = Math.min(48, band * 0.72);
+    const segFs = barW >= 18 ? 11 : 10;
+    const fmt = (i, row) => {                            /* row 0＝當期、1＝對照期 */
+      const pct = row ? pctB(i) : pctA(i);
+      const full = `${c.d[i][0]} ${pct.toFixed(0)}%`;
+      if(pct >= needFor(full, segFs)) return full;
+      if(pct >= needPct)              return `${pct.toFixed(0)}%`;
+      return '';
+    };
     return {
       animation:true,
-      /* 懸浮窗第二行＝該品類的**最熱銷單品 ＋ 它的業績**（c.d 第 3、4 欄，可省略）。
-         圖上只畫得出「這一類佔幾成」，但看到「服裝 42%」的下一個問題必然是「是哪一款在撐」。
-         放在懸浮窗而不是圖上：段內標籤在 cs:3 只有 329px，連類別名都要靠門檻換算才塞得下。 */
+      /* 懸浮窗：單列時第二行是該品類的**最熱銷單品**（c.d 第 3、4 欄，可省略）；
+         有 c.cmp 時第二行改成**對照期的同一段 ＋ 百分點差**——那才是這張圖在問的事。
+         ⚠️ 百分點差**不上顏色**：三段裡「出清」變胖是壞事、「新品」變胖是好事，
+            同一支箭頭配同一個顏色會有一半是反的。方向讓副標與段名自己講。 */
       tooltip:{ trigger:'item', ...tip,
-        formatter:p=>{ const r=c.d[p.seriesIndex]||[];
-          return `<b>${p.seriesName}</b> ${(p.value/total*100).toFixed(1)}% · ${F(p.value)}${c.unit||''}`
-            + (r[2]?`<br><span style="color:${tk.tick}">最熱銷 </span>${r[2]} · ${F(r[3])}${c.unit||''}`:''); } },
-      /* selected 要回寫，否則 setOption(notMerge) 重建後圖例會全部回到選取狀態 */
+        formatter:p=>{ const i=p.seriesIndex, r=c.d[i]||[];
+          const head = `<b>${r[0]}</b> ${pctA(i).toFixed(1)}% · ${F(r[1])}${c.unit||''}`;
+          if(CMP){ const d=pctA(i)-pctB(i);
+            return head + `<br><span style="color:${tk.tick}">${CMP.n} </span>`
+              + `${pctB(i).toFixed(1)}% · ${F(CMP.d[i])}${c.unit||''}`
+              + `　${d>=0?'+':'−'}${Math.abs(d).toFixed(1)}pp`; }
+          return head + (r[2]?`<br><span style="color:${tk.tick}">最熱銷 </span>${r[2]} · ${F(r[3])}${c.unit||''}`:''); } },
       /* ⚠️ **圖例折行會壓在條上。** ECharts 排不下就自己折第二行，而這張圖的 grid
          bottom 只留 34px（一行的量）——第二行於是往上長，實測 1280／1366／1440 三個
          尺寸的段內 % 與圖例文字直接疊在一起，而且 canvas 不會產生 DOM 溢出，
          allsweep 與 assertNoClip 兩支都驗不到（同該處註解那條）。
          所以這裡自己先估一次寬度，塞不下就整組退一階字級與間距，逼它留在一行。
-         ⚠️ 估法要跟畫上去的那組對齊：itemWidth 9 ＋ 圖文間距約 5 ＋ estW(文字, 字級)。
          c.legShort ＝ 圖例顯示用的短名（選用）。序列名不動——懸浮窗與段內標籤要的是
          全名，只有圖例這一列擠。 */
-      legend:(() => {
+      legend: CMP ? {show:false} : (() => {
         const nm = x => (c.legShort && c.legShort[x]) || x;
         const est = fs => c.d.reduce((w,x) => w + 14 + estW(nm(x[0]), fs), 0);
         const tight = est(11) + 12*(c.d.length-1) > (W||300) - 8;
@@ -6486,46 +6561,44 @@ function buildOption(c, tk, H, W, sel){
           itemGap: tight?8:12, formatter:nm,
           textStyle:{color:tk.body, fontSize: tight?10:11} };
       })(),
-      grid:{ left:4, right:4, top:12, bottom:34, containLabel:false },
-      xAxis:{ type:'value', max:total, show:false },   /* max ＝ 現行分母 → 剩下的段自動撐滿 */
-      yAxis:{ type:'category', data:[''], show:false },
+      grid:{ left:nameW, right:4, top:gridT, bottom:gridB, containLabel:false },
+      /* 有 c.cmp → 值是百分比，兩列都撐滿 100；單列 → 沿用「金額 ＋ max ＝ 現行分母」 */
+      xAxis:{ type:'value', max: CMP ? 100 : totA, show:false },
+      /* ⚠️ 類別軸的 index 0 畫在**下面**，所以對照期要排第一個，當期才會在上面。 */
+      yAxis:{ type:'category', data: CMP ? [CMP.n, c.rowN||'當月'] : [''],
+        show:!!CMP, axisLine:{show:false}, axisTick:{show:false},
+        axisLabel:{ color:tk.body, fontSize:11, margin:6,
+          formatter:v => v===(c.rowN||'當月') ? v : `{m|${v}}`,
+          rich:{ m:{ color:tk.tick, fontSize:11 } } } },
       series: c.d.map((x,i)=>{
-        const pct=x[1]/total*100;   /* 分母同上；被關掉的段 ECharts 自己不畫，pct 不會用到 */
         /* c.tint ＝ 每段的色階索引（選用，與 c.d 同長）。不給時沿用 dv[i%5] 的**分類**配色。
            ⚠️ **有序分桶不能用分類配色**：貨齡 <30／30–90／90–180／180+ 這種有大小關係的
               四段，用四個不相干的色相會被讀成四個無關的類別，而且 dv[i%5] 剛好把 coral
               （全站的「該處理」色）發給了 90–180，把最該警示的 180+ 染成粉紅。
               給 tint 就能自己決定哪一段吃 coral。
-           ⚠️ 不用透明度階梯做漸層：段內標籤是白字，淡色段上的白字過不了對比。 */
-        /* ⚠️ 2026-08-12：tint 除了 dv 索引（數字）之外，也接受兩個**中性色名**。
-           ⚠️ 2026-08-14：下面舉的那張卡**已經不是 stackbar 了**（改成折線，見 CRM charts）。
-              **這條規則本身仍然有效**，只是全站目前沒有 stackbar 在用中性色名——
-              留著是因為推導成立，不是因為還有人在跑。
-           起因是 CRM「業績來自誰」改成五段卡別：三張 VIP 卡是有序的（冷色由深到淺），
-           但「顧客卡」與「非會員」**不是那條階梯上的一階**——它們是底層大眾與體系外，
-           給它們一個 dv 色相會被讀成「第四種、第五種卡」。中性灰講的正是「不在階梯上」。
-           ⚠️ 只開 body／tick 兩個值，都是設計系統裡**本來就要在白底上過 AA 的文字色**——
-              過 AA 的意思是它與白色的對比 ≥4.5，所以反過來把白字印在它上面也一樣過。
-              不要把 --border／--surface-2 那種背景色加進來，那些配白字讀不到。 */
-        const ti = c.tint && c.tint[i];
-        const segCol = typeof ti === 'string'
-          ? ({ body:tk.body, tick:tk.tick })[ti] || tk.dv[0]
-          : tk.dv[ti != null ? ti : i % 5];
-        /* c.fill ＝ 讓單列堆疊條隨面板高度長高（選用）。預設 90 是為 rs:2 調的，
-           放進 rs:3／rs:4 會變成一條細帶浮在大片空白中間。上限 150 是避免在 2560
-           上長成一塊沒有意義的色磚。 */
-        const bw = c.fill ? Math.min(150, Math.max(80, Math.round((H||0)*0.45))) : 90;
-        return { name:x[0], type:'bar', stack:'total', barWidth:bw, data:[x[1]],
-          itemStyle:{ color:segCol, borderColor:tk.paper, borderWidth:1.5 },
-          /* c.segPct ＝ 段內只印 %，名稱全部交給圖例（選用）。
-             ⚠️ 給五段以上的圖用。門檻公式算的是「名稱 NN%」放不放得下，但它假設名稱
-                兩三個字；「三級會員卡 24%」約 79px 而 24% 的段只有 76px——**超出的字
-                被 canvas 直接裁掉，不報錯也不產生 DOM 溢出**（allsweep 驗不到，
-                見該支的說明）。與其靠門檻猜，不如整張圖說清楚「名稱不放段內」。 */
-          label:{ show:true, position:'inside', color:'#fff', fontSize:11, fontWeight:600,
-            formatter: c.segPct ? (pct>=needPct ? `${pct.toFixed(0)}%` : '')
-                     : (pct>=needName ? `${x[0]} ${pct.toFixed(0)}%`
-                     : (pct>=needPct ? `${pct.toFixed(0)}%` : '')) } };
+           ⚠️ 不用透明度階梯做漸層：段內標籤是白字，淡色段上的白字過不了對比。
+           ⚠️ tint 也接受兩個中性色名（'body'／'tick'）：給「不在那條階梯上」的段用
+              （例：非會員之於三張 VIP 卡）。全站目前沒有 stackbar 在用，留著是因為推導成立。 */
+        const ti = c.tint ? c.tint[i] : i%5;
+        const col = ti==='body' ? tk.body : ti==='tick' ? tk.tick : tk.dv[ti%5];
+        return {
+          name:x[0], type:'bar', stack:'t', barWidth:barW,
+          /* ⚠️ 對照列**整列淡一階**（同 .kpi-sh 的對照列）。淡了之後白字過不了對比，
+             所以那一列的段內字改成深色 tk.body——不是忘了統一，是量出來的。 */
+          data: CMP
+            ? [ { value:pctB(i), itemStyle:{ color:col, opacity:0.34 },
+                  label:{ show:true, position:'inside', color:tk.body,
+                    fontSize:segFs, fontWeight:600, formatter:fmt(i,1) } },
+                { value:pctA(i), itemStyle:{ color:col },
+                  label:{ show:true, position:'inside', color:'#fff',
+                    fontSize:segFs, fontWeight:600, formatter:fmt(i,0) } } ]
+            : [ x[1] ],
+          itemStyle: CMP ? undefined : { color:col },
+          /* c.segPct ＝ 段內只印 %，名稱全部交給圖例（選用，給五段以上的圖用）。 */
+          label: CMP ? undefined
+            : { show:true, position:'inside', color:'#fff', fontSize:11, fontWeight:600,
+                formatter: c.segPct ? (pctA(i)>=needPct ? `${pctA(i).toFixed(0)}%` : '')
+                         : fmt(i,0) } };
       })
     };
   }
@@ -9046,7 +9119,10 @@ const DIG_MORE = {
         chips_golden_mapping.xlsx「工程待辦」分頁裡要實測 cosine 的 31 句之一，別當成免驗證。 */
   "各通路業績 YoY":["最近有沒有哪個通路業績異常暴增或銳減？"/* ←改寫自 業績-40 */,
                     "最近有沒有哪個通路的客單價下降很多？"/* 業績-82 */],
-  "商品線業績貢獻":["最近有沒有哪個品項業績貢獻忽然爆衝？","新品上市之後業績怎麼樣？有沒有帶動整體？"/* ←改寫自 業績-83 */],
+  /* ⚠️ 2026-08-14：key 隨標題改名（商品線業績貢獻 → 新品／常態／出清 貢獻）。
+     ⚠️ 第 2 句**現在圖上一眼讀得到**（新品段 41% → 34%），照規則 6 該換掉；
+        本輪不動是因為使用者裁示 chips 整批排到最後一個階段。到那一輪這句要重挑。 */
+  "新品／常態／出清 貢獻":["最近有沒有哪個品項業績貢獻忽然爆衝？","新品上市之後業績怎麼樣？有沒有帶動整體？"/* ←改寫自 業績-83　⚠️已被圖回答 */],
   /* ⚠️ 2026-08-04 換掉第 3 句。原本是「最近半年跟前一個半年比，差多少？」（改寫自 業績-38，
      原句以曆年上／下半年為錨點，只有年末才比得出來），與第 2 句同為 S1。
      換成改寫自 業績-71（S2）：五年同期圖看得出季節形狀，但看不出今年這幾個月有沒有檔期
