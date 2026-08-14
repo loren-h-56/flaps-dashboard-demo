@@ -4003,10 +4003,19 @@ M["促銷"] = { sub:"檔期效益與折扣結構", kpiAfter:0,
      ref:40, refLab:"目標 40%",
      big:["36.2","%"], bigd:{d:"5.3 百分點 較去年同期", dc:"d"},
      x:["3月","4月","5月","6月","7月","8月"], xsub:{"8月":"進行中"},
+     /* ⚠️ 2026-08-14 稍晚（使用者要求「起伏明顯一點，體現差異」）：兩條線的示意值重編。
+        改前今年是 41.8 → 36.2 **單調下滑**、去年幾乎是一條水平線，在 [30,50] 的軸上
+        只用掉 35% 的高度，兩條線看起來都像直線——「有沒有在持續失血」這個問題
+        需要看得到起伏才答得出來。
+        改後資料域 36.2–47.8，用掉軸高的 58%，而且**今年那條三次穿越目標線**——
+        `ref:40` 那條虛線從裝飾變成真的在分類每個月。趨勢仍然向下（開高走低），
+        故事沒變，只是看得見了。
+        ⚠️ 兩個末點是硬約束，動資料時要一起守：今年 36.2 ＝ 上面的大數字；
+           去年 41.5 ＝ 36.2 + 5.3（bigd 寫的「5.3 百分點」）。 */
      series:[
-       {n:"今年",     c:0, tail:true, d:[41.8,41.0,39.6,38.4,37.5,36.2]},
+       {n:"今年",     c:0, tail:true, d:[44.6,41.2,45.8,39.1,41.7,36.2]},
        {n:"去年同期", c:0, op:0.6, dash:[5,4], w:2.5, sym:false,
-        d:[43.2,42.6,42.9,42.1,41.8,41.5]}],
+        d:[46.9,45.1,47.8,43.6,45.2,41.5]}],
      /* ⚠️ dig 原樣搬過來（改寫自 促銷-24，待實測）：它問的是通路成本效率，卡是全站
         毛利率水位，換版型不影響這個關係。 */
      dig:"官網 EC 辦活動的成本，跟第三方平台比哪個划算？"/* ←改寫自 促銷-24 S2　⚠️待實測 */},
@@ -6210,8 +6219,8 @@ function buildOption(c, tk, H, W, sel){
          （「徽章寫著低於預期，但畫面上沒有任何地方說明預期是多少」）。
          ⚠️ 不給 refLab 的 ref 維持不印字（行為不變）。 */
       if(si===0 && c.ref!=null) ml.push({ yAxis:c.ref,
-        label: c.refLab ? { show:true, formatter:c.refLab, position:'insideEndTop',
-          color:tk.tick, fontSize:10, padding:[0,0,2,0] } : { show:false },
+        label: c.refLab ? { show:true, formatter:c.refLab, position:'insideStartBottom',
+          color:tk.tick, fontSize:10, padding:[2,0,0,2] } : { show:false },
         lineStyle:{ color:tk.tick, type:'dashed', width:1 } });
       const base = {
         name:s.n, type:'line', data:s.d, smooth: c.smooth ?? 0.35, connectNulls:false,
