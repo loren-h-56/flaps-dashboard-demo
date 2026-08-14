@@ -3922,6 +3922,48 @@ M["促銷"] = { sub:"檔期效益與折扣結構", kpiAfter:0,
         空的那一段就是正價：當月 48.6%、去年同期 55.2%——「正價那塊在縮水」是這張卡
         真正要說的事，改前的半圓把它畫成一段沒有標示的灰弧。 */
      rows:[["當月",51.4],["去年同期",44.8]]},
+    /* ⚠️ 「促銷毛利率」2026-08-14 從這裡搬到 charts[0]（使用者要求它比照 CRM 上排的
+       「大數字 ＋ 月趨勢線 ＋ 去年同期虛線」）。**它的沿革註解一起搬過去了**，
+       包含 minibars → miniline 的數字論證、`.vrow` 掛 ref 之後放不下長句那條規則、
+       以及 dig 換句的理由。要找就去 charts[0]。
+       ⚠️ kpi[] 現在只剩「促銷業績佔比」一張——**上排因此只剩一顆徽章**（高於預期），
+          與 CRM 上排同一個開著的問題，別只解一頁。 */
+    ],
+  charts:[
+    /* ── 促銷毛利率（2026-08-14 從 kpi[] 搬過來）─────────────────────────────────
+       使用者要求：比照 CRM 上排「年度流失率／會員業績貢獻」的樣式 ＝ 灰字標題／
+       大數字＋漲跌／月趨勢線＋去年同期虛線，**而且目標線要保留**。
+       ⚠️ 它仍是 `.panel` 不是 `.kpi`，靠 `khd`（標題）＋ `big`／`bigd`（大數字）＋
+          不給 `c.s`（沒有副標）湊出同一個結構——同 CRM 那兩張，理由見 kpiStats。
+       ⚠️ **版位是零成本的**：促銷頁 `kpiAfter:0`＝KPI 區排最前，所以順序仍是
+          佔比（KPI，欄 1–3）→ 這張（charts[0]，欄 4–6）→ combo cs:6（欄 7–12），
+          與改前一格不差。cs/rs 不變，帶內分割（6 半列）不受影響。
+          實測卡高：1280 129.9／1366 110.9，與 CRM 上排的 .panel 逐格相同。
+       ⚠️ **目標線要能講話**：line 引擎原本把 ref 的標籤寫死關掉，本輪補了 `c.refLab`。
+          少了它，畫面上會是一條沒人解釋的灰虛線，而且旁邊就是去年同期那條紫虛線。
+          三條虛線同框靠**顏色與粗細**分：目標＝灰 1px 水平＋有字，去年＝紫 2.5px 跟著
+          資料走，進行中＝滿明度粗虛線＋末端有點。
+       ⚠️ `yfit:[30,50]` ＝ 刻度 30／40／50，**與改前那張 miniline 一模一樣**，
+          而且 40（目標）落在中間那根上。試過收緊到 [35,45] 讓線舒展：刻度會變成
+          35／39／43（不是給人讀的數），而且「目標 40%」那行字會壓到去年同期那條線。
+       ⚠️ **漲跌寫回了完整的「5.3 百分點 較去年同期」。** 改前砍成「5.3 百分點」是因為
+          `.vrow` 掛了 ref 之後三個元素要 276px、1280 只有 247，被 `overflow:hidden`
+          安靜切掉。`.panel` 的 `.pbig` 沒有這個擠壓，所以那句可以還原。
+          ⚠️ 這條規則本身仍然成立（`.vrow` 掛 ref 之後 delta 只放得下短句），
+             庫存 DOI 那張還在那條路上。
+       ⚠️ **口徑刻意維持「百分點」，沒有跟 CRM 上排統一成相對變化率。** 毛利率是比率型
+          指標，講百分點才對；CRM 那排的相對變化率是使用者針對該列裁示的。兩頁不一致
+          是知情的選擇，不是漏改。
+       ── 搬過來丟掉的兩樣（都知情）────────────────────────────────────────
+       ⚠️ ① **徽章「低於預期」消失**：`.panel` 沒有徽章欄位。促銷上排因此變成
+             「佔比有徽章、毛利率沒有」，與 CRM 上排同一個開著的問題（要嘛把徽章加進
+             `.panel` 頁首、要嘛兩顆都拿掉），別只解一頁。
+       ⚠️ ② **`badBelow` 的紅點**（第一個跌破 40 的月份）沒有對應功能。有了帶標籤的
+             目標線之後穿越點看得到，判定不需要靠一顆點。
+       ⚠️ `miniline` 引擎現在**只剩庫存「週轉天數 DOI」一個用戶**（年度流失率已於本日
+          稍早離開）。要砍它之前先看那張。
+       資料是示意值：末點 36.2 ＝ 上面的大數字；去年同期末點 41.5 ＝ 36.2 + 5.3。 */
+    /* ── 以下是這張卡搬家前的沿革，原樣保留（在 kpi[] 裡時寫的）──────────────
     /* 全站彙總水位，刻意不切通路／不切機制——各通路 ROI 與各促銷機制毛利率兩張圖
        已經分別在回答「哪個通路賠本」「哪種手段最傷毛利」，這裡再切一次會變成搶同一題。
        不用半圓：毛利率要問的是「有沒有在持續失血」，「比去年低 5.3 百分點」可能只是
@@ -3956,14 +3998,19 @@ M["促銷"] = { sub:"檔期效益與折扣結構", kpiAfter:0,
        成本效率的通路拆解，畫面上沒有（各通路 ROI 那張 8/03 已移除）。
        ⚠️ 屬**改寫（通用化）**要跑 cosine：原句是「跟**蝦皮商城**比」，具名通路換成類別詞。
           「第三方平台」是刻意選的——CRM 頁「業績來自誰」的 chip 用的就是這個詞，全站一致。 */
-    {type:"miniline",k:"促銷毛利率",dig:"官網 EC 辦活動的成本，跟第三方平台比哪個划算？"/* ←改寫自 促銷-24 S2　⚠️待實測 */,
-     v:"36.2",u:"%",d:"5.3 百分點",dc:"d",
-     t:["lo","低於預期"],cs:3,rs:2,
-     /* `badBelow:true` ＝ 低於目標是壞事 → 引擎把**第一個跌破 40 的月份**（3月 39.6）
-        標成紅點。DOI 那張不掛這個欄位：它六個月全在目標之上，沒有穿越點可標。 */
-     axis:true, ref:40, badBelow:true,
-     bars:[41.8,41.0,39.6,38.4,37.5,36.2],bx:["1月","2月","3月","4月","5月","6月"]}],
-  charts:[
+    {cs:3,rs:2,type:"line",khd:true,noleg:true,h:"促銷毛利率",
+     unit:"%", yfit:[30,50], smooth:0.15, xall:true,
+     ref:40, refLab:"目標 40%",
+     big:["36.2","%"], bigd:{d:"5.3 百分點 較去年同期", dc:"d"},
+     x:["3月","4月","5月","6月","7月","8月"], xsub:{"8月":"進行中"},
+     series:[
+       {n:"今年",     c:0, tail:true, d:[41.8,41.0,39.6,38.4,37.5,36.2]},
+       {n:"去年同期", c:0, op:0.6, dash:[5,4], w:2.5, sym:false,
+        d:[43.2,42.6,42.9,42.1,41.8,41.5]}],
+     /* ⚠️ dig 原樣搬過來（改寫自 促銷-24，待實測）：它問的是通路成本效率，卡是全站
+        毛利率水位，換版型不影響這個關係。 */
+     dig:"官網 EC 辦活動的成本，跟第三方平台比哪個划算？"/* ←改寫自 促銷-24 S2　⚠️待實測 */},
+
     /* 主角（cs:6 rs:3 ＝ 1.5 標準列）：促銷到底是「多賣」還是「把原本正價會買的客人賤賣」。
        淨增量佔比＝(檔期業績 − 無促銷基線) / 檔期業績，掉到 0% 以下＝蠶食正價。
        這是整頁唯一直接回答「值不值得」的指標，所以佔左上。 */
@@ -6032,16 +6079,53 @@ function buildOption(c, tk, H, W, sel){
      ⚠️ 階梯補了一個 **4**：[56,64] 在 nMax=3 時若沒有 4，會挑到 5 → 印出 56／61
         （61 不是給人讀的刻度）。補 4 對既有的 yfit 卡零影響——實算「會員業績貢獻」
         （30–78）在 nMax 3 仍挑 20、nMax 5 仍挑 10，兩個高度的標籤一字不差。 */
+  /* ── 矮卡的三段降級（2026-08-14）─────────────────────────────────────────────
+     ⚠️ **`H` 不是給線用的高度。** 真正剩下的是 `H − grid.top − x 軸標籤高`，
+        而 x 軸標籤在 `c.xsub`（「8月／進行中」）下是**兩行 26px**。
+        cs:3 rs:2 的卡在 1366×625 只有 35.5px 畫布 → **淨高剩 5.5px**，
+        兩條線加上 2.5px 線寬直接糊成一條，去年同期等於不存在。
+        用 H 去算刻度數會完全看不到這件事——這是這三張卡上線後才發現的。
+     實測淨高（畫布 ＝ `.plot` 高 − 4）：
+       1366×625  5.5    1280×682 24.5   1440×757 49.5   1920×937 98.8
+     三段：
+       ① 淨高 ≥ 24：正常。刻度數改由**淨高**算（每格 18px），下限從 3 放寬到 2——
+          原本寫死至少 3 格，1280 的 24.5px 要塞三個 11px 標籤，實測「70」直接壓在
+          「50」上面（`.plot` 是 canvas，不算溢出、allsweep 全過）。放寬到 2 之後
+          1280 印 50／70 兩格、相距 24.5px。
+       ② 淨高 < 24：**收掉 y 軸刻度與格線**，同時把軸域從整數刻度收緊到資料範圍
+          （±12% 留邊）。刻度都不印了就不需要 50／60／70 那種好讀的整數界，
+          把高度全部讓給線——這是這一段唯一能拿回可讀性的地方。
+       ③ 淨高 < 14：連 x 軸的第二行小字（進行中）也收掉，x 標籤退回一行 15px。
+          1366 走這條：淨高從 5.5 回到 16.5，兩條線相距約 11px，看得出是兩條。
+          ⚠️ 代價是**1366×625 上讀不到「進行中」**——虛線末段仍在，它自己會說話。
+     ⚠️ ②③ 的判斷式**自己就是閘門**：高卡永遠算不出 < 24 的淨高，所以其他 line 卡
+        （業績走勢／交易筆數）一格都不會變。改完有拿 HEAD 逐格對照確認過。 */
+  const TOPPAD = c.note?26:(c.yfit?4:12);
+  const XH0 = c.xsub ? 26 : 15;
+  const roomOf = xh => (H||0) - TOPPAD - xh;
+  /* n 格刻度是**撐滿**淨高的，相鄰間距 ＝ 淨高/(n−1)，一個 11px 標籤連行距要 16px
+     → n ≤ 淨高/16 + 1。（第一版寫成 `floor(room/16)`，少算一格，1536×721 的 37px
+     明明放得下三格 18.5px 卻被判成放不下。）
+     **少於三格就整個收掉**，不要印兩格——兩格只剩軸的上下緣，讀者拿不到中間的
+     參考點，卻仍付出高度。 */
+  const nTick = Math.floor(roomOf(XH0) / 16) + 1;
+  const yTiny = nTick < 3;
+  const xTiny = yTiny && roomOf(XH0) < 14;
+  const XH = xTiny ? 15 : XH0;
   const yFit = () => {
+    const vals = SER.flatMap(s => s.d).filter(v => v != null);
+    const lo = Math.min(...vals), hi = Math.max(...vals);
+    if(yTiny){                                   /* ② 軸域收緊到資料範圍，刻度不印 */
+      const span = (hi - lo) || 1;
+      return { min: lo - span*0.12, max: hi + span*0.12, interval: null };
+    }
     let min, max;
     if(Array.isArray(c.yfit)){ [min, max] = c.yfit; }
     else {
-      const vals = SER.flatMap(s => s.d).filter(v => v != null);
-      const lo = Math.min(...vals), hi = Math.max(...vals);
       min = Math.floor(lo / 10) * 10;
       max = Math.ceil((hi + (hi - lo) * 0.10) / 2) * 2;
     }
-    const nMax = Math.max(3, Math.min(5, Math.floor((H - 20) / 32) + 1));
+    const nMax = Math.max(3, Math.min(5, nTick));
     const LAD = [1,2,4,5,10,20,25,50,100,200,250,500,1000,2000,2500,5000];
     const interval = LAD.find(v => Math.floor((max - min) / v) + 1 <= nMax) || LAD[LAD.length-1];
     return { min, max, interval };
@@ -6055,7 +6139,10 @@ function buildOption(c, tk, H, W, sel){
     /* ⚠️ c.yfit 的圖區被頁首擠得很矮（cs:3 三行頁首後只剩 5~60px），top 的 12px 在那裡
        是圖區的 1/5。yfit 的卡改留 4px——它的最高點本來就有 yFit 算出來的 headroom
        （max 取到資料之上），不需要再靠 grid.top 讓出空間。其餘 line 卡維持 12。 */
-    grid:{ left:6, right:14, top: c.note?26:(c.yfit?4:12), bottom:0, containLabel:true },
+    /* ⚠️ `yTiny` 時左右要自己讓：y 刻度收掉之後 containLabel 就沒有東西可以撐，
+       而 x 軸 `boundaryGap:false` 把首末兩個月份**騎在圖區邊緣上**——實測「3月」的
+       左半被切掉、「目標 40%」的右半被切掉。有 y 刻度時那 18px 剛好擋住，沒有就露餡。 */
+    grid:{ left: yTiny?16:6, right: yTiny?18:14, top:TOPPAD, bottom:0, containLabel:true },
     /* c.xsub ＝ {類別: 第二行小字}（2026-08-14，為「8月／進行中」加）。
        第二行要比月份小一號、淡一階，不然「進行中」跟月份同字級，會被讀成第七個類別。
        ⚠️ **小字走 formatter，不要直接寫進 c.x。** 一開始是把 `"8月\n{s|進行中}"` 當成
@@ -6072,9 +6159,11 @@ function buildOption(c, tk, H, W, sel){
           抓出來數才看到的。
        ⚠️ 為什麼不全站打開：「業績走勢」那類 12 格的軸強制全印會擠成一團。
           只給格數少、又需要保證末格出現的卡宣告。 */
+    /* ⚠️ `xTiny` 時**不套 c.xsub 的 formatter**（見上面三段降級的 ③）：第二行小字
+       在 1366×625 上要價 11px，而那張卡總共只有 35.5px。收掉之後 x 標籤退回一行。 */
     xAxis:{ type:'category', data:X, boundaryGap:false, ...axX,
       axisLabel:{ ...axX.axisLabel, lineHeight:13, ...(c.xall?{interval:0}:{}),
-        ...(c.xsub ? { formatter:v => c.xsub[v] ? `${v}\n{s|${c.xsub[v]}}` : v } : {}),
+        ...(c.xsub && !xTiny ? { formatter:v => c.xsub[v] ? `${v}\n{s|${c.xsub[v]}}` : v } : {}),
         rich:{ s:{ fontSize:9, color:tk.tick, opacity:0.75, lineHeight:11 } } } },
     /* c.ymin：截斷 y 軸。多年對照比的是「形狀與相對位置」，不是量體——0 起算會把
        五條線全擠進上半部（實測 214px 的圖裡，2,887–5,428 只用掉 42% 高度，下半部全空）。
@@ -6083,8 +6172,13 @@ function buildOption(c, tk, H, W, sel){
        即使 max 不落在 interval 的倍數上（實測 min30／max78／interval20 印出
        30／50／70／**78**，78 就疊在 70 上面）。把非倍數的刻度印成空字串，
        78 才會退回「只是軸的上緣」。⚠️ 是印空字串不是刪刻度——格線仍要畫到頂。 */
-    yAxis:{ type:'value', ...(YF || (c.ymin!=null?{min:c.ymin}:{})), ...axY,
-      ...(YF ? { axisLabel:{ ...axY.axisLabel,
+    /* ⚠️ `yTiny` 時 `YF.interval` 是 null ＝ **刻度與格線一起收掉**（降級 ②）。
+       只關 axisLabel 不關 splitLine 的話，會留下三條沒有數字的橫線，那比沒有更糟——
+       讀者會去猜它們代表什麼。 */
+    yAxis:{ type:'value', ...(YF ? {min:YF.min, max:YF.max,
+        ...(YF.interval!=null?{interval:YF.interval}:{})} : (c.ymin!=null?{min:c.ymin}:{})), ...axY,
+      ...(YF && YF.interval==null ? { axisLabel:{show:false}, splitLine:{show:false} }
+        : YF ? { axisLabel:{ ...axY.axisLabel,
         formatter:v => (v - YF.min) % YF.interval === 0 ? F(v) : '' } } : {}) },
     /* ── s.tail ＝ 最後一段畫成虛線（2026-08-14，為「年度流失率」的「8月 進行中」加）──
        語意：末點是**還沒結算完的當月**，虛線是「這個數字還會動」的視覺聲明。
@@ -6110,7 +6204,14 @@ function buildOption(c, tk, H, W, sel){
         label:{ show:!!c.markLabel, formatter:c.markLabel, position:'insideEndTop',
           color:tk.dv[2], fontSize:11, fontWeight:600 },
         lineStyle:{ color:tk.dv[2], type:'dashed', width:1.5 } });
-      if(si===0 && c.ref!=null) ml.push({ yAxis:c.ref, label:{show:false},
+      /* ⚠️ `c.refLab`（2026-08-14，為「促銷毛利率」加）＝ 參考線的標籤，語意與
+         deltabar／track／hbar 的 refLab 一致。**line 是唯一缺這個的引擎**，
+         而少了它就是一條沒人解釋的灰虛線——那正是這張卡當初加 `ref:40` 要修的病
+         （「徽章寫著低於預期，但畫面上沒有任何地方說明預期是多少」）。
+         ⚠️ 不給 refLab 的 ref 維持不印字（行為不變）。 */
+      if(si===0 && c.ref!=null) ml.push({ yAxis:c.ref,
+        label: c.refLab ? { show:true, formatter:c.refLab, position:'insideEndTop',
+          color:tk.tick, fontSize:10, padding:[0,0,2,0] } : { show:false },
         lineStyle:{ color:tk.tick, type:'dashed', width:1 } });
       const base = {
         name:s.n, type:'line', data:s.d, smooth: c.smooth ?? 0.35, connectNulls:false,
